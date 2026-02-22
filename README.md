@@ -19,6 +19,9 @@ A talking AI assistant that uses OpenRouter for AI responses and edge-tts (Micro
 cd talkbot
 UV_SKIP_WHEEL_FILENAME_CHECK=1 uv tool install --python /usr/bin/python3.12 . --with faster-whisper --with silero-vad --with sounddevice --with soundfile
 
+# (optional) same install via helper script
+./setup.sh
+
 # 2) Configure API key
 cp .env.example .env
 # edit .env and set OPENROUTER_API_KEY=...
@@ -58,6 +61,12 @@ To refresh an existing install:
 ```bash
 cd talkbot
 UV_SKIP_WHEEL_FILENAME_CHECK=1 uv tool install --reinstall --python /usr/bin/python3.12 . --with faster-whisper --with silero-vad --with sounddevice --with soundfile
+```
+
+Or use:
+
+```bash
+./setup.sh
 ```
 
 > **Note:** `--python /usr/bin/python3.12` tells uv to use the system Python, which has tkinter. uv's own bundled Python builds omit it.
