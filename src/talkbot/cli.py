@@ -11,6 +11,13 @@ from dotenv import load_dotenv
 from talkbot.openrouter import OpenRouterClient
 from talkbot.tools import register_all_tools
 from talkbot.tts import TTSManager
+from talkbot.voice import (
+    MissingVoiceDependencies,
+    VoiceConfig,
+    VoicePipeline,
+    run_voice_diagnostics,
+    transcribe_audio_file,
+)
 
 # Load environment variables from .env file
 env_path = Path.cwd() / ".env"
@@ -259,6 +266,280 @@ def tool(
                 tts.speak(response)
     except ValueError as e:
         click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
+@cli.command("voice-chat")
+@click.option(
+    "--backend",
+    type=click.Choice(["edge-tts", "kittentts", "pyttsx3"]),
+    default=None,
+    help="TTS backend to use (auto-detect if omitted)",
+)
+@click.option("--voice", help="Voice ID to use")
+@click.option("--rate", default=175, help="Speech rate")
+@click.option("--volume", default=1.0, help="Volume level (0.0 to 1.0)")
+@click.option("--system", "-s", help="System prompt")
+@click.option("--stt-model", default="small.en", help="faster-whisper model")
+@click.option("--language", default="en", help="STT language")
+@click.option("--vad-threshold", default=0.3, type=float, help="Silero VAD threshold")
+@click.option(
+    "--energy-threshold",
+    default=0.003,
+    type=float,
+    help="RMS fallback threshold for speech detection",
+)
+@click.option("--vad-min-speech-ms", default=250, type=int, help="Minimum speech ms")
+@click.option(
+    "--vad-min-silence-ms", default=1200, type=int, help="Silence to end utterance"
+)
+@click.option(
+    "--max-utterance-sec", default=12.0, type=float, help="Maximum utterance duration"
+)
+@click.option("--device-in", default=None, help="Input device index or name")
+@click.option("--device-out", default=None, help="Output device index or name")
+@click.option("--sample-rate", default=16000, type=int, help="Audio sample rate")
+@click.option("--no-speak", is_flag=True, help="Disable spoken responses")
+@click.pass_context
+def voice_chat(
+    ctx: click.Context,
+    backend: str,
+    voice: str,
+    rate: int,
+    volume: float,
+    system: str,
+    stt_model: str,
+    language: str,
+    vad_threshold: float,
+    energy_threshold: float,
+    vad_min_speech_ms: int,
+    vad_min_silence_ms: int,
+    max_utterance_sec: float,
+    device_in: str,
+    device_out: str,
+    sample_rate: int,
+    no_speak: bool,
+) -> None:
+    """Local half-duplex voice chat."""
+
+    def _maybe_int(value: str | None):
+        if value is None:
+            return None
+        return int(value) if value.isdigit() else value
+
+    api_key = ctx.obj["api_key"] or os.getenv("OPENROUTER_API_KEY")
+    if not api_key:
+        click.echo("Error: OPENROUTER_API_KEY environment variable not set", err=True)
+        sys.exit(1)
+
+    config = VoiceConfig(
+        sample_rate=sample_rate,
+        vad_threshold=vad_threshold,
+        energy_threshold=energy_threshold,
+        min_speech_ms=vad_min_speech_ms,
+        min_silence_ms=vad_min_silence_ms,
+        max_utterance_sec=max_utterance_sec,
+        stt_model=stt_model,
+        stt_language=language,
+        device_in=_maybe_int(device_in),
+        device_out=_maybe_int(device_out),
+        allow_barge_in=True,
+    )
+    pipeline = VoicePipeline(
+        api_key=api_key,
+        model=ctx.obj["model"],
+        tts_backend=backend,
+        tts_voice=voice,
+        tts_rate=rate,
+        tts_volume=volume,
+        speak=not no_speak,
+        system_prompt=system,
+        config=config,
+    )
+
+    def _on_event(event: dict) -> None:
+        event_type = event.get("type")
+        if event_type == "listening":
+            click.echo("Listening...")
+        elif event_type == "speech_started":
+            click.echo("Recording...")
+        elif event_type == "speech_ended":
+            click.echo("Speech ended.")
+        elif event_type == "transcribing":
+            click.echo("Transcribing...")
+        elif event_type == "thinking":
+            click.echo("Thinking...")
+        elif event_type == "speaking":
+            click.echo("Speaking...")
+        elif event_type == "transcript":
+            click.echo(f"You (voice): {event.get('text', '')}")
+        elif event_type == "transcript_rejected":
+            click.echo("Heard audio but transcript was too short; continuing...")
+        elif event_type == "transcript_empty":
+            click.echo("Heard audio but no speech could be transcribed; continuing...")
+        elif event_type == "response":
+            click.echo(f"AI: {event.get('text', '')}")
+        elif event_type == "tts_interrupted":
+            click.echo("Interrupted by speech.")
+        elif event_type == "barge_in_unavailable":
+            click.echo(
+                "Barge-in monitor unavailable during playback: "
+                f"{event.get('error', 'unknown error')}"
+            )
+        elif event_type == "no_speech_detected":
+            max_rms = float(event.get("max_rms", 0.0))
+            click.echo(
+                f"No speech detected (max RMS={max_rms:.4f}). "
+                "Try --energy-threshold 0.005 or choose --device-in."
+            )
+
+    click.echo("Voice chat started. Press Ctrl+C to stop.")
+    try:
+        pipeline.run(on_event=_on_event)
+    except MissingVoiceDependencies as e:
+        click.echo(f"Error: {e}", err=True)
+        click.echo(
+            "Install voice dependencies with: uv sync --extra voice",
+            err=True,
+        )
+        sys.exit(1)
+    except KeyboardInterrupt:
+        pipeline.stop()
+        click.echo("\nGoodbye!")
+    except Exception as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
+@cli.command("doctor-voice")
+@click.option("--stt-model", default="small.en", help="faster-whisper model to load")
+def doctor_voice(stt_model: str) -> None:
+    """Run local voice pipeline diagnostics."""
+    click.echo("Voice Diagnostics")
+    click.echo("=================")
+    failures = 0
+
+    try:
+        report = run_voice_diagnostics(stt_model=stt_model)
+        click.echo("dependencies: OK")
+        click.echo(f"audio input devices: {report['input_devices']}")
+        click.echo(f"audio output devices: {report['output_devices']}")
+        click.echo(f"default input device: {report['default_input']}")
+        click.echo(f"default output device: {report['default_output']}")
+        click.echo(f"silero-vad model: {'OK' if report['vad_loaded'] else 'FAILED'}")
+        click.echo(f"faster-whisper model: {'OK' if report['stt_loaded'] else 'FAILED'}")
+
+        if not report["vad_loaded"] or not report["stt_loaded"]:
+            failures += 1
+    except MissingVoiceDependencies as e:
+        failures += 1
+        click.echo(f"dependencies: FAILED ({e})")
+        click.echo("Install voice dependencies with: uv sync --extra voice")
+    except Exception as e:
+        failures += 1
+        click.echo(f"diagnostic run: FAILED ({e})")
+
+    click.echo("\nSummary")
+    click.echo("=======")
+    click.echo(f"failed: {failures}")
+    if failures:
+        sys.exit(1)
+
+
+@cli.command("test-stt")
+@click.option("--stt-model", default="small.en", help="faster-whisper model")
+@click.option("--language", default="en", help="STT language")
+@click.option("--vad-threshold", default=0.3, type=float, help="Silero VAD threshold")
+@click.option(
+    "--energy-threshold",
+    default=0.003,
+    type=float,
+    help="RMS fallback threshold for speech detection",
+)
+@click.option(
+    "--vad-min-silence-ms", default=1200, type=int, help="Silence to end utterance"
+)
+@click.option("--device-in", default=None, help="Input device index or name")
+@click.option("--sample-rate", default=16000, type=int, help="Audio sample rate")
+@click.option("--file", "audio_file", default=None, help="Transcribe existing audio file")
+@click.option(
+    "--simulate",
+    is_flag=True,
+    help="Play a prompt phrase, then listen once and transcribe",
+)
+@click.option(
+    "--prompt-text",
+    default="What is the weather like today?",
+    help="Prompt phrase for simulated STT",
+)
+@click.option(
+    "--backend",
+    type=click.Choice(["edge-tts", "kittentts", "pyttsx3"]),
+    default=None,
+    help="TTS backend for simulated prompt playback",
+)
+@click.option("--voice", default=None, help="Voice ID for simulated prompt playback")
+def test_stt(
+    stt_model: str,
+    language: str,
+    vad_threshold: float,
+    energy_threshold: float,
+    vad_min_silence_ms: int,
+    device_in: str,
+    sample_rate: int,
+    audio_file: str,
+    simulate: bool,
+    prompt_text: str,
+    backend: str,
+    voice: str,
+) -> None:
+    """Test speech-to-text independently from LLM/TTS."""
+
+    def _maybe_int(value: str | None):
+        if value is None:
+            return None
+        return int(value) if value.isdigit() else value
+
+    try:
+        if audio_file:
+            text = transcribe_audio_file(
+                audio_file, stt_model=stt_model, language=language
+            )
+            if text:
+                click.echo(f"Transcript: {text}")
+                return
+            click.echo("No transcript generated from file.")
+            sys.exit(1)
+
+        config = VoiceConfig(
+            sample_rate=sample_rate,
+            vad_threshold=vad_threshold,
+            energy_threshold=energy_threshold,
+            min_silence_ms=vad_min_silence_ms,
+            stt_model=stt_model,
+            stt_language=language,
+            device_in=_maybe_int(device_in),
+        )
+        pipeline = VoicePipeline(api_key="stt-test", model="stt-test", speak=False, config=config)
+        if simulate:
+            click.echo(f"Prompt: {prompt_text}")
+            tts = TTSManager(backend=backend)
+            if voice:
+                tts.set_voice(voice)
+            tts.speak(prompt_text)
+        click.echo("Speak once, then pause...")
+        transcript = pipeline.transcribe_once()
+        if transcript:
+            click.echo(f"Transcript: {transcript}")
+            return
+        click.echo("No transcript generated.")
+        sys.exit(1)
+    except MissingVoiceDependencies as e:
+        click.echo(f"Error: {e}", err=True)
+        click.echo("Install voice dependencies with: uv sync --extra voice", err=True)
         sys.exit(1)
     except Exception as e:
         click.echo(f"Error: {e}", err=True)

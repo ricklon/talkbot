@@ -17,7 +17,7 @@ A talking AI assistant that uses OpenRouter for AI responses and edge-tts (Micro
 ```bash
 # 1) Install as a tool
 cd talkbot
-UV_SKIP_WHEEL_FILENAME_CHECK=1 uv tool install --python /usr/bin/python3.12 .
+UV_SKIP_WHEEL_FILENAME_CHECK=1 uv tool install --python /usr/bin/python3.12 . --with faster-whisper --with silero-vad --with sounddevice --with soundfile
 
 # 2) Configure API key
 cp .env.example .env
@@ -25,7 +25,9 @@ cp .env.example .env
 
 # 3) Run a quick CLI check
 talkbot doctor-tts
+talkbot doctor-voice
 talkbot chat --no-speak "Hello"
+talkbot voice-chat --backend kittentts
 
 # 4) Run GUI
 talkbot-gui
@@ -48,7 +50,14 @@ Makes `talkbot` and `talkbot-gui` available anywhere in your shell:
 
 ```bash
 cd talkbot
-UV_SKIP_WHEEL_FILENAME_CHECK=1 uv tool install --python /usr/bin/python3.12 .
+UV_SKIP_WHEEL_FILENAME_CHECK=1 uv tool install --python /usr/bin/python3.12 . --with faster-whisper --with silero-vad --with sounddevice --with soundfile
+```
+
+To refresh an existing install:
+
+```bash
+cd talkbot
+UV_SKIP_WHEEL_FILENAME_CHECK=1 uv tool install --reinstall --python /usr/bin/python3.12 . --with faster-whisper --with silero-vad --with sounddevice --with soundfile
 ```
 
 > **Note:** `--python /usr/bin/python3.12` tells uv to use the system Python, which has tkinter. uv's own bundled Python builds omit it.
@@ -73,6 +82,12 @@ UV_SKIP_WHEEL_FILENAME_CHECK=1 uv pip install -e .
 
 ```bash
 uv sync
+```
+
+### Install voice pipeline extras (VAD + STT + audio I/O)
+
+```bash
+uv sync --extra voice
 ```
 
 ## Configuration
@@ -130,6 +145,18 @@ talkbot say
 talkbot say --backend kittentts
 ```
 
+#### Local Voice Chat (Half-Duplex, VAD-Gated)
+```bash
+# Start local voice loop (Ctrl+C to stop)
+talkbot voice-chat
+
+# Choose TTS backend and tune VAD
+talkbot voice-chat --backend pyttsx3 --vad-threshold 0.30 --energy-threshold 0.003 --vad-min-silence-ms 1200
+
+# Select devices by index
+talkbot voice-chat --device-in 2 --device-out 3
+```
+
 #### List Available Voices
 ```bash
 talkbot voices
@@ -146,6 +173,27 @@ talkbot doctor-tts --backend kittentts
 
 # Deep check with real synthesis to temp files
 talkbot doctor-tts --synthesize
+```
+
+#### Diagnose Voice Pipeline
+```bash
+# Check mic/speaker devices + silero-vad + faster-whisper model load
+talkbot doctor-voice
+
+# Test a specific STT model load
+talkbot doctor-voice --stt-model small.en
+```
+
+#### Test Transcription Only (No LLM/TTS)
+```bash
+# Mic one-shot test: speak once, then pause
+talkbot test-stt
+
+# Transcribe an existing file
+talkbot test-stt --file sample.wav
+
+# Simulated test: play a prompt phrase, then listen/transcribe once
+talkbot test-stt --simulate --prompt-text "What time is it?"
 ```
 
 #### Save Text to Audio File
@@ -285,6 +333,12 @@ talkbot/
 - `pygame>=2.5` - Audio playback
 - `pyttsx3>=2.90` - System TTS (offline fallback)
 - `python-dotenv>=1.0` - Environment variable management
+
+**Optional voice extras (`uv sync --extra voice`):**
+- `sounddevice` - Microphone capture and playback streams
+- `silero-vad` - Voice activity detection (pause/speech gating)
+- `faster-whisper` - CPU-optimized STT (int8)
+- `soundfile` - Audio file decode for voice playback path
 
 ## License
 

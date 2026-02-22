@@ -5,12 +5,13 @@ import sys
 import threading
 import tkinter as tk
 from pathlib import Path
-from tkinter import ttk, scrolledtext, messagebox
+from tkinter import ttk, messagebox
 
 from dotenv import load_dotenv
 
 from talkbot.openrouter import OpenRouterClient
 from talkbot.tts import TTSManager
+from talkbot.voice import MissingVoiceDependencies, VoiceConfig, VoicePipeline
 
 # Load environment variables from .env file
 env_path = Path.cwd() / ".env"
@@ -165,6 +166,11 @@ class TalkBotGUI:
         self.tts: TTSManager = None
         self.speaking_thread: threading.Thread = None
         self.response_thread: threading.Thread = None
+        self.voice_thread: threading.Thread = None
+        self.voice_pipeline: VoicePipeline | None = None
+        self.voice_active = False
+        self.stt_test_pipeline: VoicePipeline | None = None
+        self.stt_test_active = False
         self.stop_requested = threading.Event()
 
         self.root = tk.Tk()
@@ -178,6 +184,7 @@ class TalkBotGUI:
 
         self._create_widgets()
         self._setup_tts()
+        self._populate_audio_devices()
 
     def _configure_styles(self):
         """Configure modern ttk styles."""
@@ -210,6 +217,26 @@ class TalkBotGUI:
             fieldbackground=ModernStyle.BG_TERTIARY,
             selectbackground=ModernStyle.ACCENT,
             selectforeground=ModernStyle.BG_PRIMARY,
+        )
+        # ttk combobox needs explicit state maps for readonly values to remain visible.
+        style.map(
+            "Modern.TCombobox",
+            fieldbackground=[
+                ("readonly", ModernStyle.BG_TERTIARY),
+                ("!disabled", ModernStyle.BG_TERTIARY),
+            ],
+            foreground=[
+                ("readonly", ModernStyle.TEXT_PRIMARY),
+                ("!disabled", ModernStyle.TEXT_PRIMARY),
+            ],
+            selectbackground=[
+                ("readonly", ModernStyle.ACCENT),
+                ("!disabled", ModernStyle.ACCENT),
+            ],
+            selectforeground=[
+                ("readonly", ModernStyle.BG_PRIMARY),
+                ("!disabled", ModernStyle.BG_PRIMARY),
+            ],
         )
         style.configure(
             "Modern.TScale",
@@ -437,6 +464,226 @@ class TalkBotGUI:
             command=lambda v: self.volume_label.config(text=f"{int(float(v) * 100)}%")
         )
 
+        # Voice chat controls
+        row3 = tk.Frame(settings_frame, bg=ModernStyle.BG_SECONDARY)
+        row3.pack(fill=tk.X, pady=(10, 0))
+
+        tk.Label(
+            row3,
+            text="Mic:",
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+        ).pack(side=tk.LEFT)
+        self.mic_var = tk.StringVar(value="default")
+        self.mic_combo = ttk.Combobox(
+            row3,
+            textvariable=self.mic_var,
+            width=22,
+            style="Modern.TCombobox",
+            state="readonly",
+        )
+        self.mic_combo.pack(side=tk.LEFT, padx=(8, 12))
+
+        tk.Label(
+            row3,
+            text="Speaker:",
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+        ).pack(side=tk.LEFT)
+        self.spk_var = tk.StringVar(value="default")
+        self.spk_combo = ttk.Combobox(
+            row3,
+            textvariable=self.spk_var,
+            width=22,
+            style="Modern.TCombobox",
+            state="readonly",
+        )
+        self.spk_combo.pack(side=tk.LEFT, padx=(8, 12))
+
+        self.voice_start_btn = RoundedButton(
+            row3,
+            text="Start Voice",
+            command=self._start_voice_chat,
+            bg_color=ModernStyle.SUCCESS,
+            fg_color=ModernStyle.BG_PRIMARY,
+            hover_color="#c8f0c3",
+            width=100,
+            height=30,
+        )
+        self.voice_start_btn.pack(side=tk.LEFT, padx=(0, 8))
+        self.voice_stop_btn = RoundedButton(
+            row3,
+            text="Stop Voice",
+            command=self._stop_voice_chat,
+            bg_color=ModernStyle.ERROR,
+            fg_color=ModernStyle.TEXT_PRIMARY,
+            hover_color="#f5a0b5",
+            width=100,
+            height=30,
+        )
+        self.voice_stop_btn.pack(side=tk.LEFT)
+        self.voice_test_btn = RoundedButton(
+            row3,
+            text="Test STT",
+            command=self._test_stt_once,
+            bg_color=ModernStyle.BG_TERTIARY,
+            fg_color=ModernStyle.TEXT_SECONDARY,
+            hover_color=ModernStyle.BORDER,
+            width=90,
+            height=30,
+        )
+        self.voice_test_btn.pack(side=tk.LEFT, padx=(8, 0))
+        self.voice_sim_btn = RoundedButton(
+            row3,
+            text="Sim STT",
+            command=self._simulate_stt_once,
+            bg_color=ModernStyle.BG_TERTIARY,
+            fg_color=ModernStyle.TEXT_SECONDARY,
+            hover_color=ModernStyle.BORDER,
+            width=90,
+            height=30,
+        )
+        self.voice_sim_btn.pack(side=tk.LEFT, padx=(8, 0))
+
+        row4 = tk.Frame(settings_frame, bg=ModernStyle.BG_SECONDARY)
+        row4.pack(fill=tk.X, pady=(8, 0))
+
+        tk.Label(
+            row4,
+            text="STT Model:",
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+        ).pack(side=tk.LEFT)
+        self.stt_model_var = tk.StringVar(value="small.en")
+        self.stt_model_combo = ttk.Combobox(
+            row4,
+            textvariable=self.stt_model_var,
+            values=["base.en", "small.en", "medium.en"],
+            width=12,
+            style="Modern.TCombobox",
+            state="readonly",
+        )
+        self.stt_model_combo.pack(side=tk.LEFT, padx=(8, 12))
+
+        tk.Label(
+            row4,
+            text="Lang:",
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+        ).pack(side=tk.LEFT)
+        self.stt_lang_var = tk.StringVar(value="en")
+        self.stt_lang_entry = tk.Entry(
+            row4,
+            textvariable=self.stt_lang_var,
+            width=6,
+            bg=ModernStyle.BG_TERTIARY,
+            fg=ModernStyle.TEXT_PRIMARY,
+            insertbackground=ModernStyle.TEXT_PRIMARY,
+            relief=tk.FLAT,
+            bd=4,
+        )
+        self.stt_lang_entry.pack(side=tk.LEFT, padx=(8, 12))
+
+        tk.Label(
+            row4,
+            text="VAD:",
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+        ).pack(side=tk.LEFT)
+        self.vad_threshold_var = tk.DoubleVar(value=0.3)
+        vad_scale = tk.Scale(
+            row4,
+            from_=0.1,
+            to=0.9,
+            variable=self.vad_threshold_var,
+            resolution=0.05,
+            orient=tk.HORIZONTAL,
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_PRIMARY,
+            troughcolor=ModernStyle.BG_TERTIARY,
+            highlightthickness=0,
+            bd=0,
+            length=120,
+            showvalue=False,
+        )
+        vad_scale.pack(side=tk.LEFT, padx=(8, 5))
+        self.vad_label = tk.Label(
+            row4,
+            text="0.30",
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.ACCENT,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL, "bold"),
+        )
+        self.vad_label.pack(side=tk.LEFT, padx=(0, 12))
+        vad_scale.configure(
+            command=lambda v: self.vad_label.config(text=f"{float(v):.2f}")
+        )
+
+        tk.Label(
+            row4,
+            text="Silence(ms):",
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+        ).pack(side=tk.LEFT)
+        self.vad_silence_var = tk.IntVar(value=1200)
+        self.vad_silence_entry = tk.Entry(
+            row4,
+            textvariable=self.vad_silence_var,
+            width=6,
+            bg=ModernStyle.BG_TERTIARY,
+            fg=ModernStyle.TEXT_PRIMARY,
+            insertbackground=ModernStyle.TEXT_PRIMARY,
+            relief=tk.FLAT,
+            bd=4,
+        )
+        self.vad_silence_entry.pack(side=tk.LEFT, padx=(8, 0))
+
+        tk.Label(
+            row4,
+            text="Mic Level:",
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+        ).pack(side=tk.LEFT, padx=(12, 6))
+        self.mic_meter = tk.Canvas(
+            row4,
+            width=120,
+            height=14,
+            bg=ModernStyle.BG_TERTIARY,
+            highlightthickness=1,
+            highlightbackground=ModernStyle.BORDER,
+        )
+        self.mic_meter.pack(side=tk.LEFT)
+        self.mic_meter_fill = self.mic_meter.create_rectangle(
+            0, 0, 0, 14, fill=ModernStyle.SUCCESS, width=0
+        )
+
+        row5 = tk.Frame(settings_frame, bg=ModernStyle.BG_SECONDARY)
+        row5.pack(fill=tk.X, pady=(8, 0))
+        self.voice_phase_var = tk.StringVar(value="Voice: idle")
+        self.voice_transcript_var = tk.StringVar(value="Last transcript: (none)")
+        tk.Label(
+            row5,
+            textvariable=self.voice_phase_var,
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.ACCENT,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL, "bold"),
+        ).pack(side=tk.LEFT, padx=(0, 14))
+        tk.Label(
+            row5,
+            textvariable=self.voice_transcript_var,
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+            anchor=tk.W,
+        ).pack(side=tk.LEFT, fill=tk.X, expand=True)
+
         # Chat display
         chat_frame = tk.LabelFrame(
             main_container,
@@ -574,6 +821,8 @@ class TalkBotGUI:
         )
         self.test_btn.pack(side=tk.LEFT)
 
+        self._set_voice_controls(active=False)
+
     def _setup_tts(self) -> None:
         """Setup TTS and populate voice list."""
         try:
@@ -610,6 +859,389 @@ class TalkBotGUI:
                 f"Could not initialize text-to-speech: {e}\n"
                 "The application will work but won't be able to speak.",
             )
+
+    def _populate_audio_devices(self) -> None:
+        """Populate mic and speaker choices."""
+        try:
+            devices = VoicePipeline.list_audio_devices()
+            input_values = ["default"]
+            output_values = ["default"]
+
+            for dev in devices:
+                label = f"{dev['index']}: {dev['name']}"
+                if dev["max_input_channels"] > 0:
+                    input_values.append(label)
+                if dev["max_output_channels"] > 0:
+                    output_values.append(label)
+
+            self.mic_combo["values"] = input_values
+            self.spk_combo["values"] = output_values
+            self.mic_var.set(input_values[0])
+            self.spk_var.set(output_values[0])
+        except Exception:
+            self.mic_combo["values"] = ["default"]
+            self.spk_combo["values"] = ["default"]
+            self.mic_var.set("default")
+            self.spk_var.set("default")
+
+    def _parse_device_selection(self, value: str):
+        if not value or value == "default":
+            return None
+        idx = value.split(":", 1)[0].strip()
+        return int(idx) if idx.isdigit() else value
+
+    def _set_voice_controls(self, active: bool) -> None:
+        """Update visual state for Start/Stop voice controls."""
+        if active:
+            self.voice_start_btn.itemconfig("rect", fill=ModernStyle.BG_TERTIARY)
+            self.voice_start_btn.itemconfig("text", text="Voice ON")
+            self.voice_stop_btn.itemconfig("rect", fill=ModernStyle.ERROR)
+        else:
+            self.voice_start_btn.itemconfig("rect", fill=ModernStyle.SUCCESS)
+            self.voice_start_btn.itemconfig("text", text="Start Voice")
+            self.voice_stop_btn.itemconfig("rect", fill=ModernStyle.BG_TERTIARY)
+
+    def _set_test_stt_running(self, running: bool) -> None:
+        """Update visual state for STT test button."""
+        if running:
+            self.voice_test_btn.itemconfig("rect", fill=ModernStyle.ACCENT)
+            self.voice_test_btn.itemconfig("text", text="Testing...")
+            self.voice_sim_btn.itemconfig("rect", fill=ModernStyle.ACCENT)
+            self.voice_sim_btn.itemconfig("text", text="Sim...")
+        else:
+            self.voice_test_btn.itemconfig("rect", fill=ModernStyle.BG_TERTIARY)
+            self.voice_test_btn.itemconfig("text", text="Test STT")
+            self.voice_sim_btn.itemconfig("rect", fill=ModernStyle.BG_TERTIARY)
+            self.voice_sim_btn.itemconfig("text", text="Sim STT")
+
+    def _set_test_tts_running(self, running: bool) -> None:
+        """Update visual state for TTS test button."""
+        if running:
+            self.test_btn.itemconfig("rect", fill=ModernStyle.ACCENT)
+            self.test_btn.itemconfig("text", text="Testing...")
+        else:
+            self.test_btn.itemconfig("rect", fill=ModernStyle.BG_TERTIARY)
+            self.test_btn.itemconfig("text", text="Test Voice")
+
+    def _start_voice_chat(self) -> None:
+        """Start local half-duplex voice chat."""
+        if self.voice_active:
+            return
+        if not self.api_key:
+            messagebox.showerror(
+                "API Key Required",
+                "Please set the OPENROUTER_API_KEY environment variable.",
+            )
+            return
+
+        self.voice_active = True
+        self._set_voice_controls(active=True)
+        self.status_var.set("Voice mode starting...")
+
+        def worker() -> None:
+            try:
+                cfg = VoiceConfig(
+                    sample_rate=16000,
+                    vad_threshold=float(self.vad_threshold_var.get()),
+                    min_speech_ms=250,
+                    min_silence_ms=int(self.vad_silence_var.get()),
+                    max_utterance_sec=12.0,
+                    stt_model=self.stt_model_var.get(),
+                    stt_language=self.stt_lang_var.get().strip() or "en",
+                    device_in=self._parse_device_selection(self.mic_var.get()),
+                    device_out=self._parse_device_selection(self.spk_var.get()),
+                    allow_barge_in=True,
+                )
+                self.voice_pipeline = VoicePipeline(
+                    api_key=self.api_key,
+                    model=self.model_var.get(),
+                    tts_backend=self.backend_var.get(),
+                    tts_rate=self.rate_var.get(),
+                    tts_volume=self.volume_var.get(),
+                    speak=self.speak_var.get(),
+                    config=cfg,
+                )
+                self.voice_pipeline.run(
+                    on_event=lambda e: self.root.after(0, self._on_voice_event, e)
+                )
+            except MissingVoiceDependencies as e:
+                error_text = str(e)
+                self.root.after(
+                    0,
+                    lambda msg=error_text: messagebox.showerror(
+                        "Voice Dependencies",
+                        f"{msg}\nInstall with: uv sync --extra voice",
+                    ),
+                )
+            except Exception as e:
+                error_text = str(e)
+                self.root.after(
+                    0, lambda msg=error_text: messagebox.showerror("Voice Chat Error", msg)
+                )
+            finally:
+                self.voice_pipeline = None
+                self.voice_active = False
+                self.root.after(0, lambda: self.status_var.set("Ready"))
+                self.root.after(0, lambda: self.voice_phase_var.set("Voice: idle"))
+                self.root.after(0, lambda: self._set_mic_level(0.0))
+                self.root.after(0, lambda: self._set_voice_controls(active=False))
+
+        self.voice_thread = threading.Thread(target=worker, daemon=True)
+        self.voice_thread.start()
+
+    def _stop_voice_chat(self) -> None:
+        """Stop local voice chat loop."""
+        if self.voice_pipeline:
+            self.voice_pipeline.stop()
+        if self.stt_test_pipeline:
+            self.stt_test_pipeline.stop()
+        self.voice_active = False
+        self.stt_test_active = False
+        self._set_mic_level(0.0)
+        self.voice_phase_var.set("Voice: stopped")
+        self._set_voice_controls(active=False)
+
+    def _set_mic_level(self, level: float) -> None:
+        """Update mic level meter."""
+        level = max(0.0, min(1.0, float(level)))
+        width = int(120 * level)
+        if level > 0.75:
+            color = ModernStyle.ERROR
+        elif level > 0.45:
+            color = ModernStyle.WARNING
+        else:
+            color = ModernStyle.SUCCESS
+        self.mic_meter.coords(self.mic_meter_fill, 0, 0, width, 14)
+        self.mic_meter.itemconfig(self.mic_meter_fill, fill=color)
+
+    def _on_voice_event(self, event: dict) -> None:
+        """Handle voice pipeline event on UI thread."""
+        event_type = event.get("type")
+        if event_type == "listening":
+            self.status_var.set("Listening...")
+            self.voice_phase_var.set("Voice: listening")
+        elif event_type == "speech_started":
+            self.status_var.set("Recording...")
+            self.voice_phase_var.set("Voice: recording")
+        elif event_type == "speech_ended":
+            self.status_var.set("Speech ended")
+            self.voice_phase_var.set("Voice: processing")
+        elif event_type == "transcribing":
+            self.status_var.set("Transcribing...")
+            self.voice_phase_var.set("Voice: transcribing")
+        elif event_type == "thinking":
+            self.status_var.set("Thinking...")
+            self.voice_phase_var.set("Voice: thinking")
+        elif event_type == "speaking":
+            self.status_var.set("Speaking...")
+            self.voice_phase_var.set("Voice: speaking")
+        elif event_type == "tts_interrupted":
+            self.status_var.set("Interrupted by speech")
+            self.voice_phase_var.set("Voice: interrupted")
+        elif event_type == "transcript":
+            text = event.get("text", "")
+            self._add_message("You (voice)", text, is_user=True)
+            preview = (text[:90] + "...") if len(text) > 90 else text
+            self.voice_transcript_var.set(f"Last transcript: {preview}")
+        elif event_type == "transcript_rejected":
+            self.status_var.set("Audio too short, keep speaking...")
+            self.voice_phase_var.set("Voice: listening")
+            self._add_message(
+                "System",
+                "Heard audio, but transcript was too short. Please speak a bit longer.",
+                is_user=False,
+            )
+        elif event_type == "transcript_empty":
+            self.status_var.set("No speech recognized, keep speaking...")
+            self.voice_phase_var.set("Voice: listening")
+            self._add_message(
+                "System",
+                "Heard audio, but couldn't transcribe speech. Try speaking louder or reducing VAD threshold.",
+                is_user=False,
+            )
+        elif event_type == "response":
+            self._add_message("AI", event.get("text", ""), is_user=False)
+            self.voice_phase_var.set("Voice: listening")
+        elif event_type == "no_speech_detected":
+            max_rms = float(event.get("max_rms", 0.0))
+            self.status_var.set("No speech detected")
+            self.voice_phase_var.set("Voice: listening")
+            self._add_message(
+                "System",
+                f"No speech detected (max RMS={max_rms:.4f}). "
+                "Try a lower VAD threshold or different mic device.",
+                is_user=False,
+            )
+        elif event_type == "barge_in_unavailable":
+            self.status_var.set("Barge-in unavailable on current device")
+            self.voice_phase_var.set("Voice: speaking")
+            self._add_message(
+                "System",
+                "Mic monitoring during playback is unavailable on this audio device. "
+                "Try choosing explicit separate Mic/Speaker devices.",
+                is_user=False,
+            )
+        elif event_type == "mic_level":
+            self._set_mic_level(event.get("level", 0.0))
+
+    def _test_stt_once(self) -> None:
+        """Capture one utterance and show raw transcript."""
+        if self.voice_active or self.stt_test_active:
+            return
+
+        self.stt_test_active = True
+        self.status_var.set("STT test: speak once and pause...")
+        self.voice_phase_var.set("Voice: stt-test")
+        self._set_test_stt_running(True)
+
+        def worker() -> None:
+            try:
+                cfg = VoiceConfig(
+                    sample_rate=16000,
+                    vad_threshold=float(self.vad_threshold_var.get()),
+                    min_speech_ms=250,
+                    min_silence_ms=int(self.vad_silence_var.get()),
+                    max_utterance_sec=12.0,
+                    stt_model=self.stt_model_var.get(),
+                    stt_language=self.stt_lang_var.get().strip() or "en",
+                    device_in=self._parse_device_selection(self.mic_var.get()),
+                    device_out=self._parse_device_selection(self.spk_var.get()),
+                    allow_barge_in=True,
+                )
+                self.stt_test_pipeline = VoicePipeline(
+                    api_key=self.api_key or "stt-test",
+                    model=self.model_var.get(),
+                    speak=False,
+                    config=cfg,
+                )
+                transcript = self.stt_test_pipeline.transcribe_once(
+                    on_event=lambda e: self.root.after(0, self._on_voice_event, e)
+                )
+                if transcript:
+                    self.root.after(
+                        0,
+                        lambda t=transcript: self._add_message(
+                            "STT Test", t, is_user=True
+                        ),
+                    )
+                    self.root.after(0, lambda: self.status_var.set("STT test complete"))
+                else:
+                    self.root.after(
+                        0,
+                        lambda: self._add_message(
+                            "STT Test",
+                            "No transcript generated. Try speaking louder/longer.",
+                            is_user=False,
+                        ),
+                    )
+                    self.root.after(
+                        0, lambda: self.status_var.set("STT test: no transcript")
+                    )
+            except MissingVoiceDependencies as e:
+                self.root.after(
+                    0,
+                    lambda msg=str(e): messagebox.showerror(
+                        "Voice Dependencies",
+                        f"{msg}\nInstall with: uv sync --extra voice",
+                    ),
+                )
+            except Exception as e:
+                self.root.after(
+                    0,
+                    lambda msg=str(e): messagebox.showerror("STT Test Error", msg),
+                )
+            finally:
+                self.stt_test_pipeline = None
+                self.stt_test_active = False
+                self.root.after(0, lambda: self.voice_phase_var.set("Voice: idle"))
+                self.root.after(0, lambda: self._set_mic_level(0.0))
+                self.root.after(0, lambda: self._set_test_stt_running(False))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _simulate_stt_once(self) -> None:
+        """Play a prompt phrase, then run one-shot STT capture."""
+        if self.voice_active or self.stt_test_active:
+            return
+
+        self.stt_test_active = True
+        self.status_var.set("STT simulation: playing prompt...")
+        self.voice_phase_var.set("Voice: stt-sim")
+        self._set_test_stt_running(True)
+
+        def worker() -> None:
+            prompt = "What is the weather like today?"
+            try:
+                tts = TTSManager(
+                    backend=self.backend_var.get(),
+                    rate=self.rate_var.get(),
+                    volume=self.volume_var.get(),
+                )
+                tts.speak(prompt)
+
+                cfg = VoiceConfig(
+                    sample_rate=16000,
+                    vad_threshold=float(self.vad_threshold_var.get()),
+                    min_speech_ms=250,
+                    min_silence_ms=int(self.vad_silence_var.get()),
+                    max_utterance_sec=12.0,
+                    stt_model=self.stt_model_var.get(),
+                    stt_language=self.stt_lang_var.get().strip() or "en",
+                    device_in=self._parse_device_selection(self.mic_var.get()),
+                    device_out=self._parse_device_selection(self.spk_var.get()),
+                    allow_barge_in=True,
+                )
+                self.stt_test_pipeline = VoicePipeline(
+                    api_key=self.api_key or "stt-test",
+                    model=self.model_var.get(),
+                    speak=False,
+                    config=cfg,
+                )
+                self.root.after(
+                    0, lambda: self._add_message("STT Prompt", prompt, is_user=False)
+                )
+                self.root.after(
+                    0, lambda: self.status_var.set("STT simulation: listening...")
+                )
+                transcript = self.stt_test_pipeline.transcribe_once(
+                    on_event=lambda e: self.root.after(0, self._on_voice_event, e)
+                )
+                if transcript:
+                    self.root.after(
+                        0,
+                        lambda t=transcript: self._add_message(
+                            "STT Sim Result", t, is_user=True
+                        ),
+                    )
+                    self.root.after(
+                        0, lambda: self.status_var.set("STT simulation complete")
+                    )
+                else:
+                    self.root.after(
+                        0,
+                        lambda: self._add_message(
+                            "STT Sim Result",
+                            "No transcript generated from simulated prompt.",
+                            is_user=False,
+                        ),
+                    )
+                    self.root.after(
+                        0,
+                        lambda: self.status_var.set("STT simulation: no transcript"),
+                    )
+            except Exception as e:
+                self.root.after(
+                    0,
+                    lambda msg=str(e): messagebox.showerror("STT Simulation Error", msg),
+                )
+            finally:
+                self.stt_test_pipeline = None
+                self.stt_test_active = False
+                self.root.after(0, lambda: self.voice_phase_var.set("Voice: idle"))
+                self.root.after(0, lambda: self._set_mic_level(0.0))
+                self.root.after(0, lambda: self._set_test_stt_running(False))
+
+        threading.Thread(target=worker, daemon=True).start()
 
     def _on_send(self, event=None) -> None:
         """Handle send button click."""
@@ -715,6 +1347,7 @@ class TalkBotGUI:
     def _stop_all(self) -> None:
         """Stop all ongoing operations."""
         self.stop_requested.set()
+        self._stop_voice_chat()
 
         # Stop TTS
         if self.tts:
@@ -787,9 +1420,15 @@ class TalkBotGUI:
         if self.tts:
             self.tts.set_rate(self.rate_var.get())
             self.tts.set_volume(self.volume_var.get())
-            threading.Thread(
-                target=self.tts.speak, args=("Hello! This is how I sound.",)
-            ).start()
+            self._set_test_tts_running(True)
+
+            def worker() -> None:
+                try:
+                    self.tts.speak("Hello! This is how I sound.")
+                finally:
+                    self.root.after(0, lambda: self._set_test_tts_running(False))
+
+            threading.Thread(target=worker, daemon=True).start()
 
     def run(self) -> None:
         """Run the GUI."""
