@@ -98,6 +98,26 @@ UV_SKIP_WHEEL_FILENAME_CHECK=1 uv pip install -e .
 uv sync
 ```
 
+### Local LLM Prerequisites (required for `provider=local`)
+
+TalkBot local mode needs one of these:
+
+1. `llama-cpp-python` in the active environment (no external binary needed), or
+2. a system `llama.cpp` executable (`llama-cli` or `llama`) on `PATH`.
+
+Recommended (Python backend):
+
+```bash
+uv add llama-cpp-python
+```
+
+If you prefer external llama.cpp CLI:
+
+```bash
+# build/install llama.cpp first, then point TalkBot to it
+export TALKBOT_LLAMACPP_BIN=/full/path/to/llama-cli
+```
+
 ### Install voice pipeline extras (VAD + STT + audio I/O)
 
 ```bash
@@ -130,7 +150,10 @@ cp .env.example .env
 ```bash
 TALKBOT_LLM_PROVIDER=local
 TALKBOT_LOCAL_MODEL_PATH=./models/default.gguf
-TALKBOT_LLAMACPP_BIN=llama-cli
+TALKBOT_LOCAL_N_CTX=2048
+# Optional when llama-cpp-python is installed.
+# Required only if using external llama.cpp CLI binary:
+# TALKBOT_LLAMACPP_BIN=/full/path/to/llama-cli
 TALKBOT_ENABLE_THINKING=0
 TALKBOT_DEFAULT_MODEL=qwen/qwen3-1.7b
 TALKBOT_DEFAULT_TTS_BACKEND=kittentts
@@ -157,9 +180,12 @@ The application automatically loads environment variables from `.env` using pyth
 ```bash
 TALKBOT_LLM_PROVIDER=local
 TALKBOT_LOCAL_MODEL_PATH=./models/default.gguf
+TALKBOT_LOCAL_N_CTX=2048
 TALKBOT_DEFAULT_TTS_BACKEND=edge-tts
 TALKBOT_DEFAULT_MODEL=qwen/qwen3-1.7b
 ```
+
+`TALKBOT_LOCAL_N_CTX` controls local llama context size (for example `8192`).
 
 ## Recent Changes
 
@@ -191,7 +217,64 @@ talkbot --no-thinking chat "Respond quickly"
 In GUI:
 - `Provider` dropdown chooses `local` or `openrouter`.
 - `Local GGUF` field sets the local model path when provider is `local`.
+- `Llama Bin` field overrides the local llama.cpp executable path when using CLI mode.
 - `Thinking` checkbox controls deliberate thinking mode.
+
+### Troubleshooting: `llama.cpp binary not found ... TALKBOT_LLAMACPP_BIN`
+
+This means local mode cannot find `llama-cpp-python` and cannot find a `llama.cpp` binary.
+
+Use one of these fixes:
+
+```bash
+# Fix A (recommended): install python backend
+uv add llama-cpp-python
+```
+
+```bash
+# Fix B: install llama.cpp CLI and configure env
+which llama-cli || which llama
+echo 'TALKBOT_LLAMACPP_BIN=/full/path/to/llama-cli' >> .env
+```
+
+Then restart:
+
+```bash
+talkbot-gui
+# or
+uv run python -m talkbot.gui
+```
+
+### Memory Sizing Guide (local mode)
+
+Measured on a Linux host with `30 GiB` RAM, model `./models/default.gguf` (~`1.8 GiB`), CPU inference, and `kittentts`:
+
+- CLI local chat, `TALKBOT_LOCAL_N_CTX=2048`: peak RSS ~`2.56 GiB`
+- CLI local chat, `TALKBOT_LOCAL_N_CTX=8192`: peak RSS ~`3.22 GiB`
+- Full stack in one process (GUI + STT + TTS + local LLM at 8k): peak RSS ~`3.76 GiB`
+
+Takeaways:
+
+- `8192` context is safe on a `32 GiB` class machine with substantial headroom.
+- On this setup, moving from `2k` to `8k` costs about `+0.66 GiB`.
+- Rough slope for this model was about `~112 MB` per additional `+1k` context tokens.
+
+Use this as an estimate, not an absolute guarantee. Actual memory depends on:
+
+- model size/quantization
+- STT model choice (for example `small.en` vs larger Whisper models)
+- selected TTS backend
+- concurrent apps and desktop load
+
+To right-size on your own system:
+
+```bash
+# Example: compare 2k vs 8k for CLI local mode
+/usr/bin/time -v env TALKBOT_LOCAL_N_CTX=2048 uv run talkbot --provider local chat --no-speak "ping"
+/usr/bin/time -v env TALKBOT_LOCAL_N_CTX=8192 uv run talkbot --provider local chat --no-speak "ping"
+```
+
+Check `Maximum resident set size` from `/usr/bin/time -v` and keep swap usage near zero during normal runs.
 
 ### CLI Commands
 

@@ -1,6 +1,7 @@
 """Tkinter GUI for the talking bot with modern styling."""
 
 import os
+import shutil
 import threading
 import tkinter as tk
 from pathlib import Path
@@ -29,6 +30,17 @@ def _default_local_model_path() -> str:
     if default_path.exists():
         return str(default_path)
     return ""
+
+
+def _default_llamacpp_bin() -> str:
+    configured = os.getenv("TALKBOT_LLAMACPP_BIN", "").strip()
+    if configured:
+        return configured
+    for candidate in ("llama-cli", "llama"):
+        resolved = shutil.which(candidate)
+        if resolved:
+            return resolved
+    return "llama-cli"
 
 
 class ModernStyle:
@@ -176,7 +188,7 @@ class TalkBotGUI:
         self.provider = os.getenv("TALKBOT_LLM_PROVIDER", "local")
         self.model = model or os.getenv("TALKBOT_DEFAULT_MODEL", "qwen/qwen3-1.7b")
         self.local_model_path = _default_local_model_path()
-        self.llamacpp_bin = os.getenv("TALKBOT_LLAMACPP_BIN", "llama-cli")
+        self.llamacpp_bin = _default_llamacpp_bin()
         self.client = None
         self.tts: TTSManager = None
         self.speaking_thread: threading.Thread = None
@@ -459,6 +471,26 @@ class TalkBotGUI:
             bd=4,
         )
         self.local_model_entry.pack(side=tk.LEFT, padx=(8, 12))
+
+        tk.Label(
+            row1b,
+            text="Llama Bin:",
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+        ).pack(side=tk.LEFT)
+        self.llamacpp_bin_var = tk.StringVar(value=self.llamacpp_bin)
+        self.llamacpp_bin_entry = tk.Entry(
+            row1b,
+            textvariable=self.llamacpp_bin_var,
+            width=24,
+            bg=ModernStyle.BG_TERTIARY,
+            fg=ModernStyle.TEXT_PRIMARY,
+            insertbackground=ModernStyle.TEXT_PRIMARY,
+            relief=tk.FLAT,
+            bd=4,
+        )
+        self.llamacpp_bin_entry.pack(side=tk.LEFT, padx=(8, 12))
 
         tk.Label(
             row1b,
@@ -1018,6 +1050,7 @@ class TalkBotGUI:
         return bool(self.local_model_path_var.get().strip())
 
     def _create_client(self):
+        self.llamacpp_bin = self.llamacpp_bin_var.get().strip() or "llama-cli"
         return create_llm_client(
             provider=self.provider_var.get(),
             model=self.model_var.get(),

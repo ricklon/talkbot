@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Optional
@@ -25,6 +26,7 @@ class LocalLlamaCppClient:
         *,
         model_path: str,
         binary: str = "llama-cli",
+        n_ctx: int = 2048,
         enable_thinking: bool = False,
         temperature: float = 0.7,
         max_tokens: int = 512,
@@ -34,8 +36,10 @@ class LocalLlamaCppClient:
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.enable_thinking = enable_thinking
+        self.n_ctx = int(n_ctx)
         self._llm = None
         self._use_python_backend = False
+        self._requested_binary = binary
 
         if not Path(model_path).exists():
             raise LLMProviderError(
@@ -43,13 +47,17 @@ class LocalLlamaCppClient:
                 "Set TALKBOT_LOCAL_MODEL_PATH to a local GGUF path."
             )
 
+        resolved_bin = self._resolve_binary(binary)
+        if resolved_bin:
+            self.binary = resolved_bin
+
         # Prefer python bindings (no external llama-cli dependency required).
         try:
             from llama_cpp import Llama  # type: ignore
 
             self._llm = Llama(
                 model_path=self.model_path,
-                n_ctx=2048,
+                n_ctx=self.n_ctx,
                 verbose=False,
             )
             self._use_python_backend = True
@@ -57,6 +65,19 @@ class LocalLlamaCppClient:
         except Exception:
             self._llm = None
             self._use_python_backend = False
+
+    @staticmethod
+    def _resolve_binary(binary: str) -> Optional[str]:
+        """Resolve a llama.cpp executable from PATH or common aliases."""
+        candidates: list[str] = []
+        for candidate in (binary, "llama-cli", "llama"):
+            if candidate and candidate not in candidates:
+                candidates.append(candidate)
+        for candidate in candidates:
+            resolved = shutil.which(candidate)
+            if resolved:
+                return resolved
+        return None
 
     def _messages_to_prompt(self, messages: list[dict]) -> str:
         lines = []
@@ -99,9 +120,10 @@ class LocalLlamaCppClient:
             )
         except FileNotFoundError as e:
             raise LLMProviderError(
-                f"llama.cpp binary '{self.binary}' not found, and llama-cpp-python is unavailable. "
-                "Install one of: `uv tool install talkbot --with llama-cpp-python` "
-                "or system llama.cpp (`llama-cli`)."
+                f"llama.cpp binary '{self._requested_binary}' not found (also tried common aliases), "
+                "and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, "
+                "or install one of: `uv tool install talkbot --with llama-cpp-python` "
+                "or system llama.cpp (`llama-cli` / `llama`)."
             ) from e
         except subprocess.CalledProcessError as e:
             stderr = e.stderr.strip() if e.stderr else ""
@@ -204,9 +226,15 @@ def create_llm_client(
             if default_path.exists():
                 local_path = str(default_path)
         if local_path:
+            try:
+                n_ctx = int(os.getenv("TALKBOT_LOCAL_N_CTX", "2048"))
+            except ValueError:
+                n_ctx = 2048
+            n_ctx = max(512, n_ctx)
             return LocalLlamaCppClient(
                 model_path=local_path,
                 binary=llamacpp_bin or os.getenv("TALKBOT_LLAMACPP_BIN", "llama-cli"),
+                n_ctx=n_ctx,
                 enable_thinking=enable_thinking,
             )
         raise LLMProviderError(
