@@ -266,8 +266,19 @@ class VoicePipeline:
         else:
             response = client.chat_completion(self._history)
             content = response["choices"][0]["message"].get("content", "").strip()
-        self._history.append({"role": "assistant", "content": content})
+        # Keep history compact so long chain-of-thought content doesn't exhaust context.
+        assistant_visible = strip_thinking(content).strip() or content
+        self._history.append({"role": "assistant", "content": assistant_visible})
+        self._trim_history()
         return content
+
+    def _trim_history(self, max_dialog_messages: int = 12) -> None:
+        """Retain system prompt and the most recent dialog messages."""
+        if len(self._history) <= max_dialog_messages + 1:
+            return
+        system_messages = [m for m in self._history if m.get("role") == "system"][:1]
+        dialog_messages = [m for m in self._history if m.get("role") != "system"]
+        self._history = system_messages + dialog_messages[-max_dialog_messages:]
 
     def _start_barge_in_monitor(
         self,
@@ -460,7 +471,7 @@ class VoicePipeline:
                     on_event({"type": "thinking"})
                 response = self._chat_with_context(client, transcript)
                 if on_event:
-                    on_event({"type": "response", "text": strip_thinking(response)})
+                    on_event({"type": "response", "text": response})
 
                 if self.speak and not self._stop_event.is_set():
                     if on_event:

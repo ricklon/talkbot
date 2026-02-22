@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Optional
 
 from talkbot.openrouter import OpenRouterClient
+from talkbot.thinking import NO_THINK_INSTRUCTION
 
 
 class LLMProviderError(RuntimeError):
@@ -80,6 +81,7 @@ class LocalLlamaCppClient:
         return None
 
     def _messages_to_prompt(self, messages: list[dict]) -> str:
+        messages = self._prepare_messages(messages)
         lines = []
         for m in messages:
             role = str(m.get("role", "user")).strip().lower()
@@ -91,11 +93,29 @@ class LocalLlamaCppClient:
             elif role == "assistant":
                 lines.append(f"Assistant: {content}")
             else:
-                if not self.enable_thinking and not content.startswith("/no_think"):
-                    content = f"/no_think\n{content}"
                 lines.append(f"User: {content}")
         lines.append("Assistant:")
         return "\n".join(lines)
+
+    def _prepare_messages(self, messages: list[dict]) -> list[dict]:
+        """Normalize messages so thinking behavior is consistent across backends."""
+        prepared: list[dict] = []
+        has_system = False
+        for m in messages:
+            role = str(m.get("role", "user")).strip().lower()
+            content = str(m.get("content", "")).strip()
+            if not content:
+                continue
+            if role == "system":
+                has_system = True
+            elif role == "user" and not self.enable_thinking:
+                if not content.startswith("/no_think"):
+                    content = f"/no_think\n{content}"
+            prepared.append({"role": role, "content": content})
+
+        if not self.enable_thinking and not has_system:
+            prepared.insert(0, {"role": "system", "content": NO_THINK_INSTRUCTION})
+        return prepared
 
     def _run_prompt(self, prompt: str, max_tokens: Optional[int] = None) -> str:
         tokens = int(max_tokens or self.max_tokens)
@@ -141,11 +161,12 @@ class LocalLlamaCppClient:
         stream: bool = False,
     ) -> dict:
         del stream
+        prepared_messages = self._prepare_messages(messages)
         if self._use_python_backend and self._llm is not None:
             tokens = int(max_tokens or self.max_tokens)
             try:
                 response = self._llm.create_chat_completion(
-                    messages=messages,
+                    messages=prepared_messages,
                     temperature=float(temperature),
                     max_tokens=tokens,
                 )
@@ -161,7 +182,7 @@ class LocalLlamaCppClient:
             )
             return {"choices": [{"message": {"content": content}}]}
 
-        prompt = self._messages_to_prompt(messages)
+        prompt = self._messages_to_prompt(prepared_messages)
         content = self._run_prompt(prompt, max_tokens=max_tokens)
         return {"choices": [{"message": {"content": content}}]}
 

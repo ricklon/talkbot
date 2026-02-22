@@ -43,6 +43,13 @@ def _default_llamacpp_bin() -> str:
     return "llama-cli"
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 class ModernStyle:
     """Modern color scheme and styling for the GUI."""
 
@@ -200,6 +207,7 @@ class TalkBotGUI:
         self.stt_test_active = False
         self.stop_requested = threading.Event()
         self.default_tts_backend = os.getenv("TALKBOT_DEFAULT_TTS_BACKEND", "kittentts")
+        self.default_use_tools = _env_bool("TALKBOT_DEFAULT_USE_TOOLS", True)
         self.enable_thinking = env_thinking_default()
 
         self.root = tk.Tk()
@@ -420,7 +428,7 @@ class TalkBotGUI:
         )
         self.backend_status_label.pack(side=tk.LEFT)
 
-        self.tools_var = tk.BooleanVar(value=False)
+        self.tools_var = tk.BooleanVar(value=self.default_use_tools)
         tools_check = tk.Checkbutton(
             row1,
             text="Use Tools",
@@ -1076,6 +1084,16 @@ class TalkBotGUI:
         text = self.prompt_text.get("1.0", tk.END).strip()
         return apply_thinking_system_prompt(text or None, self.thinking_var.get())
 
+    def _display_response_text(self, response: str) -> str:
+        """Return chat-display text based on thinking toggle."""
+        if self.thinking_var.get():
+            return response.strip()
+        return strip_thinking(response).strip()
+
+    def _speech_response_text(self, response: str) -> str:
+        """Always speak concise output without hidden thinking blocks."""
+        return strip_thinking(response).strip()
+
     def _set_voice_controls(self, active: bool) -> None:
         """Update visual state for Start/Stop voice controls."""
         if active:
@@ -1239,8 +1257,12 @@ class TalkBotGUI:
             self.status_var.set("Transcribing...")
             self.voice_phase_var.set("Voice: transcribing")
         elif event_type == "thinking":
-            self.status_var.set("Thinking...")
-            self.voice_phase_var.set("Voice: thinking")
+            if self.thinking_var.get():
+                self.status_var.set("Thinking...")
+                self.voice_phase_var.set("Voice: thinking")
+            else:
+                self.status_var.set("Responding...")
+                self.voice_phase_var.set("Voice: processing")
         elif event_type == "speaking":
             self.status_var.set("Speaking...")
             self.voice_phase_var.set("Voice: speaking")
@@ -1269,7 +1291,7 @@ class TalkBotGUI:
                 is_user=False,
             )
         elif event_type == "response":
-            visible_response = strip_thinking(event.get("text", ""))
+            visible_response = self._display_response_text(event.get("text", ""))
             self._add_message("AI", visible_response, is_user=False)
             self.voice_phase_var.set("Voice: listening")
         elif event_type == "no_speech_detected":
@@ -1476,7 +1498,7 @@ class TalkBotGUI:
         # Disable input while processing
         self.input_field.config(state=tk.DISABLED)
         self.send_button.itemconfig("rect", fill=ModernStyle.BG_TERTIARY)
-        self.status_var.set("Thinking...")
+        self.status_var.set("Thinking..." if self.thinking_var.get() else "Responding...")
 
         # Process in background thread
         self.response_thread = threading.Thread(
@@ -1505,9 +1527,9 @@ class TalkBotGUI:
             # Get response
             with self._create_client() as client:
                 system_prompt = self._get_system_prompt()
-                if self.tools_var.get():
-                    if supports_tools(client):
-                        register_all_tools(client)
+                use_tools = self.tools_var.get()
+                if use_tools and supports_tools(client):
+                    register_all_tools(client)
                     response = client.chat_with_system_tools(
                         message, system_prompt=system_prompt
                     )
@@ -1529,13 +1551,14 @@ class TalkBotGUI:
             self._reset_ui()
             return
 
-        visible_response = strip_thinking(response)
-        self._add_message("AI", visible_response, is_user=False)
+        display_response = self._display_response_text(response)
+        speech_response = self._speech_response_text(response)
+        self._add_message("AI", display_response, is_user=False)
 
         if self.speak_var.get() and self.tts and not self.stop_requested.is_set():
             self.status_var.set("Speaking...")
             self.speaking_thread = threading.Thread(
-                target=self._speak_response, args=(visible_response,)
+                target=self._speak_response, args=(speech_response,)
             )
             self.speaking_thread.daemon = True
             self.speaking_thread.start()

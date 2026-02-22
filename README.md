@@ -151,6 +151,7 @@ cp .env.example .env
 TALKBOT_LLM_PROVIDER=local
 TALKBOT_LOCAL_MODEL_PATH=./models/default.gguf
 TALKBOT_LOCAL_N_CTX=2048
+TALKBOT_DEFAULT_USE_TOOLS=1
 # Optional when llama-cpp-python is installed.
 # Required only if using external llama.cpp CLI binary:
 # TALKBOT_LLAMACPP_BIN=/full/path/to/llama-cli
@@ -175,6 +176,7 @@ The application automatically loads environment variables from `.env` using pyth
 - Default TTS backend is `kittentts`.
 - Default model label is `qwen/qwen3-1.7b`.
 - Default thinking mode is OFF (`TALKBOT_ENABLE_THINKING=0`) for faster conversational turns.
+- Default tools toggle is ON in GUI (`TALKBOT_DEFAULT_USE_TOOLS=1`).
 - Override with:
 
 ```bash
@@ -275,6 +277,14 @@ To right-size on your own system:
 ```
 
 Check `Maximum resident set size` from `/usr/bin/time -v` and keep swap usage near zero during normal runs.
+
+### HF/Torch Comparison Target
+
+For Hugging Face Transformers comparisons, use:
+
+- `Qwen/Qwen3-1.7B`
+
+The older `Qwen/Qwen3-1.7B-Instruct` identifier may no longer be valid on HF.
 
 ### CLI Commands
 
