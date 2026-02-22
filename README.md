@@ -166,6 +166,14 @@ TALKBOT_LLM_PROVIDER=openrouter
 OPENROUTER_API_KEY=your_api_key_here
 ```
 
+Optional local server provider (OpenAI-compatible API):
+```bash
+TALKBOT_LLM_PROVIDER=local_server
+TALKBOT_LOCAL_SERVER_URL=http://127.0.0.1:8000/v1
+TALKBOT_LOCAL_SERVER_MODEL=models/default.gguf
+# TALKBOT_LOCAL_SERVER_API_KEY=optional
+```
+
 Get OpenRouter keys at [OpenRouter](https://openrouter.ai/keys).
 
 The application automatically loads environment variables from `.env` using python-dotenv, so you don't need to manually export them.
@@ -202,11 +210,28 @@ TALKBOT_DEFAULT_MODEL=qwen/qwen3-1.7b
 
 ## Usage
 
+### Provider Feature Matrix
+
+| Provider | Runs Where | Tool Calling | Setup Complexity | Recommended For |
+|---|---|---|---|---|
+| `local` | In-process (`llama-cpp-python` or `llama-cli`) | Limited (no standard server tool loop) | Low | Fastest local CPU path |
+| `local_server` | OpenAI-compatible local server (`llama-server` / `llama_cpp.server`) | Yes (standard tools flow; includes compatibility fallback for `<tool_call>` text) | Medium | Best local option for tool-calling workflows |
+| `openrouter` | Remote API | Yes | Low | Easiest cloud setup / strongest tool reliability |
+
+Quick guidance:
+
+- Use `local` for lowest overhead local inference.
+- Use `local_server` if you want local + more standard tool-calling behavior.
+- Use `openrouter` when you want managed reliability and broader model access.
+
 ### LLM Provider Selection
 
 ```bash
 # Local (default)
 talkbot --provider local --local-model-path /models/model.gguf chat "Hello"
+
+# Local server (llama-server / llama_cpp.server)
+talkbot --provider local_server --local-server-url http://127.0.0.1:8000/v1 --model models/default.gguf chat "Hello"
 
 # OpenRouter
 talkbot --provider openrouter --api-key "$OPENROUTER_API_KEY" --model openai/gpt-4o-mini chat "Hello"
@@ -217,10 +242,41 @@ talkbot --no-thinking chat "Respond quickly"
 ```
 
 In GUI:
-- `Provider` dropdown chooses `local` or `openrouter`.
+- `Provider` dropdown chooses `local`, `local_server`, or `openrouter`.
 - `Local GGUF` field sets the local model path when provider is `local`.
 - `Llama Bin` field overrides the local llama.cpp executable path when using CLI mode.
+- `Use Tools` checkbox controls tool calling per request (unchecked means no tool loop).
 - `Thinking` checkbox controls deliberate thinking mode.
+
+### Local Server Provider
+
+`local_server` uses an OpenAI-compatible local endpoint and keeps OpenRouter support unchanged.
+
+Example launch (python server wrapper):
+
+```bash
+uv run --with uvicorn --with fastapi --with sse-starlette --with starlette-context --with pydantic-settings \
+  python -m llama_cpp.server --model models/default.gguf --n_ctx 8192 --host 127.0.0.1 --port 8000
+```
+
+Then run TalkBot:
+
+```bash
+talkbot --provider local_server --local-server-url http://127.0.0.1:8000/v1 --model models/default.gguf chat --tools "What is 2+2?"
+```
+
+Quick verification checks:
+
+```bash
+# 1) plain response
+talkbot --provider local_server --local-server-url http://127.0.0.1:8000/v1 --model models/default.gguf chat --no-speak "Reply with OK"
+
+# 2) tools on
+talkbot --provider local_server --local-server-url http://127.0.0.1:8000/v1 --model models/default.gguf chat --tools --no-speak "What is 2+2? Use calculator tool."
+
+# 3) tools off
+talkbot --provider local_server --local-server-url http://127.0.0.1:8000/v1 --model models/default.gguf chat --no-tools --no-speak "What is 2+2? Do not use tools."
+```
 
 ### Troubleshooting: `llama.cpp binary not found ... TALKBOT_LLAMACPP_BIN`
 

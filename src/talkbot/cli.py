@@ -54,6 +54,8 @@ def _create_client_from_ctx(ctx: click.Context):
         site_name=os.getenv("OPENROUTER_SITE_NAME"),
         local_model_path=ctx.obj["local_model_path"],
         llamacpp_bin=ctx.obj["llamacpp_bin"],
+        local_server_url=ctx.obj["local_server_url"],
+        local_server_api_key=ctx.obj["local_server_api_key"],
         enable_thinking=ctx.obj["enable_thinking"],
     )
 
@@ -62,7 +64,7 @@ def _create_client_from_ctx(ctx: click.Context):
 @click.option("--api-key", envvar="OPENROUTER_API_KEY", help="OpenRouter API key")
 @click.option(
     "--provider",
-    type=click.Choice(["local", "openrouter"]),
+    type=click.Choice(["local", "local_server", "openrouter"]),
     default=lambda: _default_provider(),
     show_default="env:TALKBOT_LLM_PROVIDER or local",
     help="LLM provider",
@@ -86,6 +88,18 @@ def _create_client_from_ctx(ctx: click.Context):
     help="llama.cpp executable for provider=local",
 )
 @click.option(
+    "--local-server-url",
+    default=lambda: os.getenv("TALKBOT_LOCAL_SERVER_URL", "http://127.0.0.1:8000/v1"),
+    show_default="env:TALKBOT_LOCAL_SERVER_URL or http://127.0.0.1:8000/v1",
+    help="OpenAI-compatible local server base URL for provider=local_server",
+)
+@click.option(
+    "--local-server-api-key",
+    default=lambda: os.getenv("TALKBOT_LOCAL_SERVER_API_KEY", ""),
+    show_default="env:TALKBOT_LOCAL_SERVER_API_KEY",
+    help="Optional API key for provider=local_server",
+)
+@click.option(
     "--thinking/--no-thinking",
     default=lambda: env_thinking_default(),
     show_default="env:TALKBOT_ENABLE_THINKING or no-thinking",
@@ -99,6 +113,8 @@ def cli(
     model: str,
     local_model_path: str,
     llamacpp_bin: str,
+    local_server_url: str,
+    local_server_api_key: str,
     thinking: bool,
 ) -> None:
     """TalkBot - A talking AI assistant using OpenRouter and pyttsx3."""
@@ -108,6 +124,8 @@ def cli(
     ctx.obj["model"] = model
     ctx.obj["local_model_path"] = local_model_path or None
     ctx.obj["llamacpp_bin"] = llamacpp_bin or "llama-cli"
+    ctx.obj["local_server_url"] = local_server_url or None
+    ctx.obj["local_server_api_key"] = local_server_api_key or None
     ctx.obj["enable_thinking"] = thinking
 
 
@@ -457,6 +475,8 @@ def voice_chat(
         enable_thinking=ctx.obj["enable_thinking"],
         local_model_path=ctx.obj["local_model_path"],
         llamacpp_bin=ctx.obj["llamacpp_bin"],
+        local_server_url=ctx.obj["local_server_url"],
+        local_server_api_key=ctx.obj["local_server_api_key"],
         site_url=os.getenv("OPENROUTER_SITE_URL"),
         site_name=os.getenv("OPENROUTER_SITE_NAME"),
         tts_backend=backend or _default_tts_backend(),

@@ -61,6 +61,8 @@ class VoicePipeline:
         enable_thinking: bool = False,
         local_model_path: Optional[str] = None,
         llamacpp_bin: Optional[str] = None,
+        local_server_url: Optional[str] = None,
+        local_server_api_key: Optional[str] = None,
         site_url: Optional[str] = None,
         site_name: Optional[str] = None,
         tts_backend: Optional[str] = None,
@@ -78,6 +80,8 @@ class VoicePipeline:
         self.model = model
         self.local_model_path = local_model_path
         self.llamacpp_bin = llamacpp_bin
+        self.local_server_url = local_server_url
+        self.local_server_api_key = local_server_api_key
         self.site_url = site_url
         self.site_name = site_name
         self.tts_backend = tts_backend
@@ -437,6 +441,8 @@ class VoicePipeline:
             site_name=self.site_name,
             local_model_path=self.local_model_path,
             llamacpp_bin=self.llamacpp_bin,
+            local_server_url=self.local_server_url,
+            local_server_api_key=self.local_server_api_key,
             enable_thinking=self.enable_thinking,
         ) as client:
             if self.use_tools and supports_tools(client):

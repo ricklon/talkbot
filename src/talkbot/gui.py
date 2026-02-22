@@ -196,6 +196,10 @@ class TalkBotGUI:
         self.model = model or os.getenv("TALKBOT_DEFAULT_MODEL", "qwen/qwen3-1.7b")
         self.local_model_path = _default_local_model_path()
         self.llamacpp_bin = _default_llamacpp_bin()
+        self.local_server_url = os.getenv(
+            "TALKBOT_LOCAL_SERVER_URL", "http://127.0.0.1:8000/v1"
+        )
+        self.local_server_api_key = os.getenv("TALKBOT_LOCAL_SERVER_API_KEY")
         self.client = None
         self.tts: TTSManager = None
         self.speaking_thread: threading.Thread = None
@@ -367,7 +371,7 @@ class TalkBotGUI:
         self.provider_combo = ttk.Combobox(
             row1,
             textvariable=self.provider_var,
-            values=["local", "openrouter"],
+            values=["local", "local_server", "openrouter"],
             width=12,
             style="Modern.TCombobox",
             state="readonly",
@@ -1055,6 +1059,8 @@ class TalkBotGUI:
         provider = self.provider_var.get()
         if provider == "openrouter":
             return bool(self.api_key)
+        if provider == "local_server":
+            return bool(self.local_server_url)
         return bool(self.local_model_path_var.get().strip())
 
     def _create_client(self):
@@ -1067,6 +1073,8 @@ class TalkBotGUI:
             site_name=os.getenv("OPENROUTER_SITE_NAME"),
             local_model_path=self.local_model_path_var.get().strip() or None,
             llamacpp_bin=self.llamacpp_bin,
+            local_server_url=self.local_server_url,
+            local_server_api_key=self.local_server_api_key,
             enable_thinking=self.thinking_var.get(),
         )
 
@@ -1075,9 +1083,15 @@ class TalkBotGUI:
         provider = self.provider_var.get()
         if provider == "openrouter":
             self.local_model_entry.config(state=tk.DISABLED)
+            self.llamacpp_bin_entry.config(state=tk.DISABLED)
             self.status_var.set("Provider: OpenRouter")
+        elif provider == "local_server":
+            self.local_model_entry.config(state=tk.DISABLED)
+            self.llamacpp_bin_entry.config(state=tk.DISABLED)
+            self.status_var.set("Provider: Local Server (OpenAI API)")
         else:
             self.local_model_entry.config(state=tk.NORMAL)
+            self.llamacpp_bin_entry.config(state=tk.NORMAL)
             self.status_var.set("Provider: Local llama.cpp")
 
     def _get_system_prompt(self) -> str | None:
@@ -1137,6 +1151,11 @@ class TalkBotGUI:
                     "Provider Not Ready",
                     "OpenRouter selected but OPENROUTER_API_KEY is not set.",
                 )
+            elif self.provider_var.get() == "local_server":
+                messagebox.showerror(
+                    "Provider Not Ready",
+                    "Local server selected but TALKBOT_LOCAL_SERVER_URL is empty.",
+                )
             else:
                 messagebox.showerror(
                     "Provider Not Ready",
@@ -1169,6 +1188,8 @@ class TalkBotGUI:
                     enable_thinking=self.thinking_var.get(),
                     local_model_path=self.local_model_path_var.get().strip() or None,
                     llamacpp_bin=self.llamacpp_bin,
+                    local_server_url=self.local_server_url,
+                    local_server_api_key=self.local_server_api_key,
                     site_url=os.getenv("OPENROUTER_SITE_URL"),
                     site_name=os.getenv("OPENROUTER_SITE_NAME"),
                     tts_backend=self.backend_var.get(),
