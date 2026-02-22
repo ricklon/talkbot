@@ -1,10 +1,10 @@
 # TalkBot
 
-A talking AI assistant that uses OpenRouter for AI responses and edge-tts (Microsoft Azure) for high-quality text-to-speech, with KittenTTS (local neural) and pyttsx3 as offline alternatives.
+A talking AI assistant with local-first LLM + TTS defaults, plus optional OpenRouter for remote models. TTS supports edge-tts (online), KittenTTS (local neural), and pyttsx3.
 
 ## Features
 
-- 🤖 **AI Chat**: Powered by OpenRouter (supports OpenAI, Anthropic, Google, Meta, and more)
+- 🤖 **AI Chat**: Local llama.cpp provider by default, with OpenRouter optional
 - 🛠️ **Tool Calling**: AI can use built-in tools (calculator, time, dice rolling, etc.)
 - 🔊 **Text-to-Speech**: Microsoft Edge TTS (322 voices!) with pyttsx3 offline fallback
 - 🖥️ **Modern GUI**: Beautiful dark-themed tkinter interface with rounded buttons
@@ -17,14 +17,18 @@ A talking AI assistant that uses OpenRouter for AI responses and edge-tts (Micro
 ```bash
 # 1) Install as a tool
 cd talkbot
-UV_SKIP_WHEEL_FILENAME_CHECK=1 uv tool install --python /usr/bin/python3.12 . --with faster-whisper --with silero-vad --with sounddevice --with soundfile
+UV_SKIP_WHEEL_FILENAME_CHECK=1 uv tool install --python /usr/bin/python3.12 . --with llama-cpp-python --with faster-whisper --with silero-vad --with sounddevice --with soundfile
 
 # (optional) same install via helper script
 ./setup.sh
+# or install + fetch default local model in one go
+./setup.sh --download-model
 
-# 2) Configure API key
+# 2) Configure defaults
 cp .env.example .env
-# edit .env and set OPENROUTER_API_KEY=...
+# put your GGUF at ./models/default.gguf (or override TALKBOT_LOCAL_MODEL_PATH)
+
+# If TALKBOT_LOCAL_MODEL_PATH is not set, TalkBot auto-uses ./models/default.gguf when present.
 
 # 3) Run a quick CLI check
 talkbot doctor-tts
@@ -53,20 +57,21 @@ Makes `talkbot` and `talkbot-gui` available anywhere in your shell:
 
 ```bash
 cd talkbot
-UV_SKIP_WHEEL_FILENAME_CHECK=1 uv tool install --python /usr/bin/python3.12 . --with faster-whisper --with silero-vad --with sounddevice --with soundfile
+UV_SKIP_WHEEL_FILENAME_CHECK=1 uv tool install --python /usr/bin/python3.12 . --with llama-cpp-python --with faster-whisper --with silero-vad --with sounddevice --with soundfile
 ```
 
 To refresh an existing install:
 
 ```bash
 cd talkbot
-UV_SKIP_WHEEL_FILENAME_CHECK=1 uv tool install --reinstall --python /usr/bin/python3.12 . --with faster-whisper --with silero-vad --with sounddevice --with soundfile
+UV_SKIP_WHEEL_FILENAME_CHECK=1 uv tool install --reinstall --python /usr/bin/python3.12 . --with llama-cpp-python --with faster-whisper --with silero-vad --with sounddevice --with soundfile
 ```
 
 Or use:
 
 ```bash
 ./setup.sh
+./setup.sh --download-model
 ```
 
 > **Note:** `--python /usr/bin/python3.12` tells uv to use the system Python, which has tkinter. uv's own bundled Python builds omit it.
@@ -99,6 +104,21 @@ uv sync
 uv sync --extra voice
 ```
 
+### Download a default local GGUF
+
+```bash
+./scripts/download-model.sh
+```
+
+Default source is the official Qwen GGUF file:
+- `Qwen/Qwen3-1.7B-GGUF` (`Qwen3-1.7B-Q8_0.gguf`)
+
+Override URL or output path:
+
+```bash
+./scripts/download-model.sh --output models/default.gguf --url "https://..."
+```
+
 ## Configuration
 
 1. Copy the environment template:
@@ -106,14 +126,40 @@ uv sync --extra voice
 cp .env.example .env
 ```
 
-2. Add your OpenRouter API key to `.env`:
+2. Configure `.env` for local-first (recommended):
 ```bash
+TALKBOT_LLM_PROVIDER=local
+TALKBOT_LOCAL_MODEL_PATH=./models/default.gguf
+TALKBOT_LLAMACPP_BIN=llama-cli
+TALKBOT_ENABLE_THINKING=0
+TALKBOT_DEFAULT_MODEL=qwen/qwen3-1.7b
+TALKBOT_DEFAULT_TTS_BACKEND=kittentts
+```
+
+Optional remote provider:
+```bash
+TALKBOT_LLM_PROVIDER=openrouter
 OPENROUTER_API_KEY=your_api_key_here
 ```
 
-Get your API key from [OpenRouter](https://openrouter.ai/keys)
+Get OpenRouter keys at [OpenRouter](https://openrouter.ai/keys).
 
 The application automatically loads environment variables from `.env` using python-dotenv, so you don't need to manually export them.
+
+### Default Runtime Behavior
+
+- Default LLM provider is `local`.
+- Default TTS backend is `kittentts`.
+- Default model label is `qwen/qwen3-1.7b`.
+- Default thinking mode is OFF (`TALKBOT_ENABLE_THINKING=0`) for faster conversational turns.
+- Override with:
+
+```bash
+TALKBOT_LLM_PROVIDER=local
+TALKBOT_LOCAL_MODEL_PATH=./models/default.gguf
+TALKBOT_DEFAULT_TTS_BACKEND=edge-tts
+TALKBOT_DEFAULT_MODEL=qwen/qwen3-1.7b
+```
 
 ## Recent Changes
 
@@ -128,12 +174,35 @@ The application automatically loads environment variables from `.env` using pyth
 
 ## Usage
 
+### LLM Provider Selection
+
+```bash
+# Local (default)
+talkbot --provider local --local-model-path /models/model.gguf chat "Hello"
+
+# OpenRouter
+talkbot --provider openrouter --api-key "$OPENROUTER_API_KEY" --model openai/gpt-4o-mini chat "Hello"
+
+# Toggle thinking mode (default is --no-thinking)
+talkbot --thinking chat "Think deeply"
+talkbot --no-thinking chat "Respond quickly"
+```
+
+In GUI:
+- `Provider` dropdown chooses `local` or `openrouter`.
+- `Local GGUF` field sets the local model path when provider is `local`.
+- `Thinking` checkbox controls deliberate thinking mode.
+
 ### CLI Commands
 
 #### Single Message
 ```bash
 # Basic chat
 talkbot chat "Hello, how are you?"
+
+# With explicit provider/model
+talkbot --provider local --local-model-path /models/qwen3-1.7b-instruct-q4_k_m.gguf chat "Local run"
+talkbot --provider openrouter --api-key "$OPENROUTER_API_KEY" --model openai/gpt-4o-mini chat "Remote run"
 
 # With specific model
 talkbot --model anthropic/claude-3-haiku chat "What's the weather?"
@@ -146,6 +215,9 @@ talkbot chat --backend pyttsx3 "Use offline system TTS"
 
 # With custom voice settings
 talkbot chat --rate 200 --volume 0.8 "Hello world"
+
+# Enable built-in tools in chat mode
+talkbot chat --tools "What's 15 percent of 240?"
 ```
 
 #### Interactive Mode
@@ -161,6 +233,9 @@ talkbot voice-chat
 
 # Choose TTS backend and tune VAD
 talkbot voice-chat --backend pyttsx3 --vad-threshold 0.30 --energy-threshold 0.003 --vad-min-silence-ms 1200
+
+# Enable tools while in voice loop
+talkbot voice-chat --tools
 
 # Select devices by index
 talkbot voice-chat --device-in 2 --device-out 3
@@ -284,6 +359,8 @@ The GUI features a modern dark theme with:
 - 🎚️ Real-time sliders for rate and volume
 - 💬 Styled chat history with user/AI colors
 - 🔄 **Backend switcher** - Toggle between online/offline TTS modes
+- 🧰 **Use Tools toggle** - Enable calculator/time/dice/random tools for chat and voice
+- 📝 **Prompt tab** - Edit system prompt live for text and voice conversations
 
 **Backend Selection:**
 The GUI includes a dropdown to switch between TTS backends:

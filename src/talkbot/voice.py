@@ -12,8 +12,11 @@ from typing import Callable, Optional
 
 import numpy as np
 
-from talkbot.openrouter import OpenRouterClient
+from talkbot.llm import create_llm_client, supports_tools
+from talkbot.thinking import apply_thinking_system_prompt
+from talkbot.text_utils import strip_thinking
 from talkbot.tts import TTSManager
+from talkbot.tools import register_all_tools
 
 
 class MissingVoiceDependencies(RuntimeError):
@@ -51,25 +54,39 @@ class VoicePipeline:
 
     def __init__(
         self,
-        api_key: str,
+        api_key: Optional[str],
         model: str,
         *,
+        provider: str = "local",
+        enable_thinking: bool = False,
+        local_model_path: Optional[str] = None,
+        llamacpp_bin: Optional[str] = None,
+        site_url: Optional[str] = None,
+        site_name: Optional[str] = None,
         tts_backend: Optional[str] = None,
         tts_voice: Optional[str] = None,
         tts_rate: int = 175,
         tts_volume: float = 1.0,
         speak: bool = True,
         system_prompt: Optional[str] = None,
+        use_tools: bool = False,
         config: Optional[VoiceConfig] = None,
     ) -> None:
         self.api_key = api_key
+        self.provider = provider
+        self.enable_thinking = enable_thinking
         self.model = model
+        self.local_model_path = local_model_path
+        self.llamacpp_bin = llamacpp_bin
+        self.site_url = site_url
+        self.site_name = site_name
         self.tts_backend = tts_backend
         self.tts_voice = tts_voice
         self.tts_rate = tts_rate
         self.tts_volume = tts_volume
         self.speak = speak
         self.system_prompt = system_prompt
+        self.use_tools = use_tools
         self.config = config or VoiceConfig()
 
         self._stop_event = threading.Event()
@@ -236,12 +253,19 @@ class VoicePipeline:
         text = " ".join(seg.text.strip() for seg in segments if seg.text.strip())
         return text.strip()
 
-    def _chat_with_context(self, client: OpenRouterClient, user_text: str) -> str:
-        if not self._history and self.system_prompt:
-            self._history.append({"role": "system", "content": self.system_prompt})
+    def _chat_with_context(self, client, user_text: str) -> str:
+        if not self._history:
+            effective_system = apply_thinking_system_prompt(
+                self.system_prompt, self.enable_thinking
+            )
+            if effective_system:
+                self._history.append({"role": "system", "content": effective_system})
         self._history.append({"role": "user", "content": user_text})
-        response = client.chat_completion(self._history)
-        content = response["choices"][0]["message"].get("content", "").strip()
+        if self.use_tools:
+            content = client.chat_with_tools(self._history).strip()
+        else:
+            response = client.chat_completion(self._history)
+            content = response["choices"][0]["message"].get("content", "").strip()
         self._history.append({"role": "assistant", "content": content})
         return content
 
@@ -301,6 +325,36 @@ class VoicePipeline:
 
         if audio.ndim == 1:
             audio = audio.reshape(-1, 1)
+
+        # Adapt to output device capabilities to avoid ALSA/PortAudio stream setup failures.
+        try:
+            dev_info = self._sd.query_devices(self.config.device_out, "output")
+            target_sr = int(float(dev_info.get("default_samplerate", sample_rate)))
+            max_out_channels = int(dev_info.get("max_output_channels", audio.shape[1]))
+        except Exception:
+            target_sr = int(sample_rate)
+            max_out_channels = audio.shape[1]
+
+        if target_sr > 0 and target_sr != sample_rate:
+            old_n = audio.shape[0]
+            new_n = max(1, int(round(old_n * (target_sr / float(sample_rate)))))
+            old_x = np.linspace(0.0, 1.0, old_n, endpoint=False, dtype=np.float32)
+            new_x = np.linspace(0.0, 1.0, new_n, endpoint=False, dtype=np.float32)
+            resampled = np.zeros((new_n, audio.shape[1]), dtype=np.float32)
+            for c in range(audio.shape[1]):
+                resampled[:, c] = np.interp(new_x, old_x, audio[:, c]).astype(np.float32)
+            audio = resampled
+            sample_rate = target_sr
+
+        if max_out_channels <= 0:
+            raise RuntimeError("Selected output device has no output channels")
+        if audio.shape[1] > max_out_channels:
+            # Downmix to the device's channel count.
+            mono = np.mean(audio, axis=1, keepdims=True, dtype=np.float32)
+            if max_out_channels == 1:
+                audio = mono
+            else:
+                audio = np.repeat(mono, max_out_channels, axis=1)
 
         with self._sd.OutputStream(
             samplerate=sample_rate,
@@ -364,7 +418,18 @@ class VoicePipeline:
         if self.tts_voice:
             tts.set_voice(self.tts_voice)
 
-        with OpenRouterClient(api_key=self.api_key, model=self.model) as client:
+        with create_llm_client(
+            provider=self.provider,
+            model=self.model,
+            api_key=self.api_key,
+            site_url=self.site_url,
+            site_name=self.site_name,
+            local_model_path=self.local_model_path,
+            llamacpp_bin=self.llamacpp_bin,
+            enable_thinking=self.enable_thinking,
+        ) as client:
+            if self.use_tools and supports_tools(client):
+                register_all_tools(client)
             if on_event:
                 on_event({"type": "ready"})
 
@@ -395,12 +460,12 @@ class VoicePipeline:
                     on_event({"type": "thinking"})
                 response = self._chat_with_context(client, transcript)
                 if on_event:
-                    on_event({"type": "response", "text": response})
+                    on_event({"type": "response", "text": strip_thinking(response)})
 
                 if self.speak and not self._stop_event.is_set():
                     if on_event:
                         on_event({"type": "speaking"})
-                    self._speak_response(tts, response, on_event=on_event)
+                    self._speak_response(tts, strip_thinking(response), on_event=on_event)
 
     def transcribe_once(
         self, on_event: Optional[Callable[[dict], None]] = None

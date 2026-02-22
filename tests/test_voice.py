@@ -45,7 +45,8 @@ def test_chat_with_context_maintains_messages():
 
     assert out1 == "assistant reply"
     assert out2 == "assistant reply"
-    assert pipeline._history[0] == {"role": "system", "content": "sys"}
+    assert pipeline._history[0]["role"] == "system"
+    assert pipeline._history[0]["content"].startswith("sys")
     assert pipeline._history[1]["role"] == "user"
     assert pipeline._history[2]["role"] == "assistant"
     assert pipeline._history[3]["role"] == "user"
@@ -54,7 +55,7 @@ def test_chat_with_context_maintains_messages():
 def test_run_emits_transcript_and_response(monkeypatch):
     pipeline = voice_module.VoicePipeline(api_key="k", model="m", speak=True)
 
-    monkeypatch.setattr(voice_module, "OpenRouterClient", DummyClient)
+    monkeypatch.setattr(voice_module, "create_llm_client", lambda **_kwargs: DummyClient())
     monkeypatch.setattr(voice_module, "TTSManager", DummyTTS)
     monkeypatch.setattr(pipeline, "_ensure_dependencies", lambda: None)
 

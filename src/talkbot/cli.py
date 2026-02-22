@@ -8,7 +8,14 @@ from pathlib import Path
 import click
 from dotenv import load_dotenv
 
-from talkbot.openrouter import OpenRouterClient
+# Load environment variables from .env file before importing runtime modules.
+env_path = Path.cwd() / ".env"
+if env_path.exists():
+    load_dotenv(env_path)
+
+from talkbot.llm import LLMProviderError, create_llm_client, supports_tools
+from talkbot.thinking import apply_thinking_system_prompt, env_thinking_default
+from talkbot.text_utils import strip_thinking
 from talkbot.tools import register_all_tools
 from talkbot.tts import TTSManager
 from talkbot.voice import (
@@ -19,21 +26,89 @@ from talkbot.voice import (
     transcribe_audio_file,
 )
 
-# Load environment variables from .env file
-env_path = Path.cwd() / ".env"
-if env_path.exists():
-    load_dotenv(env_path)
+
+def _default_tts_backend() -> str:
+    return os.getenv("TALKBOT_DEFAULT_TTS_BACKEND", "kittentts")
+
+
+def _default_provider() -> str:
+    return os.getenv("TALKBOT_LLM_PROVIDER", "local")
+
+
+def _default_local_model_path() -> str:
+    configured = os.getenv("TALKBOT_LOCAL_MODEL_PATH", "").strip()
+    if configured:
+        return configured
+    default_path = Path("models/default.gguf")
+    if default_path.exists():
+        return str(default_path)
+    return ""
+
+
+def _create_client_from_ctx(ctx: click.Context):
+    return create_llm_client(
+        provider=ctx.obj["provider"],
+        model=ctx.obj["model"],
+        api_key=ctx.obj["api_key"],
+        site_url=os.getenv("OPENROUTER_SITE_URL"),
+        site_name=os.getenv("OPENROUTER_SITE_NAME"),
+        local_model_path=ctx.obj["local_model_path"],
+        llamacpp_bin=ctx.obj["llamacpp_bin"],
+        enable_thinking=ctx.obj["enable_thinking"],
+    )
 
 
 @click.group()
 @click.option("--api-key", envvar="OPENROUTER_API_KEY", help="OpenRouter API key")
-@click.option("--model", default="openai/gpt-3.5-turbo", help="Model to use")
+@click.option(
+    "--provider",
+    type=click.Choice(["local", "openrouter"]),
+    default=lambda: _default_provider(),
+    show_default="env:TALKBOT_LLM_PROVIDER or local",
+    help="LLM provider",
+)
+@click.option(
+    "--model",
+    default=lambda: os.getenv("TALKBOT_DEFAULT_MODEL", "qwen/qwen3-1.7b"),
+    show_default="env:TALKBOT_DEFAULT_MODEL or qwen/qwen3-1.7b",
+    help="Model id (OpenRouter) or local label",
+)
+@click.option(
+    "--local-model-path",
+    default=lambda: _default_local_model_path(),
+    show_default="env:TALKBOT_LOCAL_MODEL_PATH or models/default.gguf when present",
+    help="Local GGUF path used when provider=local",
+)
+@click.option(
+    "--llamacpp-bin",
+    default=lambda: os.getenv("TALKBOT_LLAMACPP_BIN", "llama-cli"),
+    show_default="env:TALKBOT_LLAMACPP_BIN or llama-cli",
+    help="llama.cpp executable for provider=local",
+)
+@click.option(
+    "--thinking/--no-thinking",
+    default=lambda: env_thinking_default(),
+    show_default="env:TALKBOT_ENABLE_THINKING or no-thinking",
+    help="Enable deliberate thinking mode (slower)",
+)
 @click.pass_context
-def cli(ctx: click.Context, api_key: str, model: str) -> None:
+def cli(
+    ctx: click.Context,
+    api_key: str,
+    provider: str,
+    model: str,
+    local_model_path: str,
+    llamacpp_bin: str,
+    thinking: bool,
+) -> None:
     """TalkBot - A talking AI assistant using OpenRouter and pyttsx3."""
     ctx.ensure_object(dict)
     ctx.obj["api_key"] = api_key
+    ctx.obj["provider"] = provider
     ctx.obj["model"] = model
+    ctx.obj["local_model_path"] = local_model_path or None
+    ctx.obj["llamacpp_bin"] = llamacpp_bin or "llama-cli"
+    ctx.obj["enable_thinking"] = thinking
 
 
 @cli.command()
@@ -49,6 +124,7 @@ def cli(ctx: click.Context, api_key: str, model: str) -> None:
 @click.option("--rate", default=150, help="Speech rate (words per minute)")
 @click.option("--volume", default=1.0, help="Volume level (0.0 to 1.0)")
 @click.option("--system", "-s", help="System prompt for context")
+@click.option("--tools/--no-tools", default=False, help="Enable built-in tools")
 @click.pass_context
 def chat(
     ctx: click.Context,
@@ -59,22 +135,29 @@ def chat(
     rate: int,
     volume: float,
     system: str,
+    tools: bool,
 ) -> None:
     """Chat with the AI and hear the response."""
     try:
-        with OpenRouterClient(
-            api_key=ctx.obj["api_key"], model=ctx.obj["model"]
-        ) as client:
+        selected_backend = backend or _default_tts_backend()
+        system = apply_thinking_system_prompt(system, ctx.obj["enable_thinking"])
+        with _create_client_from_ctx(ctx) as client:
             click.echo(f"You: {message}")
-            response = client.simple_chat(message, system_prompt=system)
-            click.echo(f"AI: {response}")
+            if tools:
+                if supports_tools(client):
+                    register_all_tools(client)
+                response = client.chat_with_system_tools(message, system_prompt=system)
+            else:
+                response = client.simple_chat(message, system_prompt=system)
+            visible_response = strip_thinking(response)
+            click.echo(f"AI: {visible_response}")
 
             if speak:
-                tts = TTSManager(rate=rate, volume=volume, backend=backend)
+                tts = TTSManager(rate=rate, volume=volume, backend=selected_backend)
                 if voice:
                     tts.set_voice(voice)
-                tts.speak(response)
-    except ValueError as e:
+                tts.speak(visible_response)
+    except (ValueError, LLMProviderError) as e:
         click.echo(f"Error: {e}", err=True)
         sys.exit(1)
     except Exception as e:
@@ -92,37 +175,55 @@ def chat(
 @click.option("--voice", help="Voice ID to use")
 @click.option("--rate", default=150, help="Speech rate")
 @click.option("--volume", default=1.0, help="Volume level")
-def say(backend: str, voice: str, rate: int, volume: float) -> None:
+@click.option("--tools/--no-tools", default=False, help="Enable built-in tools")
+@click.pass_context
+def say(
+    ctx: click.Context, backend: str, voice: str, rate: int, volume: float, tools: bool
+) -> None:
     """Interactive mode - type messages and hear responses."""
-    tts = TTSManager(rate=rate, volume=volume, backend=backend)
-    if voice:
-        tts.set_voice(voice)
+    try:
+        selected_backend = backend or _default_tts_backend()
+        tts = TTSManager(rate=rate, volume=volume, backend=selected_backend)
+        if voice:
+            tts.set_voice(voice)
 
-    api_key = os.getenv("OPENROUTER_API_KEY")
-    if not api_key:
-        click.echo("Error: OPENROUTER_API_KEY environment variable not set", err=True)
-        sys.exit(1)
+        with _create_client_from_ctx(ctx) as client:
+            click.echo("Interactive mode started. Type 'exit' or 'quit' to stop.")
+            click.echo()
 
-    with OpenRouterClient(api_key=api_key) as client:
-        click.echo("Interactive mode started. Type 'exit' or 'quit' to stop.")
-        click.echo()
+            while True:
+                try:
+                    message = click.prompt("You", type=str)
 
-        while True:
-            try:
-                message = click.prompt("You", type=str)
+                    if message.lower() in ("exit", "quit"):
+                        break
 
-                if message.lower() in ("exit", "quit"):
+                    if tools:
+                        if supports_tools(client):
+                            register_all_tools(client)
+                        system = apply_thinking_system_prompt(
+                            None, ctx.obj["enable_thinking"]
+                        )
+                        response = client.chat_with_system_tools(
+                            message, system_prompt=system
+                        )
+                    else:
+                        system = apply_thinking_system_prompt(
+                            None, ctx.obj["enable_thinking"]
+                        )
+                        response = client.simple_chat(message, system_prompt=system)
+                    visible_response = strip_thinking(response)
+                    click.echo(f"AI: {visible_response}")
+                    tts.speak(visible_response)
+
+                except KeyboardInterrupt:
+                    click.echo("\nGoodbye!")
                     break
-
-                response = client.simple_chat(message)
-                click.echo(f"AI: {response}")
-                tts.speak(response)
-
-            except KeyboardInterrupt:
-                click.echo("\nGoodbye!")
-                break
-            except EOFError:
-                break
+                except EOFError:
+                    break
+    except (ValueError, LLMProviderError) as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
 
 
 @cli.command()
@@ -134,7 +235,8 @@ def say(backend: str, voice: str, rate: int, volume: float) -> None:
 )
 def voices(backend: str) -> None:
     """List available TTS voices."""
-    tts = TTSManager(backend=backend)
+    selected_backend = backend or _default_tts_backend()
+    tts = TTSManager(backend=selected_backend)
     tts.list_voices()
 
 
@@ -155,7 +257,8 @@ def save(text: str, output: str, backend: str, voice: str, rate: int) -> None:
     TEXT: The text to convert to speech
     OUTPUT: The output filename
     """
-    tts = TTSManager(rate=rate, backend=backend)
+    selected_backend = backend or _default_tts_backend()
+    tts = TTSManager(rate=rate, backend=selected_backend)
     if voice:
         tts.set_voice(voice)
 
@@ -249,22 +352,24 @@ def tool(
 ) -> None:
     """Chat with AI using tools (calculator, time, dice, etc.)."""
     try:
-        with OpenRouterClient(
-            api_key=ctx.obj["api_key"], model=ctx.obj["model"]
-        ) as client:
+        selected_backend = backend or _default_tts_backend()
+        system = apply_thinking_system_prompt(system, ctx.obj["enable_thinking"])
+        with _create_client_from_ctx(ctx) as client:
             # Register all built-in tools
-            register_all_tools(client)
+            if supports_tools(client):
+                register_all_tools(client)
 
             click.echo(f"You: {message}")
             response = client.chat_with_system_tools(message, system_prompt=system)
-            click.echo(f"AI: {response}")
+            visible_response = strip_thinking(response)
+            click.echo(f"AI: {visible_response}")
 
             if speak:
-                tts = TTSManager(rate=rate, volume=volume, backend=backend)
+                tts = TTSManager(rate=rate, volume=volume, backend=selected_backend)
                 if voice:
                     tts.set_voice(voice)
-                tts.speak(response)
-    except ValueError as e:
+                tts.speak(visible_response)
+    except (ValueError, LLMProviderError) as e:
         click.echo(f"Error: {e}", err=True)
         sys.exit(1)
     except Exception as e:
@@ -303,6 +408,7 @@ def tool(
 @click.option("--device-out", default=None, help="Output device index or name")
 @click.option("--sample-rate", default=16000, type=int, help="Audio sample rate")
 @click.option("--no-speak", is_flag=True, help="Disable spoken responses")
+@click.option("--tools/--no-tools", default=False, help="Enable built-in tools")
 @click.pass_context
 def voice_chat(
     ctx: click.Context,
@@ -322,6 +428,7 @@ def voice_chat(
     device_out: str,
     sample_rate: int,
     no_speak: bool,
+    tools: bool,
 ) -> None:
     """Local half-duplex voice chat."""
 
@@ -329,11 +436,6 @@ def voice_chat(
         if value is None:
             return None
         return int(value) if value.isdigit() else value
-
-    api_key = ctx.obj["api_key"] or os.getenv("OPENROUTER_API_KEY")
-    if not api_key:
-        click.echo("Error: OPENROUTER_API_KEY environment variable not set", err=True)
-        sys.exit(1)
 
     config = VoiceConfig(
         sample_rate=sample_rate,
@@ -349,14 +451,21 @@ def voice_chat(
         allow_barge_in=True,
     )
     pipeline = VoicePipeline(
-        api_key=api_key,
+        api_key=ctx.obj["api_key"],
+        provider=ctx.obj["provider"],
         model=ctx.obj["model"],
-        tts_backend=backend,
+        enable_thinking=ctx.obj["enable_thinking"],
+        local_model_path=ctx.obj["local_model_path"],
+        llamacpp_bin=ctx.obj["llamacpp_bin"],
+        site_url=os.getenv("OPENROUTER_SITE_URL"),
+        site_name=os.getenv("OPENROUTER_SITE_NAME"),
+        tts_backend=backend or _default_tts_backend(),
         tts_voice=voice,
         tts_rate=rate,
         tts_volume=volume,
         speak=not no_speak,
         system_prompt=system,
+        use_tools=tools,
         config=config,
     )
 
@@ -526,7 +635,7 @@ def test_stt(
         pipeline = VoicePipeline(api_key="stt-test", model="stt-test", speak=False, config=config)
         if simulate:
             click.echo(f"Prompt: {prompt_text}")
-            tts = TTSManager(backend=backend)
+            tts = TTSManager(backend=backend or _default_tts_backend())
             if voice:
                 tts.set_voice(voice)
             tts.speak(prompt_text)

@@ -1,7 +1,6 @@
 """Tkinter GUI for the talking bot with modern styling."""
 
 import os
-import sys
 import threading
 import tkinter as tk
 from pathlib import Path
@@ -9,14 +8,27 @@ from tkinter import ttk, messagebox
 
 from dotenv import load_dotenv
 
-from talkbot.openrouter import OpenRouterClient
-from talkbot.tts import TTSManager
-from talkbot.voice import MissingVoiceDependencies, VoiceConfig, VoicePipeline
-
-# Load environment variables from .env file
+# Load environment variables from .env file before importing runtime modules.
 env_path = Path.cwd() / ".env"
 if env_path.exists():
     load_dotenv(env_path)
+
+from talkbot.llm import LLMProviderError, create_llm_client, supports_tools
+from talkbot.thinking import apply_thinking_system_prompt, env_thinking_default
+from talkbot.text_utils import strip_thinking
+from talkbot.tools import register_all_tools
+from talkbot.tts import TTSManager
+from talkbot.voice import MissingVoiceDependencies, VoiceConfig, VoicePipeline
+
+
+def _default_local_model_path() -> str:
+    configured = os.getenv("TALKBOT_LOCAL_MODEL_PATH", "").strip()
+    if configured:
+        return configured
+    default_path = Path("models/default.gguf")
+    if default_path.exists():
+        return str(default_path)
+    return ""
 
 
 class ModernStyle:
@@ -158,11 +170,14 @@ class RoundedButton(tk.Canvas):
 class TalkBotGUI:
     """GUI for the TalkBot application with modern styling."""
 
-    def __init__(self, api_key: str = None, model: str = "openai/gpt-3.5-turbo"):
+    def __init__(self, api_key: str = None, model: str = None):
         """Initialize the GUI."""
         self.api_key = api_key or os.getenv("OPENROUTER_API_KEY")
-        self.model = model
-        self.client: OpenRouterClient = None
+        self.provider = os.getenv("TALKBOT_LLM_PROVIDER", "local")
+        self.model = model or os.getenv("TALKBOT_DEFAULT_MODEL", "qwen/qwen3-1.7b")
+        self.local_model_path = _default_local_model_path()
+        self.llamacpp_bin = os.getenv("TALKBOT_LLAMACPP_BIN", "llama-cli")
+        self.client = None
         self.tts: TTSManager = None
         self.speaking_thread: threading.Thread = None
         self.response_thread: threading.Thread = None
@@ -172,6 +187,8 @@ class TalkBotGUI:
         self.stt_test_pipeline: VoicePipeline | None = None
         self.stt_test_active = False
         self.stop_requested = threading.Event()
+        self.default_tts_backend = os.getenv("TALKBOT_DEFAULT_TTS_BACKEND", "kittentts")
+        self.enable_thinking = env_thinking_default()
 
         self.root = tk.Tk()
         self.root.title("TalkBot - AI Talking Assistant")
@@ -255,6 +272,22 @@ class TalkBotGUI:
             foreground=ModernStyle.TEXT_PRIMARY,
             insertcolor=ModernStyle.TEXT_PRIMARY,
         )
+        style.configure(
+            "Modern.TNotebook",
+            background=ModernStyle.BG_PRIMARY,
+            borderwidth=0,
+        )
+        style.configure(
+            "Modern.TNotebook.Tab",
+            background=ModernStyle.BG_TERTIARY,
+            foreground=ModernStyle.TEXT_SECONDARY,
+            padding=(10, 6),
+        )
+        style.map(
+            "Modern.TNotebook.Tab",
+            background=[("selected", ModernStyle.BG_SECONDARY)],
+            foreground=[("selected", ModernStyle.TEXT_PRIMARY)],
+        )
 
     def _create_widgets(self) -> None:
         """Create the GUI widgets."""
@@ -304,6 +337,26 @@ class TalkBotGUI:
 
         tk.Label(
             row1,
+            text="Provider:",
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+        ).pack(side=tk.LEFT)
+
+        self.provider_var = tk.StringVar(value=self.provider)
+        self.provider_combo = ttk.Combobox(
+            row1,
+            textvariable=self.provider_var,
+            values=["local", "openrouter"],
+            width=12,
+            style="Modern.TCombobox",
+            state="readonly",
+        )
+        self.provider_combo.pack(side=tk.LEFT, padx=(10, 20))
+        self.provider_combo.bind("<<ComboboxSelected>>", self._on_provider_changed)
+
+        tk.Label(
+            row1,
             text="Model:",
             bg=ModernStyle.BG_SECONDARY,
             fg=ModernStyle.TEXT_SECONDARY,
@@ -315,14 +368,10 @@ class TalkBotGUI:
             row1,
             textvariable=self.model_var,
             values=[
-                "openai/gpt-3.5-turbo",
-                "openai/gpt-4",
-                "anthropic/claude-3-haiku",
-                "anthropic/claude-3-sonnet",
-                "anthropic/claude-3-opus",
-                "google/gemini-flash-1.5",
-                "meta-llama/llama-3.1-8b-instruct",
-                "meta-llama/llama-3.1-70b-instruct",
+                "qwen/qwen3-1.7b",
+                "qwen/qwen3-4b-instruct",
+                "openai/gpt-4o-mini",
+                "anthropic/claude-3.5-haiku",
             ],
             width=35,
             style="Modern.TCombobox",
@@ -337,7 +386,7 @@ class TalkBotGUI:
             font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
         ).pack(side=tk.LEFT)
 
-        self.backend_var = tk.StringVar(value="edge-tts")
+        self.backend_var = tk.StringVar(value=self.default_tts_backend)
         backend_combo = ttk.Combobox(
             row1,
             textvariable=self.backend_var,
@@ -359,9 +408,57 @@ class TalkBotGUI:
         )
         self.backend_status_label.pack(side=tk.LEFT)
 
+        self.tools_var = tk.BooleanVar(value=False)
+        tools_check = tk.Checkbutton(
+            row1,
+            text="Use Tools",
+            variable=self.tools_var,
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            selectcolor=ModernStyle.BG_TERTIARY,
+            activebackground=ModernStyle.BG_SECONDARY,
+            activeforeground=ModernStyle.TEXT_PRIMARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+        )
+        tools_check.pack(side=tk.LEFT, padx=(12, 0))
+
+        self.thinking_var = tk.BooleanVar(value=self.enable_thinking)
+        thinking_check = tk.Checkbutton(
+            row1,
+            text="Thinking",
+            variable=self.thinking_var,
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            selectcolor=ModernStyle.BG_TERTIARY,
+            activebackground=ModernStyle.BG_SECONDARY,
+            activeforeground=ModernStyle.TEXT_PRIMARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+        )
+        thinking_check.pack(side=tk.LEFT, padx=(10, 0))
+
         # Voice row
         row1b = tk.Frame(settings_frame, bg=ModernStyle.BG_SECONDARY)
         row1b.pack(fill=tk.X, pady=(0, 10))
+
+        tk.Label(
+            row1b,
+            text="Local GGUF:",
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+        ).pack(side=tk.LEFT)
+        self.local_model_path_var = tk.StringVar(value=self.local_model_path)
+        self.local_model_entry = tk.Entry(
+            row1b,
+            textvariable=self.local_model_path_var,
+            width=34,
+            bg=ModernStyle.BG_TERTIARY,
+            fg=ModernStyle.TEXT_PRIMARY,
+            insertbackground=ModernStyle.TEXT_PRIMARY,
+            relief=tk.FLAT,
+            bd=4,
+        )
+        self.local_model_entry.pack(side=tk.LEFT, padx=(8, 12))
 
         tk.Label(
             row1b,
@@ -684,18 +781,17 @@ class TalkBotGUI:
             anchor=tk.W,
         ).pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        # Chat display
-        chat_frame = tk.LabelFrame(
-            main_container,
-            text=" Conversation ",
-            bg=ModernStyle.BG_SECONDARY,
-            fg=ModernStyle.TEXT_PRIMARY,
-            font=(ModernStyle.FONT_FAMILY, 10, "bold"),
-        )
-        chat_frame.grid(row=2, column=0, sticky="nsew", pady=(0, 15))
+        # Conversation + prompt tabs
+        notebook = ttk.Notebook(main_container, style="Modern.TNotebook")
+        notebook.grid(row=2, column=0, sticky="nsew", pady=(0, 15))
+
+        tab_chat = tk.Frame(notebook, bg=ModernStyle.BG_SECONDARY)
+        tab_prompt = tk.Frame(notebook, bg=ModernStyle.BG_SECONDARY)
+        notebook.add(tab_chat, text="Conversation")
+        notebook.add(tab_prompt, text="Prompt")
 
         self.chat_history = tk.Text(
-            chat_frame,
+            tab_chat,
             wrap=tk.WORD,
             bg=ModernStyle.BG_TERTIARY,
             fg=ModernStyle.TEXT_PRIMARY,
@@ -720,6 +816,30 @@ class TalkBotGUI:
             font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL, "bold"),
         )
         self.chat_history.tag_configure("text", foreground=ModernStyle.TEXT_PRIMARY)
+
+        prompt_help = tk.Label(
+            tab_prompt,
+            text="System prompt used for text and voice conversations.",
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+            anchor=tk.W,
+        )
+        prompt_help.pack(fill=tk.X, padx=8, pady=(8, 4))
+
+        self.prompt_text = tk.Text(
+            tab_prompt,
+            wrap=tk.WORD,
+            bg=ModernStyle.BG_TERTIARY,
+            fg=ModernStyle.TEXT_PRIMARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+            padx=10,
+            pady=10,
+            relief=tk.FLAT,
+            bd=0,
+            height=14,
+        )
+        self.prompt_text.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
 
         # Input area
         input_frame = tk.Frame(main_container, bg=ModernStyle.BG_PRIMARY)
@@ -822,6 +942,7 @@ class TalkBotGUI:
         self.test_btn.pack(side=tk.LEFT)
 
         self._set_voice_controls(active=False)
+        self._on_provider_changed()
 
     def _setup_tts(self) -> None:
         """Setup TTS and populate voice list."""
@@ -890,6 +1011,38 @@ class TalkBotGUI:
         idx = value.split(":", 1)[0].strip()
         return int(idx) if idx.isdigit() else value
 
+    def _provider_ready(self) -> bool:
+        provider = self.provider_var.get()
+        if provider == "openrouter":
+            return bool(self.api_key)
+        return bool(self.local_model_path_var.get().strip())
+
+    def _create_client(self):
+        return create_llm_client(
+            provider=self.provider_var.get(),
+            model=self.model_var.get(),
+            api_key=self.api_key,
+            site_url=os.getenv("OPENROUTER_SITE_URL"),
+            site_name=os.getenv("OPENROUTER_SITE_NAME"),
+            local_model_path=self.local_model_path_var.get().strip() or None,
+            llamacpp_bin=self.llamacpp_bin,
+            enable_thinking=self.thinking_var.get(),
+        )
+
+    def _on_provider_changed(self, event=None) -> None:
+        del event
+        provider = self.provider_var.get()
+        if provider == "openrouter":
+            self.local_model_entry.config(state=tk.DISABLED)
+            self.status_var.set("Provider: OpenRouter")
+        else:
+            self.local_model_entry.config(state=tk.NORMAL)
+            self.status_var.set("Provider: Local llama.cpp")
+
+    def _get_system_prompt(self) -> str | None:
+        text = self.prompt_text.get("1.0", tk.END).strip()
+        return apply_thinking_system_prompt(text or None, self.thinking_var.get())
+
     def _set_voice_controls(self, active: bool) -> None:
         """Update visual state for Start/Stop voice controls."""
         if active:
@@ -927,11 +1080,17 @@ class TalkBotGUI:
         """Start local half-duplex voice chat."""
         if self.voice_active:
             return
-        if not self.api_key:
-            messagebox.showerror(
-                "API Key Required",
-                "Please set the OPENROUTER_API_KEY environment variable.",
-            )
+        if not self._provider_ready():
+            if self.provider_var.get() == "openrouter":
+                messagebox.showerror(
+                    "Provider Not Ready",
+                    "OpenRouter selected but OPENROUTER_API_KEY is not set.",
+                )
+            else:
+                messagebox.showerror(
+                    "Provider Not Ready",
+                    "Local provider selected but Local GGUF path is empty.",
+                )
             return
 
         self.voice_active = True
@@ -954,11 +1113,19 @@ class TalkBotGUI:
                 )
                 self.voice_pipeline = VoicePipeline(
                     api_key=self.api_key,
+                    provider=self.provider_var.get(),
                     model=self.model_var.get(),
+                    enable_thinking=self.thinking_var.get(),
+                    local_model_path=self.local_model_path_var.get().strip() or None,
+                    llamacpp_bin=self.llamacpp_bin,
+                    site_url=os.getenv("OPENROUTER_SITE_URL"),
+                    site_name=os.getenv("OPENROUTER_SITE_NAME"),
                     tts_backend=self.backend_var.get(),
                     tts_rate=self.rate_var.get(),
                     tts_volume=self.volume_var.get(),
                     speak=self.speak_var.get(),
+                    system_prompt=self._get_system_prompt(),
+                    use_tools=self.tools_var.get(),
                     config=cfg,
                 )
                 self.voice_pipeline.run(
@@ -971,6 +1138,15 @@ class TalkBotGUI:
                     lambda msg=error_text: messagebox.showerror(
                         "Voice Dependencies",
                         f"{msg}\nInstall with: uv sync --extra voice",
+                    ),
+                )
+            except LLMProviderError as e:
+                error_text = str(e)
+                self.root.after(
+                    0,
+                    lambda msg=error_text: messagebox.showerror(
+                        "LLM Provider Error",
+                        msg,
                     ),
                 )
             except Exception as e:
@@ -1060,7 +1236,8 @@ class TalkBotGUI:
                 is_user=False,
             )
         elif event_type == "response":
-            self._add_message("AI", event.get("text", ""), is_user=False)
+            visible_response = strip_thinking(event.get("text", ""))
+            self._add_message("AI", visible_response, is_user=False)
             self.voice_phase_var.set("Voice: listening")
         elif event_type == "no_speech_detected":
             max_rms = float(event.get("max_rms", 0.0))
@@ -1112,6 +1289,8 @@ class TalkBotGUI:
                     api_key=self.api_key or "stt-test",
                     model=self.model_var.get(),
                     speak=False,
+                    system_prompt=self._get_system_prompt(),
+                    use_tools=self.tools_var.get(),
                     config=cfg,
                 )
                 transcript = self.stt_test_pipeline.transcribe_once(
@@ -1195,6 +1374,8 @@ class TalkBotGUI:
                     api_key=self.api_key or "stt-test",
                     model=self.model_var.get(),
                     speak=False,
+                    system_prompt=self._get_system_prompt(),
+                    use_tools=self.tools_var.get(),
                     config=cfg,
                 )
                 self.root.after(
@@ -1289,17 +1470,23 @@ class TalkBotGUI:
                         break
 
             # Get response
-            with OpenRouterClient(
-                api_key=self.api_key, model=self.model_var.get()
-            ) as client:
-                response = client.simple_chat(message)
+            with self._create_client() as client:
+                system_prompt = self._get_system_prompt()
+                if self.tools_var.get():
+                    if supports_tools(client):
+                        register_all_tools(client)
+                    response = client.chat_with_system_tools(
+                        message, system_prompt=system_prompt
+                    )
+                else:
+                    response = client.simple_chat(message, system_prompt=system_prompt)
 
                 if self.stop_requested.is_set():
                     return
 
             # Update UI in main thread
             self.root.after(0, self._on_response, response)
-        except Exception as e:
+        except (LLMProviderError, Exception) as e:
             if not self.stop_requested.is_set():
                 self.root.after(0, self._on_error, str(e))
 
@@ -1309,12 +1496,13 @@ class TalkBotGUI:
             self._reset_ui()
             return
 
-        self._add_message("AI", response, is_user=False)
+        visible_response = strip_thinking(response)
+        self._add_message("AI", visible_response, is_user=False)
 
         if self.speak_var.get() and self.tts and not self.stop_requested.is_set():
             self.status_var.set("Speaking...")
             self.speaking_thread = threading.Thread(
-                target=self._speak_response, args=(response,)
+                target=self._speak_response, args=(visible_response,)
             )
             self.speaking_thread.daemon = True
             self.speaking_thread.start()
@@ -1432,13 +1620,6 @@ class TalkBotGUI:
 
     def run(self) -> None:
         """Run the GUI."""
-        if not self.api_key:
-            messagebox.showerror(
-                "API Key Required",
-                "Please set the OPENROUTER_API_KEY environment variable.",
-            )
-            sys.exit(1)
-
         self.root.mainloop()
 
 

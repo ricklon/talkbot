@@ -1,6 +1,8 @@
 """Text-to-speech module with edge-tts as primary and pyttsx3 as fallback."""
 
 import asyncio
+import contextlib
+import logging
 import os
 import queue
 import subprocess
@@ -8,6 +10,11 @@ import tempfile
 import threading
 from pathlib import Path
 from typing import Optional
+
+# Keep startup noise low when local HF-backed libraries initialize without a token.
+logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
+# Avoid hf-xet token warning noise in default local setup.
+os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
 
 # Try to import edge-tts, fall back to pyttsx3
 try:
@@ -243,14 +250,40 @@ class KittenTTSBackend:
     ]
     DEFAULT_MODEL = None
 
+    @staticmethod
+    @contextlib.contextmanager
+    def _suppress_stdio_fds():
+        """Suppress low-level stdout/stderr noise from native deps during init."""
+        try:
+            stdout_fd = os.dup(1)
+            stderr_fd = os.dup(2)
+        except OSError:
+            # If fd duplication fails, continue without suppression.
+            yield
+            return
+
+        try:
+            with open(os.devnull, "w", encoding="utf-8") as devnull:
+                os.dup2(devnull.fileno(), 1)
+                os.dup2(devnull.fileno(), 2)
+                yield
+        finally:
+            try:
+                os.dup2(stdout_fd, 1)
+                os.dup2(stderr_fd, 2)
+            finally:
+                os.close(stdout_fd)
+                os.close(stderr_fd)
+
     def __init__(self, voice: Optional[str] = None, model: Optional[str] = None):
         if not KITTENTTS_AVAILABLE:
             raise RuntimeError("kittentts not available")
         # Let KittenTTS select its own default model unless explicitly overridden.
-        if model or self.DEFAULT_MODEL:
-            self._model = _KittenTTS(model or self.DEFAULT_MODEL)
-        else:
-            self._model = _KittenTTS()
+        with self._suppress_stdio_fds():
+            if model or self.DEFAULT_MODEL:
+                self._model = _KittenTTS(model or self.DEFAULT_MODEL)
+            else:
+                self._model = _KittenTTS()
         model_voices = self._get_model_voices()
         self.voice = voice or (model_voices[0] if model_voices else self.VOICES[0])
 

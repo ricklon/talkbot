@@ -13,6 +13,10 @@ wheels/
 .env
 sample.wav
 
+# Local model weights
+models/*.gguf
+models/*.GGUF
+
 # IDE
 .vscode/
 .idea/

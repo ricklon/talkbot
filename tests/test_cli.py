@@ -17,6 +17,13 @@ class FakeClient:
     def simple_chat(self, message, system_prompt=None):
         return f"reply:{message}:{system_prompt}"
 
+    def chat_with_system_tools(self, message, system_prompt=None):
+        return f"tool-reply:{message}:{system_prompt}"
+
+
+def fake_create_client(**kwargs):
+    return FakeClient(api_key=kwargs.get("api_key"), model=kwargs.get("model"))
+
 
 class FakeTTS:
     def __init__(self, rate=175, volume=1.0, backend=None):
@@ -56,24 +63,38 @@ class FakeVoicePipeline:
         self,
         api_key,
         model,
+        provider="local",
+        enable_thinking=False,
+        local_model_path=None,
+        llamacpp_bin=None,
+        site_url=None,
+        site_name=None,
         tts_backend=None,
         tts_voice=None,
         tts_rate=175,
         tts_volume=1.0,
         speak=True,
         system_prompt=None,
+        use_tools=False,
         config=None,
     ):
         FakeVoicePipeline.calls.append(
             {
                 "api_key": api_key,
                 "model": model,
+                "provider": provider,
+                "enable_thinking": enable_thinking,
+                "local_model_path": local_model_path,
+                "llamacpp_bin": llamacpp_bin,
+                "site_url": site_url,
+                "site_name": site_name,
                 "tts_backend": tts_backend,
                 "tts_voice": tts_voice,
                 "tts_rate": tts_rate,
                 "tts_volume": tts_volume,
                 "speak": speak,
                 "system_prompt": system_prompt,
+                "use_tools": use_tools,
                 "config": config,
             }
         )
@@ -93,7 +114,7 @@ class FakeVoicePipeline:
 
 
 def test_chat_command_no_speak(monkeypatch):
-    monkeypatch.setattr(cli_module, "OpenRouterClient", FakeClient)
+    monkeypatch.setattr(cli_module, "create_llm_client", fake_create_client)
 
     runner = CliRunner()
     result = runner.invoke(
@@ -114,7 +135,7 @@ def test_chat_command_speak_uses_tts(monkeypatch):
         tts_instances.append(obj)
         return obj
 
-    monkeypatch.setattr(cli_module, "OpenRouterClient", FakeClient)
+    monkeypatch.setattr(cli_module, "create_llm_client", fake_create_client)
     monkeypatch.setattr(cli_module, "TTSManager", fake_tts_factory)
 
     runner = CliRunner()
@@ -141,7 +162,22 @@ def test_chat_command_speak_uses_tts(monkeypatch):
     assert len(tts_instances) == 1
     assert tts_instances[0].backend == "pyttsx3"
     assert tts_instances[0].voice == "demo-voice"
-    assert tts_instances[0].spoken == ["reply:Hi:None"]
+    assert len(tts_instances[0].spoken) == 1
+    assert tts_instances[0].spoken[0].startswith("reply:Hi:")
+
+
+def test_chat_command_tools_mode(monkeypatch):
+    monkeypatch.setattr(cli_module, "create_llm_client", fake_create_client)
+    monkeypatch.setattr(cli_module, "register_all_tools", lambda _client: None)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli_module.cli,
+        ["--api-key", "k", "chat", "Hi", "--no-speak", "--tools", "--system", "sys"],
+    )
+
+    assert result.exit_code == 0
+    assert "AI: tool-reply:Hi:sys" in result.output
 
 
 def test_voices_command_passes_backend(monkeypatch):
@@ -251,6 +287,8 @@ def test_voice_chat_command_uses_pipeline(monkeypatch):
     assert len(FakeVoicePipeline.calls) == 1
     call = FakeVoicePipeline.calls[0]
     assert call["api_key"] == "k"
+    assert call["provider"] == "local"
+    assert call["enable_thinking"] is False
     assert call["model"] == "m"
     assert call["tts_backend"] == "kittentts"
     assert call["speak"] is False
