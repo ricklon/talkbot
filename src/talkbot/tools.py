@@ -4,8 +4,40 @@ import datetime
 import json
 import math
 import random
+import threading
+import time
+from pathlib import Path
 from typing import Any
 
+
+# ---------------------------------------------------------------------------
+# Data directory for persistent storage
+# ---------------------------------------------------------------------------
+
+def _data_dir() -> Path:
+    d = Path.home() / ".talkbot"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _load_json(filename: str) -> dict:
+    p = _data_dir() / filename
+    if p.exists():
+        try:
+            return json.loads(p.read_text())
+        except Exception:
+            return {}
+    return {}
+
+
+def _save_json(filename: str, data: dict) -> None:
+    p = _data_dir() / filename
+    p.write_text(json.dumps(data, indent=2))
+
+
+# ---------------------------------------------------------------------------
+# Time / date
+# ---------------------------------------------------------------------------
 
 def get_current_time() -> str:
     """Get the current date and time."""
@@ -17,6 +49,10 @@ def get_current_date() -> str:
     """Get the current date."""
     return datetime.date.today().isoformat()
 
+
+# ---------------------------------------------------------------------------
+# Calculator
+# ---------------------------------------------------------------------------
 
 def calculator(expression: str) -> str:
     """Calculate a mathematical expression safely.
@@ -38,12 +74,15 @@ def calculator(expression: str) -> str:
     }
 
     try:
-        # Only allow basic math operations
         result = eval(expression, {"__builtins__": {}}, allowed_names)
         return str(result)
     except Exception as e:
         return f"Error: {str(e)}"
 
+
+# ---------------------------------------------------------------------------
+# Dice / randomness
+# ---------------------------------------------------------------------------
 
 def roll_dice(sides: int = 6, count: int = 1) -> str:
     """Roll dice and return the results.
@@ -81,7 +120,258 @@ def random_number(min_val: int = 1, max_val: int = 100) -> str:
     return str(random.randint(min_val, max_val))
 
 
+# ---------------------------------------------------------------------------
+# Alert callback — lets callers (CLI, GUI) inject a speak function so timers
+# fire through TTS rather than just printing to stdout.
+# ---------------------------------------------------------------------------
+
+_alert_callback: Any = None  # callable(text: str) | None
+
+
+def set_alert_callback(fn) -> None:
+    """Register a function to be called when a timer fires (e.g. tts.speak)."""
+    global _alert_callback
+    _alert_callback = fn
+
+
+def clear_alert_callback() -> None:
+    """Remove any registered alert callback."""
+    global _alert_callback
+    _alert_callback = None
+
+
+def _fire_alert(text: str) -> None:
+    """Deliver an alert via TTS callback if available, else print."""
+    print(f"\n[TIMER] {text}", flush=True)
+    if _alert_callback is not None:
+        try:
+            _alert_callback(text)
+        except Exception:
+            pass
+
+
+# ---------------------------------------------------------------------------
+# Timer registry
+# ---------------------------------------------------------------------------
+
+# Maps timer_id -> (label, cancel_event, fire_at_timestamp)
+_timers: dict[str, tuple[str, threading.Event, float]] = {}
+_timer_lock = threading.Lock()
+_timer_counter = 0
+
+
+def set_timer(seconds: int, label: str = "") -> str:
+    """Set a timer that fires after the specified number of seconds.
+
+    Args:
+        seconds: How many seconds to wait before the timer fires
+        label: Optional name for the timer (e.g., "pasta", "meeting")
+    """
+    global _timer_counter
+    if seconds <= 0:
+        return "Error: seconds must be a positive integer"
+
+    display = label if label else f"{seconds}-second timer"
+
+    with _timer_lock:
+        _timer_counter += 1
+        timer_id = str(_timer_counter)
+        cancel_event = threading.Event()
+        _timers[timer_id] = (display, cancel_event, time.time() + seconds)
+
+    def _fire() -> None:
+        cancelled = cancel_event.wait(timeout=seconds)
+        with _timer_lock:
+            _timers.pop(timer_id, None)
+        if not cancelled:
+            _fire_alert(f"{display} is done!")
+
+    threading.Thread(target=_fire, daemon=True).start()
+    return f"Timer #{timer_id} set. '{display}' will fire in {seconds} seconds."
+
+
+def cancel_timer(timer_id: str) -> str:
+    """Cancel an active timer by its ID.
+
+    Args:
+        timer_id: The timer ID returned by set_timer (e.g., "1")
+    """
+    with _timer_lock:
+        entry = _timers.get(timer_id)
+    if not entry:
+        return f"No active timer with ID '{timer_id}'. Use list_timers to see active timers."
+    label, cancel_event, _ = entry
+    cancel_event.set()
+    return f"Timer #{timer_id} ('{label}') cancelled."
+
+
+def list_timers() -> str:
+    """List all currently active timers and their remaining time."""
+    with _timer_lock:
+        snapshot = dict(_timers)
+    if not snapshot:
+        return "No active timers."
+    now = time.time()
+    lines = []
+    for tid, (label, _, fire_at) in snapshot.items():
+        remaining = max(0, int(fire_at - now))
+        lines.append(f"#{tid}: '{label}' — {remaining}s remaining")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Web search
+# ---------------------------------------------------------------------------
+
+def web_search(query: str) -> str:
+    """Search the web for an instant answer using DuckDuckGo.
+
+    Args:
+        query: The search query
+    """
+    try:
+        import httpx
+
+        resp = httpx.get(
+            "https://api.duckduckgo.com/",
+            params={"q": query, "format": "json", "no_redirect": "1", "no_html": "1"},
+            timeout=8.0,
+            headers={"User-Agent": "TalkBot/1.0"},
+        )
+        data = resp.json()
+
+        parts: list[str] = []
+        if data.get("Answer"):
+            parts.append(data["Answer"])
+        abstract = data.get("AbstractText") or data.get("Abstract") or ""
+        if abstract and abstract not in parts:
+            parts.append(abstract)
+        # Include top related topics if nothing else found
+        if not parts:
+            for topic in data.get("RelatedTopics", [])[:3]:
+                text = topic.get("Text", "")
+                if text:
+                    parts.append(text)
+
+        return "\n".join(parts) if parts else "No instant answer found for that query."
+    except Exception as e:
+        return f"Search error: {e}"
+
+
+# ---------------------------------------------------------------------------
+# Shopping / named lists
+# ---------------------------------------------------------------------------
+
+_LISTS_FILE = "lists.json"
+
+
+def add_to_list(item: str, list_name: str = "shopping") -> str:
+    """Add an item to a named list (default: shopping list).
+
+    Args:
+        item: The item to add
+        list_name: Which list to add to (default 'shopping')
+    """
+    data = _load_json(_LISTS_FILE)
+    lst = data.setdefault(list_name, [])
+    if item in lst:
+        return f"'{item}' is already on the {list_name} list."
+    lst.append(item)
+    _save_json(_LISTS_FILE, data)
+    return f"Added '{item}' to the {list_name} list."
+
+
+def get_list(list_name: str = "shopping") -> str:
+    """Get all items on a named list.
+
+    Args:
+        list_name: Which list to retrieve (default 'shopping')
+    """
+    data = _load_json(_LISTS_FILE)
+    lst = data.get(list_name, [])
+    if not lst:
+        return f"The {list_name} list is empty."
+    items = "\n".join(f"- {item}" for item in lst)
+    return f"{list_name.capitalize()} list:\n{items}"
+
+
+def remove_from_list(item: str, list_name: str = "shopping") -> str:
+    """Remove an item from a named list.
+
+    Args:
+        item: The item to remove
+        list_name: Which list to remove from (default 'shopping')
+    """
+    data = _load_json(_LISTS_FILE)
+    lst = data.get(list_name, [])
+    # Case-insensitive match
+    matches = [x for x in lst if x.lower() == item.lower()]
+    if not matches:
+        return f"'{item}' was not found on the {list_name} list."
+    for m in matches:
+        lst.remove(m)
+    data[list_name] = lst
+    _save_json(_LISTS_FILE, data)
+    return f"Removed '{matches[0]}' from the {list_name} list."
+
+
+def clear_list(list_name: str = "shopping") -> str:
+    """Clear all items from a named list.
+
+    Args:
+        list_name: Which list to clear (default 'shopping')
+    """
+    data = _load_json(_LISTS_FILE)
+    data[list_name] = []
+    _save_json(_LISTS_FILE, data)
+    return f"Cleared the {list_name} list."
+
+
+# ---------------------------------------------------------------------------
+# Memory / user preferences
+# ---------------------------------------------------------------------------
+
+_MEMORY_FILE = "memory.json"
+
+
+def remember(key: str, value: str) -> str:
+    """Store a user preference or piece of information for later recall.
+
+    Args:
+        key: The name of the preference (e.g., 'favorite_music_service', 'name')
+        value: The value to remember
+    """
+    data = _load_json(_MEMORY_FILE)
+    data[key] = value
+    _save_json(_MEMORY_FILE, data)
+    return f"Remembered: {key} = {value}"
+
+
+def recall(key: str) -> str:
+    """Recall a previously stored preference or piece of information.
+
+    Args:
+        key: The name of the preference to look up
+    """
+    data = _load_json(_MEMORY_FILE)
+    if key not in data:
+        return f"No memory found for '{key}'."
+    return f"{key}: {data[key]}"
+
+
+def recall_all() -> str:
+    """Recall all stored preferences and memories."""
+    data = _load_json(_MEMORY_FILE)
+    if not data:
+        return "No memories stored yet."
+    lines = "\n".join(f"- {k}: {v}" for k, v in data.items())
+    return f"All memories:\n{lines}"
+
+
+# ---------------------------------------------------------------------------
 # Tool definitions for LLM
+# ---------------------------------------------------------------------------
+
 TOOL_DEFINITIONS = {
     "get_current_time": {
         "description": "Get the current date and time",
@@ -146,10 +436,150 @@ TOOL_DEFINITIONS = {
             "required": [],
         },
     },
+    "set_timer": {
+        "description": "Set a timer that fires after a specified number of seconds. Returns a timer ID that can be used to cancel it.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "seconds": {
+                    "type": "integer",
+                    "description": "Number of seconds to wait before the timer fires",
+                },
+                "label": {
+                    "type": "string",
+                    "description": "Optional name for the timer (e.g., 'pasta', '10-minute break')",
+                    "default": "",
+                },
+            },
+            "required": ["seconds"],
+        },
+    },
+    "cancel_timer": {
+        "description": "Cancel an active timer by its ID",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "timer_id": {
+                    "type": "string",
+                    "description": "The timer ID returned by set_timer (e.g., '1')",
+                }
+            },
+            "required": ["timer_id"],
+        },
+    },
+    "list_timers": {
+        "description": "List all currently active timers and their remaining time",
+        "parameters": {"type": "object", "properties": {}, "required": []},
+    },
+    "web_search": {
+        "description": "Search the web for an instant answer using DuckDuckGo",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The search query",
+                }
+            },
+            "required": ["query"],
+        },
+    },
+    "add_to_list": {
+        "description": "Add an item to a named list (default: shopping list)",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "item": {"type": "string", "description": "The item to add"},
+                "list_name": {
+                    "type": "string",
+                    "description": "Which list to add to",
+                    "default": "shopping",
+                },
+            },
+            "required": ["item"],
+        },
+    },
+    "get_list": {
+        "description": "Get all items on a named list (default: shopping list)",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "list_name": {
+                    "type": "string",
+                    "description": "Which list to retrieve",
+                    "default": "shopping",
+                }
+            },
+            "required": [],
+        },
+    },
+    "remove_from_list": {
+        "description": "Remove an item from a named list (default: shopping list)",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "item": {"type": "string", "description": "The item to remove"},
+                "list_name": {
+                    "type": "string",
+                    "description": "Which list to remove from",
+                    "default": "shopping",
+                },
+            },
+            "required": ["item"],
+        },
+    },
+    "clear_list": {
+        "description": "Clear all items from a named list (default: shopping list)",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "list_name": {
+                    "type": "string",
+                    "description": "Which list to clear",
+                    "default": "shopping",
+                }
+            },
+            "required": [],
+        },
+    },
+    "remember": {
+        "description": "Store a user preference or piece of information for later recall",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string",
+                    "description": "The name of the preference (e.g., 'favorite_music_service', 'name')",
+                },
+                "value": {"type": "string", "description": "The value to remember"},
+            },
+            "required": ["key", "value"],
+        },
+    },
+    "recall": {
+        "description": "Recall a previously stored preference or piece of information by key",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string",
+                    "description": "The name of the preference to look up",
+                }
+            },
+            "required": ["key"],
+        },
+    },
+    "recall_all": {
+        "description": "Recall all stored user preferences and memories",
+        "parameters": {"type": "object", "properties": {}, "required": []},
+    },
 }
 
 
+# ---------------------------------------------------------------------------
 # Tool registry
+# ---------------------------------------------------------------------------
+
 TOOLS = {
     "get_current_time": get_current_time,
     "get_current_date": get_current_date,
@@ -157,6 +587,17 @@ TOOLS = {
     "roll_dice": roll_dice,
     "flip_coin": flip_coin,
     "random_number": random_number,
+    "set_timer": set_timer,
+    "cancel_timer": cancel_timer,
+    "list_timers": list_timers,
+    "web_search": web_search,
+    "add_to_list": add_to_list,
+    "get_list": get_list,
+    "remove_from_list": remove_from_list,
+    "clear_list": clear_list,
+    "remember": remember,
+    "recall": recall,
+    "recall_all": recall_all,
 }
 
 
