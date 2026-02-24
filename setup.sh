@@ -27,7 +27,7 @@ EOF
   esac
 fi
 
-UV_SKIP_WHEEL_FILENAME_CHECK=1 uv tool install --reinstall \
+uv tool install --reinstall \
   --python /usr/bin/python3.12 . \
   --with llama-cpp-python \
   --with faster-whisper \

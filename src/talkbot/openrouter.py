@@ -43,6 +43,7 @@ class OpenRouterClient:
         # Tool registry
         self.tools: dict[str, Callable] = {}
         self.tool_definitions: list[dict] = []
+        self.last_usage: dict = {}
 
     def register_tool(
         self, name: str, func: Callable, description: str, parameters: dict
@@ -121,8 +122,9 @@ class OpenRouterClient:
             json=payload,
         )
         response.raise_for_status()
-
-        return response.json()
+        data = response.json()
+        self.last_usage = data.get("usage") or {}
+        return data
 
     def chat_with_tools(
         self,
