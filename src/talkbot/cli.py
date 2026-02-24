@@ -16,7 +16,7 @@ if env_path.exists():
 from talkbot.llm import LLMProviderError, create_llm_client, supports_tools
 from talkbot.thinking import apply_thinking_system_prompt, env_thinking_default
 from talkbot.text_utils import strip_thinking
-from talkbot.tools import register_all_tools
+from talkbot.tools import register_all_tools, set_alert_callback
 from talkbot.tts import TTSManager
 from talkbot.voice import (
     MissingVoiceDependencies,
@@ -184,6 +184,7 @@ def chat(
                 tts = TTSManager(rate=rate, volume=volume, backend=selected_backend)
                 if voice:
                     tts.set_voice(voice)
+                set_alert_callback(tts.speak)
                 tts.speak(visible_response)
     except (ValueError, LLMProviderError) as e:
         click.echo(f"Error: {e}", err=True)
@@ -226,6 +227,7 @@ def say(
         tts = TTSManager(rate=rate, volume=volume, backend=selected_backend)
         if voice:
             tts.set_voice(voice)
+        set_alert_callback(tts.speak)
 
         with _create_client_from_ctx(ctx) as client:
             click.echo("Interactive mode started. Type 'exit' or 'quit' to stop.")
@@ -412,6 +414,7 @@ def tool(
                 tts = TTSManager(rate=rate, volume=volume, backend=selected_backend)
                 if voice:
                     tts.set_voice(voice)
+                set_alert_callback(tts.speak)
                 tts.speak(visible_response)
     except (ValueError, LLMProviderError) as e:
         click.echo(f"Error: {e}", err=True)
@@ -485,6 +488,10 @@ def voice_chat(
         if value is None:
             return None
         return int(value) if value.isdigit() else value
+
+    # Register TTS alert callback so timers fire through the speaker
+    _alert_tts = TTSManager(rate=rate, volume=volume, backend=backend or _default_tts_backend())
+    set_alert_callback(_alert_tts.speak)
 
     config = VoiceConfig(
         sample_rate=sample_rate,

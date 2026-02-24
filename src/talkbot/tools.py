@@ -121,6 +121,36 @@ def random_number(min_val: int = 1, max_val: int = 100) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Alert callback — lets callers (CLI, GUI) inject a speak function so timers
+# fire through TTS rather than just printing to stdout.
+# ---------------------------------------------------------------------------
+
+_alert_callback: Any = None  # callable(text: str) | None
+
+
+def set_alert_callback(fn) -> None:
+    """Register a function to be called when a timer fires (e.g. tts.speak)."""
+    global _alert_callback
+    _alert_callback = fn
+
+
+def clear_alert_callback() -> None:
+    """Remove any registered alert callback."""
+    global _alert_callback
+    _alert_callback = None
+
+
+def _fire_alert(text: str) -> None:
+    """Deliver an alert via TTS callback if available, else print."""
+    print(f"\n[TIMER] {text}", flush=True)
+    if _alert_callback is not None:
+        try:
+            _alert_callback(text)
+        except Exception:
+            pass
+
+
+# ---------------------------------------------------------------------------
 # Timer
 # ---------------------------------------------------------------------------
 
@@ -138,7 +168,7 @@ def set_timer(seconds: int, label: str = "") -> str:
 
     def _fire() -> None:
         time.sleep(seconds)
-        print(f"\n[TIMER] {display} is done!", flush=True)
+        _fire_alert(f"{display} is done!")
 
     threading.Thread(target=_fire, daemon=True).start()
     return f"Timer set. '{display}' will fire in {seconds} seconds."

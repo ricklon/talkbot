@@ -17,7 +17,7 @@ if env_path.exists():
 from talkbot.llm import LLMProviderError, create_llm_client, supports_tools
 from talkbot.thinking import apply_thinking_system_prompt, env_thinking_default
 from talkbot.text_utils import strip_thinking
-from talkbot.tools import register_all_tools
+from talkbot.tools import register_all_tools, set_alert_callback
 from talkbot.tts import TTSManager
 from talkbot.voice import MissingVoiceDependencies, VoiceConfig, VoicePipeline
 
@@ -998,6 +998,7 @@ class TalkBotGUI:
         try:
             backend = self.backend_var.get()
             self.tts = TTSManager(backend=backend)
+            set_alert_callback(self.tts.speak)
             voices = self.tts.available_voices
 
             self.voice_combo["values"] = [v["name"] for v in voices]
@@ -1662,6 +1663,7 @@ class TalkBotGUI:
         # Reinitialize TTS with new backend
         try:
             self.tts = TTSManager(backend=new_backend)
+            set_alert_callback(self.tts.speak)
             voices = self.tts.available_voices
 
             # Update voice dropdown
