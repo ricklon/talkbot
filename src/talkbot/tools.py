@@ -151,8 +151,14 @@ def _fire_alert(text: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Timer
+# Timer registry
 # ---------------------------------------------------------------------------
+
+# Maps timer_id -> (label, cancel_event, fire_at_timestamp)
+_timers: dict[str, tuple[str, threading.Event, float]] = {}
+_timer_lock = threading.Lock()
+_timer_counter = 0
+
 
 def set_timer(seconds: int, label: str = "") -> str:
     """Set a timer that fires after the specified number of seconds.
@@ -161,17 +167,56 @@ def set_timer(seconds: int, label: str = "") -> str:
         seconds: How many seconds to wait before the timer fires
         label: Optional name for the timer (e.g., "pasta", "meeting")
     """
+    global _timer_counter
     if seconds <= 0:
         return "Error: seconds must be a positive integer"
 
     display = label if label else f"{seconds}-second timer"
 
+    with _timer_lock:
+        _timer_counter += 1
+        timer_id = str(_timer_counter)
+        cancel_event = threading.Event()
+        _timers[timer_id] = (display, cancel_event, time.time() + seconds)
+
     def _fire() -> None:
-        time.sleep(seconds)
-        _fire_alert(f"{display} is done!")
+        cancelled = cancel_event.wait(timeout=seconds)
+        with _timer_lock:
+            _timers.pop(timer_id, None)
+        if not cancelled:
+            _fire_alert(f"{display} is done!")
 
     threading.Thread(target=_fire, daemon=True).start()
-    return f"Timer set. '{display}' will fire in {seconds} seconds."
+    return f"Timer #{timer_id} set. '{display}' will fire in {seconds} seconds."
+
+
+def cancel_timer(timer_id: str) -> str:
+    """Cancel an active timer by its ID.
+
+    Args:
+        timer_id: The timer ID returned by set_timer (e.g., "1")
+    """
+    with _timer_lock:
+        entry = _timers.get(timer_id)
+    if not entry:
+        return f"No active timer with ID '{timer_id}'. Use list_timers to see active timers."
+    label, cancel_event, _ = entry
+    cancel_event.set()
+    return f"Timer #{timer_id} ('{label}') cancelled."
+
+
+def list_timers() -> str:
+    """List all currently active timers and their remaining time."""
+    with _timer_lock:
+        snapshot = dict(_timers)
+    if not snapshot:
+        return "No active timers."
+    now = time.time()
+    lines = []
+    for tid, (label, _, fire_at) in snapshot.items():
+        remaining = max(0, int(fire_at - now))
+        lines.append(f"#{tid}: '{label}' — {remaining}s remaining")
+    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
@@ -392,7 +437,7 @@ TOOL_DEFINITIONS = {
         },
     },
     "set_timer": {
-        "description": "Set a timer that fires after a specified number of seconds and prints an alert",
+        "description": "Set a timer that fires after a specified number of seconds. Returns a timer ID that can be used to cancel it.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -408,6 +453,23 @@ TOOL_DEFINITIONS = {
             },
             "required": ["seconds"],
         },
+    },
+    "cancel_timer": {
+        "description": "Cancel an active timer by its ID",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "timer_id": {
+                    "type": "string",
+                    "description": "The timer ID returned by set_timer (e.g., '1')",
+                }
+            },
+            "required": ["timer_id"],
+        },
+    },
+    "list_timers": {
+        "description": "List all currently active timers and their remaining time",
+        "parameters": {"type": "object", "properties": {}, "required": []},
     },
     "web_search": {
         "description": "Search the web for an instant answer using DuckDuckGo",
@@ -526,6 +588,8 @@ TOOLS = {
     "flip_coin": flip_coin,
     "random_number": random_number,
     "set_timer": set_timer,
+    "cancel_timer": cancel_timer,
+    "list_timers": list_timers,
     "web_search": web_search,
     "add_to_list": add_to_list,
     "get_list": get_list,
