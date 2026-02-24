@@ -31,6 +31,11 @@ def _default_tts_backend() -> str:
     return os.getenv("TALKBOT_DEFAULT_TTS_BACKEND", "kittentts")
 
 
+def _default_agent_prompt() -> str | None:
+    """Return the agent system prompt from env, or None if unset."""
+    return os.getenv("TALKBOT_AGENT_PROMPT") or None
+
+
 def _default_provider() -> str:
     return os.getenv("TALKBOT_LLM_PROVIDER", "local")
 
@@ -141,7 +146,12 @@ def cli(
 @click.option("--voice", help="Voice ID to use")
 @click.option("--rate", default=150, help="Speech rate (words per minute)")
 @click.option("--volume", default=1.0, help="Volume level (0.0 to 1.0)")
-@click.option("--system", "-s", help="System prompt for context")
+@click.option(
+    "--system",
+    "-s",
+    default=lambda: _default_agent_prompt(),
+    help="System prompt (defaults to env:TALKBOT_AGENT_PROMPT)",
+)
 @click.option("--tools/--no-tools", default=False, help="Enable built-in tools")
 @click.pass_context
 def chat(
@@ -194,9 +204,21 @@ def chat(
 @click.option("--rate", default=150, help="Speech rate")
 @click.option("--volume", default=1.0, help="Volume level")
 @click.option("--tools/--no-tools", default=False, help="Enable built-in tools")
+@click.option(
+    "--system",
+    "-s",
+    default=lambda: _default_agent_prompt(),
+    help="System prompt (defaults to env:TALKBOT_AGENT_PROMPT)",
+)
 @click.pass_context
 def say(
-    ctx: click.Context, backend: str, voice: str, rate: int, volume: float, tools: bool
+    ctx: click.Context,
+    backend: str,
+    voice: str,
+    rate: int,
+    volume: float,
+    tools: bool,
+    system: str,
 ) -> None:
     """Interactive mode - type messages and hear responses."""
     try:
@@ -216,20 +238,19 @@ def say(
                     if message.lower() in ("exit", "quit"):
                         break
 
+                    effective_system = apply_thinking_system_prompt(
+                        system, ctx.obj["enable_thinking"]
+                    )
                     if tools:
                         if supports_tools(client):
                             register_all_tools(client)
-                        system = apply_thinking_system_prompt(
-                            None, ctx.obj["enable_thinking"]
-                        )
                         response = client.chat_with_system_tools(
-                            message, system_prompt=system
+                            message, system_prompt=effective_system
                         )
                     else:
-                        system = apply_thinking_system_prompt(
-                            None, ctx.obj["enable_thinking"]
+                        response = client.simple_chat(
+                            message, system_prompt=effective_system
                         )
-                        response = client.simple_chat(message, system_prompt=system)
                     visible_response = strip_thinking(response)
                     click.echo(f"AI: {visible_response}")
                     tts.speak(visible_response)
@@ -356,7 +377,12 @@ def doctor_tts(backends: tuple[str, ...], synthesize: bool) -> None:
 @click.option("--voice", help="Voice ID to use")
 @click.option("--rate", default=150, help="Speech rate (words per minute)")
 @click.option("--volume", default=1.0, help="Volume level (0.0 to 1.0)")
-@click.option("--system", "-s", help="System prompt for context")
+@click.option(
+    "--system",
+    "-s",
+    default=lambda: _default_agent_prompt(),
+    help="System prompt (defaults to env:TALKBOT_AGENT_PROMPT)",
+)
 @click.pass_context
 def tool(
     ctx: click.Context,
@@ -405,7 +431,12 @@ def tool(
 @click.option("--voice", help="Voice ID to use")
 @click.option("--rate", default=175, help="Speech rate")
 @click.option("--volume", default=1.0, help="Volume level (0.0 to 1.0)")
-@click.option("--system", "-s", help="System prompt")
+@click.option(
+    "--system",
+    "-s",
+    default=lambda: _default_agent_prompt(),
+    help="System prompt (defaults to env:TALKBOT_AGENT_PROMPT)",
+)
 @click.option("--stt-model", default="small.en", help="faster-whisper model")
 @click.option("--language", default="en", help="STT language")
 @click.option("--vad-threshold", default=0.3, type=float, help="Silero VAD threshold")
