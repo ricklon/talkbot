@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DEFAULT_URL="https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q8_0.gguf"
-DEFAULT_OUTPUT="models/default.gguf"
+DEFAULT_URL="https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf"
+DEFAULT_OUTPUT="models/qwen3-1.7b-q4_k_m.gguf"
 
 url="$DEFAULT_URL"
 output="$DEFAULT_OUTPUT"

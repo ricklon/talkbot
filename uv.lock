@@ -5103,13 +5103,15 @@ dependencies = [
     { name = "edge-tts" },
     { name = "httpx" },
     { name = "kittentts" },
-    { name = "llama-cpp-python" },
     { name = "pygame" },
     { name = "python-dotenv" },
     { name = "pyttsx3" },
 ]
 
 [package.optional-dependencies]
+local = [
+    { name = "llama-cpp-python" },
+]
 voice = [
     { name = "faster-whisper" },
     { name = "silero-vad" },
@@ -5129,7 +5131,7 @@ requires-dist = [
     { name = "faster-whisper", marker = "extra == 'voice'", specifier = ">=1.0" },
     { name = "httpx", specifier = ">=0.24" },
     { name = "kittentts", url = "https://github.com/KittenML/KittenTTS/releases/download/0.8/kittentts-0.8.0-py3-none-any.whl" },
-    { name = "llama-cpp-python", specifier = ">=0.3.16" },
+    { name = "llama-cpp-python", marker = "extra == 'local'", specifier = ">=0.3.2" },
     { name = "pygame", specifier = ">=2.5" },
     { name = "python-dotenv", specifier = ">=1.0" },
     { name = "pyttsx3", specifier = ">=2.90" },
@@ -5137,7 +5139,7 @@ requires-dist = [
     { name = "sounddevice", marker = "extra == 'voice'", specifier = ">=0.4.6" },
     { name = "soundfile", marker = "extra == 'voice'", specifier = ">=0.12" },
 ]
-provides-extras = ["voice"]
+provides-extras = ["local", "voice"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=8.0" }]

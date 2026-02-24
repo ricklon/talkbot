@@ -15,6 +15,9 @@ from typing import Optional
 logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 # Avoid hf-xet token warning noise in default local setup.
 os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
+# Disable HF download progress bars: tqdm crashes when stdout is fd-redirected during
+# KittenTTS init (_suppress_stdio_fds sends fd 1 to devnull before hf_hub_download runs).
+os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
 
 # Try to import edge-tts, fall back to pyttsx3
 try:
@@ -32,12 +35,8 @@ try:
 except ImportError:
     PYTTSX3_AVAILABLE = False
 
-try:
-    from kittentts import KittenTTS as _KittenTTS
-
-    KITTENTTS_AVAILABLE = True
-except ImportError:
-    KITTENTTS_AVAILABLE = False
+import importlib.util as _importlib_util
+KITTENTTS_AVAILABLE = _importlib_util.find_spec("kittentts") is not None
 
 
 class EdgeTTS:
@@ -278,6 +277,7 @@ class KittenTTSBackend:
     def __init__(self, voice: Optional[str] = None, model: Optional[str] = None):
         if not KITTENTTS_AVAILABLE:
             raise RuntimeError("kittentts not available")
+        from kittentts import KittenTTS as _KittenTTS  # lazy: avoids torch at startup
         # Let KittenTTS select its own default model unless explicitly overridden.
         with self._suppress_stdio_fds():
             if model or self.DEFAULT_MODEL:

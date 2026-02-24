@@ -40,9 +40,9 @@ def _save_json(filename: str, data: dict) -> None:
 # ---------------------------------------------------------------------------
 
 def get_current_time() -> str:
-    """Get the current date and time."""
-    now = datetime.datetime.now()
-    return now.strftime("%Y-%m-%d %H:%M:%S")
+    """Get the current date and time with timezone."""
+    now = datetime.datetime.now().astimezone()
+    return now.strftime("%Y-%m-%d %H:%M:%S %Z")
 
 
 def get_current_date() -> str:
@@ -72,6 +72,17 @@ def calculator(expression: str) -> str:
         "pi": math.pi,
         "e": math.e,
     }
+
+    import re as _re
+    # Pre-process "X% of Y" → "(X/100)*Y"
+    expression = _re.sub(
+        r'(\d+(?:\.\d+)?)\s*%\s*of\s*(\d+(?:\.\d+)?)',
+        lambda m: f"({m.group(1)}/100)*{m.group(2)}",
+        expression,
+        flags=_re.IGNORECASE,
+    )
+    # Pre-process remaining "X%" → "(X/100)"
+    expression = _re.sub(r'(\d+(?:\.\d+)?)\s*%', r'(\1/100)', expression)
 
     try:
         result = eval(expression, {"__builtins__": {}}, allowed_names)
@@ -190,6 +201,38 @@ def set_timer(seconds: int, label: str = "") -> str:
     return f"Timer #{timer_id} set. '{display}' will fire in {seconds} seconds."
 
 
+def set_reminder(seconds: int, message: str) -> str:
+    """Set a reminder that speaks a custom message when it fires.
+
+    Args:
+        seconds: How many seconds until the reminder fires
+        message: The exact message to speak when the reminder fires (e.g., "Time to take your medication")
+    """
+    if seconds <= 0:
+        return "Error: seconds must be a positive integer"
+    if not message.strip():
+        return "Error: message must not be empty"
+
+    global _timer_counter
+    with _timer_lock:
+        _timer_counter += 1
+        timer_id = str(_timer_counter)
+        cancel_event = threading.Event()
+        _timers[timer_id] = (message.strip(), cancel_event, time.time() + seconds)
+
+    def _fire() -> None:
+        cancelled = cancel_event.wait(timeout=seconds)
+        with _timer_lock:
+            _timers.pop(timer_id, None)
+        if not cancelled:
+            _fire_alert(message.strip())
+
+    threading.Thread(target=_fire, daemon=True).start()
+    mins, secs = divmod(seconds, 60)
+    duration = f"{mins}m {secs}s" if mins else f"{secs}s"
+    return f"Reminder #{timer_id} set for {duration}: \"{message.strip()}\""
+
+
 def cancel_timer(timer_id: str) -> str:
     """Cancel an active timer by its ID.
 
@@ -265,6 +308,22 @@ def web_search(query: str) -> str:
 _LISTS_FILE = "lists.json"
 
 
+def create_list(list_name: str) -> str:
+    """Create a new empty named list. Use when the user wants to start a list but hasn't specified items yet.
+
+    Args:
+        list_name: The name of the list to create (e.g., 'shopping', 'todo', 'groceries')
+    """
+    data = _load_json(_LISTS_FILE)
+    if list_name in data:
+        items = data[list_name]
+        if items:
+            return f"The {list_name} list already exists with {len(items)} item(s)."
+    data[list_name] = []
+    _save_json(_LISTS_FILE, data)
+    return f"Created '{list_name}' list."
+
+
 def add_to_list(item: str, list_name: str = "shopping") -> str:
     """Add an item to a named list (default: shopping list).
 
@@ -279,6 +338,35 @@ def add_to_list(item: str, list_name: str = "shopping") -> str:
     lst.append(item)
     _save_json(_LISTS_FILE, data)
     return f"Added '{item}' to the {list_name} list."
+
+
+def add_items_to_list(items: list, list_name: str = "shopping") -> str:
+    """Add multiple items to a named list at once.
+
+    Args:
+        items: List of items to add (e.g. ["lettuce", "tomato", "onion"])
+        list_name: Which list to add to (default 'shopping')
+    """
+    data = _load_json(_LISTS_FILE)
+    lst = data.setdefault(list_name, [])
+    added = []
+    skipped = []
+    for item in items:
+        item = str(item).strip()
+        if not item:
+            continue
+        if item in lst:
+            skipped.append(item)
+        else:
+            lst.append(item)
+            added.append(item)
+    _save_json(_LISTS_FILE, data)
+    parts = []
+    if added:
+        parts.append(f"Added {', '.join(added)} to the {list_name} list.")
+    if skipped:
+        parts.append(f"Already had: {', '.join(skipped)}.")
+    return " ".join(parts) if parts else f"No items added to {list_name} list."
 
 
 def get_list(list_name: str = "shopping") -> str:
@@ -325,6 +413,21 @@ def clear_list(list_name: str = "shopping") -> str:
     data[list_name] = []
     _save_json(_LISTS_FILE, data)
     return f"Cleared the {list_name} list."
+
+
+def list_all_lists() -> str:
+    """List all named lists and their contents."""
+    data = _load_json(_LISTS_FILE)
+    if not data:
+        return "No lists found."
+    parts = []
+    for list_name, items in data.items():
+        if items:
+            item_str = ", ".join(f'"{i}"' for i in items)
+            parts.append(f"{list_name}: [{item_str}]")
+        else:
+            parts.append(f"{list_name}: (empty)")
+    return "\n".join(parts)
 
 
 # ---------------------------------------------------------------------------
@@ -436,8 +539,25 @@ TOOL_DEFINITIONS = {
             "required": [],
         },
     },
+    "set_reminder": {
+        "description": "Set a reminder that speaks a custom message when it fires. Use this when the user says 'remind me to...' or wants a specific message spoken at a future time.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "seconds": {
+                    "type": "integer",
+                    "description": "Number of seconds until the reminder fires",
+                },
+                "message": {
+                    "type": "string",
+                    "description": "The exact message to speak when the reminder fires (e.g., 'Time to take your medication')",
+                },
+            },
+            "required": ["seconds", "message"],
+        },
+    },
     "set_timer": {
-        "description": "Set a timer that fires after a specified number of seconds. Returns a timer ID that can be used to cancel it.",
+        "description": "Set a countdown timer with an optional label. Use this for cooking, workouts, or simple countdowns. When done it says '{label} is done!'. For a custom spoken message use set_reminder instead.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -484,6 +604,19 @@ TOOL_DEFINITIONS = {
             "required": ["query"],
         },
     },
+    "create_list": {
+        "description": "Create a new empty named list. Use when the user says 'create a [name] list' or 'start a [name] list' without specifying items to add.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "list_name": {
+                    "type": "string",
+                    "description": "The name of the list to create (e.g., 'shopping', 'todo', 'groceries')",
+                }
+            },
+            "required": ["list_name"],
+        },
+    },
     "add_to_list": {
         "description": "Add an item to a named list (default: shopping list)",
         "parameters": {
@@ -497,6 +630,25 @@ TOOL_DEFINITIONS = {
                 },
             },
             "required": ["item"],
+        },
+    },
+    "add_items_to_list": {
+        "description": "Add multiple items to a named list at once. Use when the user names more than one item.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Items to add (e.g. [\"lettuce\", \"tomato\", \"onion\"])",
+                },
+                "list_name": {
+                    "type": "string",
+                    "description": "Which list to add to",
+                    "default": "shopping",
+                },
+            },
+            "required": ["items"],
         },
     },
     "get_list": {
@@ -541,6 +693,10 @@ TOOL_DEFINITIONS = {
             },
             "required": [],
         },
+    },
+    "list_all_lists": {
+        "description": "Show all named lists and their contents",
+        "parameters": {"type": "object", "properties": {}, "required": []},
     },
     "remember": {
         "description": "Store a user preference or piece of information for later recall",
@@ -587,17 +743,21 @@ TOOLS = {
     "roll_dice": roll_dice,
     "flip_coin": flip_coin,
     "random_number": random_number,
+    "set_reminder": set_reminder,
     "set_timer": set_timer,
     "cancel_timer": cancel_timer,
     "list_timers": list_timers,
     "web_search": web_search,
+    "create_list": create_list,
     "add_to_list": add_to_list,
+    "add_items_to_list": add_items_to_list,
     "get_list": get_list,
     "remove_from_list": remove_from_list,
     "clear_list": clear_list,
     "remember": remember,
     "recall": recall,
     "recall_all": recall_all,
+    "list_all_lists": list_all_lists,
 }
 
 

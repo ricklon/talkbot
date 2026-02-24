@@ -94,6 +94,7 @@ class VoicePipeline:
         self.config = config or VoiceConfig()
 
         self._stop_event = threading.Event()
+        self._tts_mute = threading.Event()  # set while TTS is speaking to suppress mic
         self._history: list[dict] = []
 
         self._sd = None
@@ -208,6 +209,15 @@ class VoicePipeline:
                 try:
                     chunk = q.get(timeout=0.2)
                 except queue.Empty:
+                    continue
+
+                # Suppress mic while TTS is playing to prevent echo loop
+                if self._tts_mute.is_set():
+                    speech_started = False
+                    speech_ms = 0
+                    silence_ms = 0
+                    captured = []
+                    start = time.monotonic()
                     continue
 
                 if on_event:
@@ -433,56 +443,80 @@ class VoicePipeline:
         if self.tts_voice:
             tts.set_voice(self.tts_voice)
 
-        with create_llm_client(
-            provider=self.provider,
-            model=self.model,
-            api_key=self.api_key,
-            site_url=self.site_url,
-            site_name=self.site_name,
-            local_model_path=self.local_model_path,
-            llamacpp_bin=self.llamacpp_bin,
-            local_server_url=self.local_server_url,
-            local_server_api_key=self.local_server_api_key,
-            enable_thinking=self.enable_thinking,
-        ) as client:
-            if self.use_tools and supports_tools(client):
-                register_all_tools(client)
-            if on_event:
-                on_event({"type": "ready"})
+        # Route timer alerts through the pipeline's own TTS so voice/backend match.
+        # Mute the mic during alert playback to prevent echo loop.
+        from talkbot.tools import set_alert_callback, clear_alert_callback
 
-            while not self._stop_event.is_set():
+        def _event_alert(text: str) -> None:
+            # Show timer alert in GUI conversation instead of TTS.
+            # Briefly mute mic to prevent any stray audio pickup.
+            self._tts_mute.set()
+            try:
                 if on_event:
-                    on_event({"type": "listening"})
-                audio = self._capture_until_pause(on_event=on_event)
-                if self._stop_event.is_set():
-                    return
-                if audio is None:
-                    continue
+                    on_event({"type": "timer_alert", "text": text})
+                time.sleep(0.3)
+            finally:
+                self._tts_mute.clear()
 
+        set_alert_callback(_event_alert)
+
+        try:
+            with create_llm_client(
+                provider=self.provider,
+                model=self.model,
+                api_key=self.api_key,
+                site_url=self.site_url,
+                site_name=self.site_name,
+                local_model_path=self.local_model_path,
+                llamacpp_bin=self.llamacpp_bin,
+                local_server_url=self.local_server_url,
+                local_server_api_key=self.local_server_api_key,
+                enable_thinking=self.enable_thinking,
+            ) as client:
+                if self.use_tools and supports_tools(client):
+                    register_all_tools(client)
                 if on_event:
-                    on_event({"type": "transcribing"})
-                transcript = self._transcribe(audio)
-                if not transcript.strip():
+                    on_event({"type": "ready"})
+
+                while not self._stop_event.is_set():
                     if on_event:
-                        on_event({"type": "transcript_empty"})
-                    continue
-                if len(transcript.strip()) < self.config.min_transcript_chars:
-                    if on_event:
-                        on_event({"type": "transcript_rejected", "text": transcript})
-                    continue
-                if on_event:
-                    on_event({"type": "transcript", "text": transcript})
+                        on_event({"type": "listening"})
+                    audio = self._capture_until_pause(on_event=on_event)
+                    if self._stop_event.is_set():
+                        return
+                    if audio is None:
+                        continue
 
-                if on_event:
-                    on_event({"type": "thinking"})
-                response = self._chat_with_context(client, transcript)
-                if on_event:
-                    on_event({"type": "response", "text": response})
-
-                if self.speak and not self._stop_event.is_set():
                     if on_event:
-                        on_event({"type": "speaking"})
-                    self._speak_response(tts, strip_thinking(response), on_event=on_event)
+                        on_event({"type": "transcribing"})
+                    transcript = self._transcribe(audio)
+                    if not transcript.strip():
+                        if on_event:
+                            on_event({"type": "transcript_empty"})
+                        continue
+                    if len(transcript.strip()) < self.config.min_transcript_chars:
+                        if on_event:
+                            on_event({"type": "transcript_rejected", "text": transcript})
+                        continue
+                    if on_event:
+                        on_event({"type": "transcript", "text": transcript})
+
+                    if on_event:
+                        on_event({"type": "thinking"})
+                    response = self._chat_with_context(client, transcript)
+                    if on_event:
+                        on_event({"type": "response", "text": response})
+                        usage = getattr(client, "last_usage", {})
+                        if usage:
+                            on_event({"type": "token_usage", "usage": usage})
+
+                    if self.speak and not self._stop_event.is_set():
+                        if on_event:
+                            on_event({"type": "speaking"})
+                        self._speak_response(tts, strip_thinking(response), on_event=on_event)
+        finally:
+            # Restore GUI TTS as alert callback so timers still fire after voice stops
+            clear_alert_callback()
 
     def transcribe_once(
         self, on_event: Optional[Callable[[dict], None]] = None

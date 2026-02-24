@@ -1,5 +1,6 @@
 """Tkinter GUI for the talking bot with modern styling."""
 
+import datetime
 import os
 import shutil
 import threading
@@ -20,6 +21,14 @@ from talkbot.text_utils import strip_thinking
 from talkbot.tools import register_all_tools, set_alert_callback
 from talkbot.tts import TTSManager
 from talkbot.voice import MissingVoiceDependencies, VoiceConfig, VoicePipeline
+
+FREE_OPENROUTER_MODELS = [
+    "deepseek/deepseek-r1:free",
+    "google/gemma-3-27b-it:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "qwen/qwen-2.5-72b-instruct:free",
+    "mistralai/mistral-7b-instruct:free",
+]
 
 
 def _default_local_model_path() -> str:
@@ -210,7 +219,7 @@ class TalkBotGUI:
         self.stt_test_pipeline: VoicePipeline | None = None
         self.stt_test_active = False
         self.stop_requested = threading.Event()
-        self.default_tts_backend = os.getenv("TALKBOT_DEFAULT_TTS_BACKEND", "kittentts")
+        self.default_tts_backend = os.getenv("TALKBOT_DEFAULT_TTS_BACKEND", "edge-tts")
         self.default_use_tools = _env_bool("TALKBOT_DEFAULT_USE_TOOLS", True)
         self.enable_thinking = env_thinking_default()
 
@@ -224,8 +233,8 @@ class TalkBotGUI:
         self._configure_styles()
 
         self._create_widgets()
-        self._setup_tts()
         self._populate_audio_devices()
+        self.root.after(100, self._setup_tts)
 
     def _configure_styles(self):
         """Configure modern ttk styles."""
@@ -355,9 +364,9 @@ class TalkBotGUI:
         )
         settings_frame.grid(row=1, column=0, sticky="ew", pady=(0, 15))
 
-        # Model and Backend row
+        # LLM row: provider + model + toggle buttons
         row1 = tk.Frame(settings_frame, bg=ModernStyle.BG_SECONDARY)
-        row1.pack(fill=tk.X, pady=(0, 10))
+        row1.pack(fill=tk.X, pady=(0, 8))
 
         tk.Label(
             row1,
@@ -388,23 +397,52 @@ class TalkBotGUI:
         ).pack(side=tk.LEFT)
 
         self.model_var = tk.StringVar(value=self.model)
-        model_combo = ttk.Combobox(
+        self.model_combo = ttk.Combobox(
             row1,
             textvariable=self.model_var,
-            values=[
-                "qwen/qwen3-1.7b",
-                "qwen/qwen3-4b-instruct",
-                "openai/gpt-4o-mini",
-                "anthropic/claude-3.5-haiku",
-            ],
+            values=[],
             width=35,
             style="Modern.TCombobox",
         )
-        model_combo.pack(side=tk.LEFT, padx=(10, 20))
+        self.model_combo.pack(side=tk.LEFT, padx=(10, 20))
+
+        self.thinking_var = tk.BooleanVar(value=self.enable_thinking)
+        self.thinking_btn = tk.Button(
+            row1,
+            text=self._thinking_label(),
+            bg=self._thinking_bg(),
+            fg=self._thinking_fg(),
+            command=self._toggle_thinking,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+            relief=tk.FLAT,
+            padx=8,
+            pady=4,
+            cursor="hand2",
+        )
+        self.thinking_btn.pack(side=tk.LEFT, padx=(0, 8))
+
+        self.tools_var = tk.BooleanVar(value=self.default_use_tools)
+        self.tools_btn = tk.Button(
+            row1,
+            text=self._tools_label(),
+            bg=self._tools_bg(),
+            fg=self._tools_fg(),
+            command=self._toggle_tools,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+            relief=tk.FLAT,
+            padx=8,
+            pady=4,
+            cursor="hand2",
+        )
+        self.tools_btn.pack(side=tk.LEFT)
+
+        # TTS row: backend + status indicator + voice dropdown
+        row_tts = tk.Frame(settings_frame, bg=ModernStyle.BG_SECONDARY)
+        row_tts.pack(fill=tk.X, pady=(0, 8))
 
         tk.Label(
-            row1,
-            text="TTS Backend:",
+            row_tts,
+            text="TTS:",
             bg=ModernStyle.BG_SECONDARY,
             fg=ModernStyle.TEXT_SECONDARY,
             font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
@@ -412,60 +450,44 @@ class TalkBotGUI:
 
         self.backend_var = tk.StringVar(value=self.default_tts_backend)
         backend_combo = ttk.Combobox(
-            row1,
+            row_tts,
             textvariable=self.backend_var,
             values=["edge-tts", "kittentts", "pyttsx3"],
             width=12,
             style="Modern.TCombobox",
             state="readonly",
         )
-        backend_combo.pack(side=tk.LEFT, padx=(10, 20))
+        backend_combo.pack(side=tk.LEFT, padx=(10, 12))
         backend_combo.bind("<<ComboboxSelected>>", self._on_backend_changed)
 
-        # Backend status indicator
         self.backend_status_label = tk.Label(
-            row1,
+            row_tts,
             text="🌐 Online",
             bg=ModernStyle.BG_SECONDARY,
             fg=ModernStyle.SUCCESS,
             font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
         )
-        self.backend_status_label.pack(side=tk.LEFT)
-
-        self.tools_var = tk.BooleanVar(value=self.default_use_tools)
-        tools_check = tk.Checkbutton(
-            row1,
-            text="Use Tools",
-            variable=self.tools_var,
-            bg=ModernStyle.BG_SECONDARY,
-            fg=ModernStyle.TEXT_SECONDARY,
-            selectcolor=ModernStyle.BG_TERTIARY,
-            activebackground=ModernStyle.BG_SECONDARY,
-            activeforeground=ModernStyle.TEXT_PRIMARY,
-            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
-        )
-        tools_check.pack(side=tk.LEFT, padx=(12, 0))
-
-        self.thinking_var = tk.BooleanVar(value=self.enable_thinking)
-        thinking_check = tk.Checkbutton(
-            row1,
-            text="Thinking",
-            variable=self.thinking_var,
-            bg=ModernStyle.BG_SECONDARY,
-            fg=ModernStyle.TEXT_SECONDARY,
-            selectcolor=ModernStyle.BG_TERTIARY,
-            activebackground=ModernStyle.BG_SECONDARY,
-            activeforeground=ModernStyle.TEXT_PRIMARY,
-            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
-        )
-        thinking_check.pack(side=tk.LEFT, padx=(10, 0))
-
-        # Voice row
-        row1b = tk.Frame(settings_frame, bg=ModernStyle.BG_SECONDARY)
-        row1b.pack(fill=tk.X, pady=(0, 10))
+        self.backend_status_label.pack(side=tk.LEFT, padx=(0, 20))
 
         tk.Label(
-            row1b,
+            row_tts,
+            text="Voice:",
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+        ).pack(side=tk.LEFT)
+
+        self.voice_var = tk.StringVar()
+        self.voice_combo = ttk.Combobox(
+            row_tts, textvariable=self.voice_var, width=40, style="Modern.TCombobox"
+        )
+        self.voice_combo.pack(side=tk.LEFT, padx=(10, 0))
+
+        # Local paths row — shown only when provider=local, packed dynamically
+        self.local_row = tk.Frame(settings_frame, bg=ModernStyle.BG_SECONDARY)
+
+        tk.Label(
+            self.local_row,
             text="Local GGUF:",
             bg=ModernStyle.BG_SECONDARY,
             fg=ModernStyle.TEXT_SECONDARY,
@@ -473,7 +495,7 @@ class TalkBotGUI:
         ).pack(side=tk.LEFT)
         self.local_model_path_var = tk.StringVar(value=self.local_model_path)
         self.local_model_entry = tk.Entry(
-            row1b,
+            self.local_row,
             textvariable=self.local_model_path_var,
             width=34,
             bg=ModernStyle.BG_TERTIARY,
@@ -485,7 +507,7 @@ class TalkBotGUI:
         self.local_model_entry.pack(side=tk.LEFT, padx=(8, 12))
 
         tk.Label(
-            row1b,
+            self.local_row,
             text="Llama Bin:",
             bg=ModernStyle.BG_SECONDARY,
             fg=ModernStyle.TEXT_SECONDARY,
@@ -493,7 +515,7 @@ class TalkBotGUI:
         ).pack(side=tk.LEFT)
         self.llamacpp_bin_var = tk.StringVar(value=self.llamacpp_bin)
         self.llamacpp_bin_entry = tk.Entry(
-            row1b,
+            self.local_row,
             textvariable=self.llamacpp_bin_var,
             width=24,
             bg=ModernStyle.BG_TERTIARY,
@@ -504,23 +526,10 @@ class TalkBotGUI:
         )
         self.llamacpp_bin_entry.pack(side=tk.LEFT, padx=(8, 12))
 
-        tk.Label(
-            row1b,
-            text="Voice:",
-            bg=ModernStyle.BG_SECONDARY,
-            fg=ModernStyle.TEXT_SECONDARY,
-            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
-        ).pack(side=tk.LEFT)
-
-        self.voice_var = tk.StringVar()
-        self.voice_combo = ttk.Combobox(
-            row1b, textvariable=self.voice_var, width=40, style="Modern.TCombobox"
-        )
-        self.voice_combo.pack(side=tk.LEFT, padx=(10, 0))
-
         # Sliders row
         row2 = tk.Frame(settings_frame, bg=ModernStyle.BG_SECONDARY)
         row2.pack(fill=tk.X)
+        self._slider_row_ref = row2
 
         # Rate slider
         rate_frame = tk.Frame(row2, bg=ModernStyle.BG_SECONDARY)
@@ -830,8 +839,12 @@ class TalkBotGUI:
         notebook.grid(row=2, column=0, sticky="nsew", pady=(0, 15))
 
         tab_chat = tk.Frame(notebook, bg=ModernStyle.BG_SECONDARY)
+        tab_timers = tk.Frame(notebook, bg=ModernStyle.BG_SECONDARY)
+        tab_lists = tk.Frame(notebook, bg=ModernStyle.BG_SECONDARY)
         tab_prompt = tk.Frame(notebook, bg=ModernStyle.BG_SECONDARY)
         notebook.add(tab_chat, text="Conversation")
+        notebook.add(tab_timers, text="Timers")
+        notebook.add(tab_lists, text="Lists")
         notebook.add(tab_prompt, text="Prompt")
 
         self.chat_history = tk.Text(
@@ -860,6 +873,54 @@ class TalkBotGUI:
             font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL, "bold"),
         )
         self.chat_history.tag_configure("text", foreground=ModernStyle.TEXT_PRIMARY)
+
+        # Timers tab
+        tk.Label(
+            tab_timers,
+            text="Active timers and reminders update every second.",
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+            anchor=tk.W,
+        ).pack(fill=tk.X, padx=8, pady=(8, 4))
+
+        self.timers_list = tk.Listbox(
+            tab_timers,
+            bg=ModernStyle.BG_TERTIARY,
+            fg=ModernStyle.TEXT_PRIMARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+            selectmode=tk.SINGLE,
+            relief=tk.FLAT,
+            bd=0,
+            highlightthickness=0,
+            activestyle="none",
+        )
+        self.timers_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self._poll_timers()
+
+        # Lists tab
+        tk.Label(
+            tab_lists,
+            text="Stored lists update every 2 seconds.",
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+            anchor=tk.W,
+        ).pack(fill=tk.X, padx=8, pady=(8, 4))
+
+        self.lists_box = tk.Listbox(
+            tab_lists,
+            bg=ModernStyle.BG_TERTIARY,
+            fg=ModernStyle.TEXT_PRIMARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+            selectmode=tk.SINGLE,
+            relief=tk.FLAT,
+            bd=0,
+            highlightthickness=0,
+            activestyle="none",
+        )
+        self.lists_box.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self._poll_lists()
 
         prompt_help = tk.Label(
             tab_prompt,
@@ -964,6 +1025,18 @@ class TalkBotGUI:
             anchor=tk.W,
         )
         self.status_bar.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        # Token / context usage counter (right-aligned)
+        self.token_var = tk.StringVar(value="")
+        tk.Label(
+            toolbar,
+            textvariable=self.token_var,
+            bg=ModernStyle.BG_TERTIARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_SMALL),
+            padx=8,
+            pady=5,
+        ).pack(side=tk.RIGHT)
 
         # Toolbar buttons
         self.clear_btn = RoundedButton(
@@ -1084,20 +1157,118 @@ class TalkBotGUI:
             enable_thinking=self.thinking_var.get(),
         )
 
+    def _thinking_label(self) -> str:
+        return "💭 Thinking: ON" if self.thinking_var.get() else "💭 Thinking: OFF"
+
+    def _thinking_bg(self) -> str:
+        return ModernStyle.WARNING if self.thinking_var.get() else ModernStyle.BG_TERTIARY
+
+    def _thinking_fg(self) -> str:
+        return ModernStyle.BG_PRIMARY if self.thinking_var.get() else ModernStyle.TEXT_SECONDARY
+
+    def _toggle_thinking(self) -> None:
+        self.thinking_var.set(not self.thinking_var.get())
+        self.thinking_btn.config(
+            text=self._thinking_label(), bg=self._thinking_bg(), fg=self._thinking_fg()
+        )
+
+    def _tools_label(self) -> str:
+        return "🔧 Tools: ON" if self.tools_var.get() else "🔧 Tools: OFF"
+
+    def _tools_bg(self) -> str:
+        return ModernStyle.ACCENT if self.tools_var.get() else ModernStyle.BG_TERTIARY
+
+    def _tools_fg(self) -> str:
+        return ModernStyle.BG_PRIMARY if self.tools_var.get() else ModernStyle.TEXT_SECONDARY
+
+    def _toggle_tools(self) -> None:
+        self.tools_var.set(not self.tools_var.get())
+        self.tools_btn.config(
+            text=self._tools_label(), bg=self._tools_bg(), fg=self._tools_fg()
+        )
+
+    def _poll_timers(self) -> None:
+        """Update the Timers tab with current active timers every second."""
+        try:
+            from talkbot.tools import _timers, _timer_lock
+            import time as _time
+            with _timer_lock:
+                snapshot = dict(_timers)
+            now = _time.time()
+            self.timers_list.delete(0, tk.END)
+            if snapshot:
+                for tid, (label, _, fire_at) in sorted(snapshot.items(), key=lambda x: x[1][2]):
+                    remaining = max(0, int(fire_at - now))
+                    mins, secs = divmod(remaining, 60)
+                    hrs, mins = divmod(mins, 60)
+                    if hrs:
+                        time_str = f"{hrs}h {mins}m {secs}s"
+                    elif mins:
+                        time_str = f"{mins}m {secs}s"
+                    else:
+                        time_str = f"{secs}s"
+                    self.timers_list.insert(tk.END, f"#{tid}  {time_str:>8}  —  {label}")
+            else:
+                self.timers_list.insert(tk.END, "No active timers or reminders.")
+        except Exception as e:
+            self.timers_list.delete(0, tk.END)
+            self.timers_list.insert(tk.END, f"[Error: {e}]")
+        finally:
+            self.root.after(1000, self._poll_timers)
+
+    def _poll_lists(self) -> None:
+        """Update the Lists tab with current list contents every 2 seconds."""
+        try:
+            from talkbot.tools import _load_json
+            data = _load_json("lists.json")
+            self.lists_box.delete(0, tk.END)
+            if data:
+                for list_name, items in data.items():
+                    self.lists_box.insert(tk.END, f"[ {list_name} ]")
+                    if items:
+                        for item in items:
+                            self.lists_box.insert(tk.END, f"    * {item}")
+                    else:
+                        self.lists_box.insert(tk.END, "    (empty)")
+            else:
+                self.lists_box.insert(tk.END, "No lists yet.")
+        except Exception as e:
+            self.lists_box.delete(0, tk.END)
+            self.lists_box.insert(tk.END, f"[Error: {e}]")
+        finally:
+            self.root.after(2000, self._poll_lists)
+
+    def _find_local_models(self) -> list[str]:
+        models_dir = Path("models")
+        if models_dir.exists():
+            found = sorted(str(p) for p in models_dir.glob("*.gguf"))
+            if found:
+                return found
+        current = self.local_model_path_var.get().strip()
+        return [current] if current else []
+
     def _on_provider_changed(self, event=None) -> None:
         del event
         provider = self.provider_var.get()
         if provider == "openrouter":
-            self.local_model_entry.config(state=tk.DISABLED)
-            self.llamacpp_bin_entry.config(state=tk.DISABLED)
+            self.model_combo["values"] = FREE_OPENROUTER_MODELS
+            self.model_combo.config(state="readonly")
+            if self.model_var.get() not in FREE_OPENROUTER_MODELS:
+                self.model_var.set(FREE_OPENROUTER_MODELS[0])
+            self.local_row.pack_forget()
             self.status_var.set("Provider: OpenRouter")
         elif provider == "local_server":
-            self.local_model_entry.config(state=tk.DISABLED)
-            self.llamacpp_bin_entry.config(state=tk.DISABLED)
+            self.model_combo["values"] = []
+            self.model_combo.config(state="normal")
+            self.local_row.pack_forget()
             self.status_var.set("Provider: Local Server (OpenAI API)")
-        else:
-            self.local_model_entry.config(state=tk.NORMAL)
-            self.llamacpp_bin_entry.config(state=tk.NORMAL)
+        else:  # local
+            local_models = self._find_local_models()
+            self.model_combo["values"] = local_models
+            self.model_combo.config(state="readonly" if local_models else "normal")
+            if local_models and self.model_var.get() not in local_models:
+                self.model_var.set(local_models[0])
+            self.local_row.pack(fill=tk.X, pady=(0, 8), before=self._slider_row_ref)
             self.status_var.set("Provider: Local llama.cpp")
 
     def _get_system_prompt(self) -> str | None:
@@ -1107,8 +1278,11 @@ class TalkBotGUI:
     def _display_response_text(self, response: str) -> str:
         """Return chat-display text based on thinking toggle."""
         if self.thinking_var.get():
-            return response.strip()
-        return strip_thinking(response).strip()
+            text = response.strip()
+        else:
+            text = strip_thinking(response).strip()
+        # Strip Qwen3 /no_think leading artifact (e.g. leading "." before actual content)
+        return text.lstrip(".")
 
     def _speech_response_text(self, response: str) -> str:
         """Always speak concise output without hidden thinking blocks."""
@@ -1187,6 +1361,10 @@ class TalkBotGUI:
                     device_out=self._parse_device_selection(self.spk_var.get()),
                     allow_barge_in=True,
                 )
+                tts_voice_id = next(
+                    (v["id"] for v in self.tts.available_voices if v["name"] == self.voice_var.get()),
+                    None,
+                ) if self.tts else None
                 self.voice_pipeline = VoicePipeline(
                     api_key=self.api_key,
                     provider=self.provider_var.get(),
@@ -1199,6 +1377,7 @@ class TalkBotGUI:
                     site_url=os.getenv("OPENROUTER_SITE_URL"),
                     site_name=os.getenv("OPENROUTER_SITE_NAME"),
                     tts_backend=self.backend_var.get(),
+                    tts_voice=tts_voice_id,
                     tts_rate=self.rate_var.get(),
                     tts_volume=self.volume_var.get(),
                     speak=self.speak_var.get(),
@@ -1321,16 +1500,18 @@ class TalkBotGUI:
             visible_response = self._display_response_text(event.get("text", ""))
             self._add_message("AI", visible_response, is_user=False)
             self.voice_phase_var.set("Voice: listening")
+        elif event_type == "timer_alert":
+            self._add_message("Timer", event.get("text", ""), is_user=False)
+        elif event_type == "token_usage":
+            usage = event.get("usage", {})
+            total = usage.get("total_tokens", 0)
+            prompt = usage.get("prompt_tokens", 0)
+            completion = usage.get("completion_tokens", 0)
+            self.token_var.set(f"{total:,} tok  ({prompt:,}+{completion})")
         elif event_type == "no_speech_detected":
             max_rms = float(event.get("max_rms", 0.0))
-            self.status_var.set("No speech detected")
+            self.status_var.set(f"No speech detected (RMS={max_rms:.4f})")
             self.voice_phase_var.set("Voice: listening")
-            self._add_message(
-                "System",
-                f"No speech detected (max RMS={max_rms:.4f}). "
-                "Try a lower VAD threshold or different mic device.",
-                is_user=False,
-            )
         elif event_type == "barge_in_unavailable":
             self.status_var.set("Barge-in unavailable on current device")
             self.voice_phase_var.set("Voice: speaking")
@@ -1631,8 +1812,9 @@ class TalkBotGUI:
         """Add message to chat history."""
         self.chat_history.config(state=tk.NORMAL)
 
+        ts = datetime.datetime.now().strftime("%H:%M:%S")
         tag = "user" if is_user else "ai"
-        self.chat_history.insert(tk.END, f"{sender}: ", tag)
+        self.chat_history.insert(tk.END, f"[{ts}] {sender}: ", tag)
         self.chat_history.insert(tk.END, f"{message}\n\n", "text")
         self.chat_history.see(tk.END)
         self.chat_history.config(state=tk.DISABLED)
@@ -1710,7 +1892,10 @@ class TalkBotGUI:
 def main() -> None:
     """Entry point for the GUI."""
     gui = TalkBotGUI()
-    gui.run()
+    try:
+        gui.run()
+    except KeyboardInterrupt:
+        pass
 
 
 if __name__ == "__main__":

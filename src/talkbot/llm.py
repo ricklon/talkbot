@@ -35,6 +35,12 @@ class LocalLlamaCppClient:
         temperature: float = 0.7,
         max_tokens: int = 512,
     ) -> None:
+        import datetime as _dt
+        _now = _dt.datetime.now().astimezone()
+        self._launch_time_context = (
+            f"Current date and time: {_now.strftime('%A, %B %d, %Y %I:%M %p')} "
+            f"{_now.strftime('%Z')} (UTC{_now.strftime('%z')[:3]}:{_now.strftime('%z')[3:]})"
+        )
         self.model_path = model_path
         self.binary = binary
         self.temperature = temperature
@@ -113,12 +119,24 @@ class LocalLlamaCppClient:
                 has_system = True
             elif role == "user" and not self.enable_thinking:
                 if not content.startswith("/no_think"):
-                    content = f"/no_think\n{content}"
+                    content = f"/no_think\n{content}\n/no_think"
             prepared.append({"role": role, "content": content})
-
         if not self.enable_thinking and not has_system:
             prepared.insert(0, {"role": "system", "content": NO_THINK_INSTRUCTION})
         return prepared
+
+    @staticmethod
+    def _clean_output(text: str) -> str:
+        """Strip ANSI escape codes, <think>...</think> blocks, and llama.cpp noise from output."""
+        import re as _re
+        text = _re.sub(r"\x1b\[[0-9;]*[mGKHF]", "", text)
+        # Remove closed think blocks
+        text = _re.sub(r"<think>.*?</think>", "", text, flags=_re.DOTALL)
+        # Remove unclosed think block (EOF before closing tag)
+        text = _re.sub(r"<think>.*", "", text, flags=_re.DOTALL)
+        # Remove llama.cpp interactive-mode noise lines
+        text = _re.sub(r"^[>\s]*EOF by user\s*$", "", text, flags=_re.MULTILINE)
+        return text.strip()
 
     def _run_prompt(self, prompt: str, max_tokens: Optional[int] = None) -> str:
         tokens = int(max_tokens or self.max_tokens)
@@ -133,6 +151,8 @@ class LocalLlamaCppClient:
             "--temp",
             str(self.temperature),
             "--no-display-prompt",
+            "--no-conversation",
+            "--single-turn",
         ]
         try:
             proc = subprocess.run(
@@ -140,6 +160,7 @@ class LocalLlamaCppClient:
                 check=True,
                 capture_output=True,
                 text=True,
+                stdin=subprocess.DEVNULL,
             )
         except FileNotFoundError as e:
             raise LLMProviderError(
@@ -154,7 +175,7 @@ class LocalLlamaCppClient:
                 f"Local llama.cpp generation failed{': ' + stderr if stderr else ''}"
             ) from e
 
-        return proc.stdout.strip()
+        return self._clean_output(proc.stdout)
 
     def chat_completion(
         self,
@@ -190,16 +211,21 @@ class LocalLlamaCppClient:
         return {"choices": [{"message": {"content": content}}]}
 
     def simple_chat(self, message: str, system_prompt: Optional[str] = None) -> str:
-        messages: list[dict] = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": message})
+        augmented = (
+            f"{self._launch_time_context}\n\n{system_prompt}"
+            if system_prompt
+            else self._launch_time_context
+        )
+        messages: list[dict] = [
+            {"role": "system", "content": augmented},
+            {"role": "user", "content": message},
+        ]
         return self.chat_completion(messages)["choices"][0]["message"]["content"]
 
     def chat_with_system_tools(
         self, message: str, system_prompt: Optional[str] = None
     ) -> str:
-        # Local backend currently has no native tools loop; fallback to normal chat.
+        # Local backend has no native tools loop; fall back to simple_chat (time already injected).
         return self.simple_chat(message, system_prompt=system_prompt)
 
     def chat_with_tools(
@@ -245,6 +271,12 @@ class LocalServerClient:
         enable_thinking: bool = False,
         timeout: float = 60.0,
     ) -> None:
+        import datetime as _dt
+        _now = _dt.datetime.now().astimezone()
+        self._launch_time_context = (
+            f"Current date and time: {_now.strftime('%A, %B %d, %Y %I:%M %p')} "
+            f"{_now.strftime('%Z')}"
+        )
         self.model = model
         self.base_url = self._normalize_base_url(base_url)
         self.api_key = api_key or os.getenv("TALKBOT_LOCAL_SERVER_API_KEY")
@@ -253,6 +285,7 @@ class LocalServerClient:
 
         self.tools: dict[str, Callable] = {}
         self.tool_definitions: list[dict] = []
+        self.last_usage: dict = {}
 
     @staticmethod
     def _normalize_base_url(base_url: str) -> str:
@@ -275,12 +308,14 @@ class LocalServerClient:
                 continue
             if role == "system":
                 has_system = True
+                # Prepend current date/time so model doesn't guess from training data
+                content = f"{self._launch_time_context}\n\n{content}"
             elif role == "user" and not self.enable_thinking:
                 if not content.startswith("/no_think"):
-                    content = f"/no_think\n{content}"
+                    content = f"/no_think\n{content}\n/no_think"
             prepared.append({"role": role, "content": content})
         if not self.enable_thinking and not has_system:
-            prepared.insert(0, {"role": "system", "content": NO_THINK_INSTRUCTION})
+            prepared.insert(0, {"role": "system", "content": f"{self._launch_time_context}\n\n{NO_THINK_INSTRUCTION}"})
         return prepared
 
     def _headers(self) -> dict:
@@ -322,6 +357,8 @@ class LocalServerClient:
             "temperature": temperature,
             "stream": stream,
         }
+        if not self.enable_thinking:
+            payload["chat_template_kwargs"] = {"enable_thinking": False}
         if max_tokens:
             payload["max_tokens"] = int(max_tokens)
         if include_tools and self.tool_definitions:
@@ -335,7 +372,9 @@ class LocalServerClient:
                 json=payload,
             )
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+            self.last_usage = data.get("usage") or {}
+            return data
         except httpx.HTTPError as e:
             raise LLMProviderError(f"Local server request failed: {e}") from e
 
@@ -353,6 +392,7 @@ class LocalServerClient:
         current_messages = messages.copy()
         tool_call_count = 0
         executed_tool_summaries: list[str] = []
+        executed_call_results: dict[str, str] = {}  # call_key -> result (dedup)
         while tool_call_count < max_tool_calls:
             try:
                 response = self.chat_completion(current_messages, temperature, max_tokens)
@@ -380,13 +420,28 @@ class LocalServerClient:
                 )
                 return response["choices"][0]["message"].get("content", "")
             message = response["choices"][0]["message"]
-            tool_calls = message.get("tool_calls") or self._extract_tag_tool_calls(
-                message.get("content", "")
-            )
+            content = message.get("content", "")
+            tool_calls = message.get("tool_calls") or self._extract_tag_tool_calls(content)
+            # Fallback: bare tool name (e.g. "list_timers" or "list_timers()")
+            if not tool_calls:
+                name_candidate = content.strip().rstrip("()")
+                if name_candidate in self.tools and content.strip() in (
+                    name_candidate, f"{name_candidate}()"
+                ):
+                    tool_calls = [
+                        {
+                            "id": f"plain-{name_candidate}-0",
+                            "function": {"name": name_candidate, "arguments": "{}"},
+                        }
+                    ]
+            # Fallback: Python-style call syntax (e.g. add_to_list(item="x", list_name="y"))
+            if not tool_calls:
+                tool_calls = self._extract_python_style_tool_calls(content)
             if not tool_calls:
                 return message.get("content", "")
 
             current_messages.append(message)
+            any_new_calls = False
             for tool_call in tool_calls:
                 tool_call_count += 1
                 function_name = tool_call["function"]["name"]
@@ -394,6 +449,19 @@ class LocalServerClient:
                     function_args = json.loads(tool_call["function"]["arguments"])
                 except Exception:
                     function_args = {}
+                call_key = f"{function_name}|{json.dumps(function_args, sort_keys=True)}"
+                if call_key in executed_call_results:
+                    # Duplicate — replay original result to keep history valid, don't re-execute
+                    current_messages.append(
+                        {
+                            "tool_call_id": tool_call["id"],
+                            "role": "tool",
+                            "name": function_name,
+                            "content": executed_call_results[call_key],
+                        }
+                    )
+                    continue
+                any_new_calls = True
                 if function_name in self.tools:
                     try:
                         result = self.tools[function_name](**function_args)
@@ -401,6 +469,7 @@ class LocalServerClient:
                         result = f"Error executing {function_name}: {e}"
                 else:
                     result = f"Error: Tool {function_name} not found"
+                executed_call_results[call_key] = str(result)
                 executed_tool_summaries.append(
                     f"{function_name}({function_args}) -> {result}"
                 )
@@ -412,11 +481,58 @@ class LocalServerClient:
                         "content": str(result),
                     }
                 )
+            if not any_new_calls:
+                # Every call in this batch was a duplicate — stop looping
+                break
 
         response = self.chat_completion(
             current_messages, temperature, max_tokens, include_tools=False
         )
-        return response["choices"][0]["message"].get("content", "")
+        final_text = response["choices"][0]["message"].get("content", "").strip()
+        # If the model still outputs a tool-call pattern (can't escape it), return
+        # the accumulated tool results instead of the raw function-call text.
+        if executed_tool_summaries and (
+            self._extract_python_style_tool_calls(final_text)
+            or final_text.strip().rstrip("()") in self.tools
+        ):
+            return "\n".join(s.split(" -> ", 1)[-1] for s in executed_tool_summaries)
+        return final_text
+
+    def _extract_python_style_tool_calls(self, content: str) -> list[dict]:
+        """Fallback for models that output tool calls as Python-style calls: name(k="v", ...)."""
+        if not content:
+            return []
+        tool_calls: list[dict] = []
+        # Match: known_tool_name(arg=val, ...)
+        pattern = re.compile(r'\b(\w+)\s*\(([^)]*)\)')
+        for idx, match in enumerate(pattern.finditer(content)):
+            name = match.group(1)
+            if name not in self.tools:
+                continue
+            args_str = match.group(2).strip()
+            args: dict = {}
+            for kv in re.finditer(
+                r'(\w+)\s*=\s*(?:"([^"]*?)"|\'([^\']*?)\'|([\w.+-]+))', args_str
+            ):
+                key = kv.group(1)
+                val: object = (
+                    kv.group(2) if kv.group(2) is not None
+                    else kv.group(3) if kv.group(3) is not None
+                    else kv.group(4) or ""
+                )
+                try:
+                    val = int(val)  # type: ignore[arg-type]
+                except (ValueError, TypeError):
+                    try:
+                        val = float(val)  # type: ignore[arg-type]
+                    except (ValueError, TypeError):
+                        pass
+                args[key] = val
+            tool_calls.append({
+                "id": f"pyfunc-{idx}",
+                "function": {"name": name, "arguments": json.dumps(args)},
+            })
+        return tool_calls
 
     @staticmethod
     def _extract_tag_tool_calls(content: str) -> list[dict]:
