@@ -885,6 +885,11 @@ class TalkBotGUI:
         )
         self.prompt_text.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
 
+        # Pre-populate from env var if set
+        env_prompt = os.getenv("TALKBOT_AGENT_PROMPT", "").strip()
+        if env_prompt:
+            self.prompt_text.insert("1.0", env_prompt)
+
         # Input area
         input_frame = tk.Frame(main_container, bg=ModernStyle.BG_PRIMARY)
         input_frame.grid(row=3, column=0, sticky="ew", pady=(0, 10))
