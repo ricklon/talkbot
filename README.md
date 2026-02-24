@@ -17,33 +17,55 @@ A talking AI assistant with local-first LLM + TTS defaults, plus optional OpenRo
 
 ## Quick Start
 
-```bash
-# 1) Install as a tool
-cd talkbot
-UV_SKIP_WHEEL_FILENAME_CHECK=1 uv tool install --python /usr/bin/python3.12 . --with llama-cpp-python --with faster-whisper --with silero-vad --with sounddevice --with soundfile
+### Windows
+```bat
+REM 1) Run setup (installs talkbot + voice extras into %LOCALAPPDATA%\talkbot\.venv)
+setup.bat
 
-# (optional) same install via helper script
-./setup.sh
-# or install + fetch default local model in one go
+REM 2) Download default model
+scripts\download-model.bat
+
+REM 3) Copy and edit config
+copy .env.example .env
+
+REM 4) Start llama-server (keep this window open)
+run-server.bat
+
+REM 5) Start the GUI (new window)
+run-gui.bat
+```
+
+### Linux / macOS
+```bash
+# 1) Install
 ./setup.sh --download-model
 
-# 2) Configure defaults
+# 2) Configure
 cp .env.example .env
-# put your GGUF at ./models/qwen3-1.7b-q4_k_m.gguf (or override TALKBOT_LOCAL_MODEL_PATH)
 
-# 3) Run a quick CLI check
-talkbot doctor-tts
-talkbot doctor-voice
-talkbot chat --no-speak "Hello"
-talkbot voice-chat --backend kittentts
-
-# 4) Run GUI (Windows — launch server first, then GUI)
-run-server.bat   # starts llama-server on port 8000
-run-gui.bat      # starts the GUI
-
-# 4) Run GUI (Linux/macOS)
+# 3) Start server + GUI
+llama-server -m models/qwen3-1.7b-q4_k_m.gguf --jinja -c 8192 -n 256 --temp 0.7 --port 8000 &
 talkbot-gui
 ```
+
+## Platform Compatibility
+
+| Component | Windows 11 | Linux / macOS | Notes |
+|---|---|---|---|
+| **local_server** (default LLM) | ✅ | ✅ | Pre-built `llama-server.exe` provided for Windows; `run-server.bat` included |
+| **local** (in-process LLM) | ⚠️ | ✅ | Requires MSVC build tools on Windows to compile `llama-cpp-python`; use `local_server` instead |
+| **openrouter** (cloud LLM) | ✅ | ✅ | No platform concerns |
+| **kittentts** (default TTS) | ✅ | ✅ | fd-suppression during init silently skipped on Windows — cosmetic only, TTS works fully |
+| **edge-tts** (online TTS) | ✅ | ✅ | asyncio + pygame, no issues |
+| **pyttsx3** (offline TTS) | ✅ | ✅ | Uses Windows SAPI5 on Windows, eSpeak on Linux |
+| **faster-whisper** (STT) | ✅ | ✅ | Pre-built PyPI wheels; CPU int8 inference |
+| **silero-vad** (VAD) | ✅ | ✅ | Pre-built PyPI wheels |
+| **sounddevice / soundfile** | ✅ | ✅ | PortAudio; well-tested on Windows |
+| **GUI (tkinter)** | ✅ | ✅ | tkinter bundled with Python on Windows; system package on Linux |
+| **setup.bat / run-*.bat** | ✅ | N/A | Windows-only; Linux/macOS uses setup.sh |
+| **setup.sh / download-model.sh** | N/A | ✅ | Linux/macOS only; Windows uses .bat equivalents |
+
+> **Windows note:** `UV_SKIP_WHEEL_FILENAME_CHECK=1` is required on every `uv` invocation due to a version tag mismatch in the kittentts wheel. All `.bat` scripts set this automatically.
 
 ## Installation
 
@@ -216,15 +238,21 @@ The application automatically loads environment variables from `.env` using pyth
 
 ## Recent Changes
 
+- **`add_items_to_list`**: add multiple items in one call — "add lettuce, tomato, and onion to the grocery list".
+- **`create_list`**: explicit empty-list creation prevents the model from hallucinating items.
+- **Calculator percentage support**: `15% of 84` now correctly returns `12.6` (was treated as modulo).
+- **Timer dedup**: prevents the same timer from firing multiple times if the model repeats a tool call.
+- **Python-style tool call fallback**: model output like `set_timer(seconds=10, label="pasta")` is now parsed and executed rather than displayed as raw text.
+- **Timestamps on conversation messages**: every chat entry shows `[HH:MM:SS]`.
+- **Token counter**: toolbar shows prompt/completion token counts after each response.
+- **Timer alerts in GUI**: timer alerts appear in the conversation panel instead of being spoken (prevents mic echo loop during voice chat).
+- **`</think>` tag stripping**: lone closing think tags no longer leak into displayed responses.
+- **Date/time injection**: `LocalServerClient` now injects current date and time into the system prompt so day-of-week and time queries work without a tool call.
 - **19 built-in tools**: added `set_reminder` (custom spoken message on fire), `list_all_lists` (show all named lists at once).
 - **Lists tab**: GUI now has a live Lists tab showing all named lists and their contents (updates every 2s).
-- **Voice dropdown fixed**: selected voice is now correctly passed to the voice pipeline.
 - **`local_server` is now the default provider**: enables proper tool calling, KV cache, and Qwen3 chat templates via `--jinja`.
-- **Context window raised to 8192**: better conversation memory and tool calling reliability.
-- **`/no_think` prepended and appended**: suppresses Qwen3 thinking tokens reliably.
 - **Agent personality prompt**: `TALKBOT_AGENT_PROMPT` env var applies a system prompt to all CLI commands and pre-populates the GUI Prompt tab.
 - **Timers tab**: live countdown display in GUI (updates every second).
-- **`set_reminder`**: distinct from `set_timer` — speaks any custom message when it fires.
 - **Cancellable timers**: `set_timer` returns a timer ID; `cancel_timer` and `list_timers` manage active timers.
 - **Persistent lists & memory**: `~/.talkbot/lists.json` and `~/.talkbot/memory.json` survive across sessions.
 
@@ -283,8 +311,8 @@ llama-server \
   -m models/qwen3-1.7b-q4_k_m.gguf \
   --jinja \
   -c 8192 \
-  -n 512 \
-  --temp 0.6 --top-p 0.95 --min-p 0.0 \
+  -n 256 \
+  --temp 0.7 --top-k 20 --top-p 0.8 \
   --port 8000
 ```
 
@@ -472,7 +500,9 @@ talkbot tool "What do you remember about me?"
 | `cancel_timer` | Timer | Cancel an active timer or reminder by ID |
 | `list_timers` | Timer | Show all running timers/reminders with remaining time |
 | `web_search` | Search | DuckDuckGo instant answers (facts, definitions, conversions) |
-| `add_to_list` | Lists | Add an item to a named list (default: `shopping`) |
+| `create_list` | Lists | Create a new empty named list |
+| `add_to_list` | Lists | Add a single item to a named list (default: `shopping`) |
+| `add_items_to_list` | Lists | Add multiple items at once (e.g. "add lettuce, tomato, and onion") |
 | `get_list` | Lists | Read all items from a named list |
 | `remove_from_list` | Lists | Remove an item from a named list (case-insensitive) |
 | `clear_list` | Lists | Empty a named list |

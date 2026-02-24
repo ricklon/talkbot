@@ -252,12 +252,18 @@ class KittenTTSBackend:
     @staticmethod
     @contextlib.contextmanager
     def _suppress_stdio_fds():
-        """Suppress low-level stdout/stderr noise from native deps during init."""
+        """Suppress low-level stdout/stderr noise from native deps during init.
+
+        On Windows, os.dup() raises OSError for console handles — suppression is
+        skipped gracefully and KittenTTS initialises normally (just with HF noise
+        visible on first model download).
+        """
         try:
             stdout_fd = os.dup(1)
             stderr_fd = os.dup(2)
         except OSError:
-            # If fd duplication fails, continue without suppression.
+            # Windows: fd duplication not supported for console handles.
+            # Continue without suppression — TTS is fully functional.
             yield
             return
 
