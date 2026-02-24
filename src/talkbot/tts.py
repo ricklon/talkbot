@@ -6,6 +6,7 @@ import logging
 import os
 import queue
 import subprocess
+import sys
 import tempfile
 import threading
 from pathlib import Path
@@ -37,6 +38,42 @@ except ImportError:
 
 import importlib.util as _importlib_util
 KITTENTTS_AVAILABLE = _importlib_util.find_spec("kittentts") is not None
+
+
+def _configure_phonemizer_espeak_library() -> None:
+    """Set PHONEMIZER_ESPEAK_LIBRARY when Homebrew libs are not auto-detected."""
+    if os.getenv("PHONEMIZER_ESPEAK_LIBRARY"):
+        return
+
+    candidates = [
+        "/opt/homebrew/lib/libespeak-ng.dylib",
+        "/opt/homebrew/lib/libespeak.dylib",
+        "/usr/local/lib/libespeak-ng.dylib",
+        "/usr/local/lib/libespeak.dylib",
+    ]
+    for candidate in candidates:
+        if Path(candidate).exists():
+            os.environ["PHONEMIZER_ESPEAK_LIBRARY"] = candidate
+            return
+
+
+def _kittentts_error_hint(error: Exception) -> str:
+    """Return a short actionable hint for common KittenTTS init failures."""
+    text = str(error).lower()
+    if "espeak" not in text:
+        return ""
+
+    if sys.platform.startswith("linux"):
+        return (
+            " Install eSpeak NG (for example: "
+            "`sudo apt install espeak-ng espeak-ng-data` or "
+            "`sudo dnf install espeak-ng`)."
+        )
+    if sys.platform == "darwin":
+        return " Install eSpeak NG with Homebrew: `brew install espeak-ng`."
+    if sys.platform.startswith("win"):
+        return " Install eSpeak NG and ensure `espeak-ng.exe` is on PATH."
+    return " Install eSpeak and ensure it is available on PATH."
 
 
 class EdgeTTS:
@@ -283,6 +320,7 @@ class KittenTTSBackend:
     def __init__(self, voice: Optional[str] = None, model: Optional[str] = None):
         if not KITTENTTS_AVAILABLE:
             raise RuntimeError("kittentts not available")
+        _configure_phonemizer_espeak_library()
         from kittentts import KittenTTS as _KittenTTS  # lazy: avoids torch at startup
         # Let KittenTTS select its own default model unless explicitly overridden.
         with self._suppress_stdio_fds():
@@ -408,9 +446,10 @@ class TTSManager:
                 self.backend_name = "kittentts"
                 return
             except Exception as e:
+                hint = _kittentts_error_hint(e)
                 if requested_backend == "kittentts":
-                    raise RuntimeError(f"Failed to initialize kittentts: {e}")
-                print(f"Warning: Could not initialize kittentts: {e}")
+                    raise RuntimeError(f"Failed to initialize kittentts: {e}{hint}")
+                print(f"Warning: Could not initialize kittentts: {e}{hint}")
 
         # Try pyttsx3
         if requested_backend in (None, "edge-tts", "pyttsx3") and PYTTSX3_AVAILABLE:

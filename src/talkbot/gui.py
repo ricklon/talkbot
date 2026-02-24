@@ -59,6 +59,17 @@ def _env_bool(name: str, default: bool) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _env_int(name: str, default: int, *, min_value: int, max_value: int) -> int:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    try:
+        parsed = int(value.strip())
+    except ValueError:
+        return default
+    return max(min_value, min(max_value, parsed))
+
+
 class ModernStyle:
     """Modern color scheme and styling for the GUI."""
 
@@ -222,6 +233,9 @@ class TalkBotGUI:
         self.default_tts_backend = os.getenv("TALKBOT_DEFAULT_TTS_BACKEND", "edge-tts")
         self.default_use_tools = _env_bool("TALKBOT_DEFAULT_USE_TOOLS", True)
         self.enable_thinking = env_thinking_default()
+        self.default_max_tokens = _env_int(
+            "TALKBOT_MAX_TOKENS", 512, min_value=32, max_value=8192
+        )
 
         self.root = tk.Tk()
         self.root.title("TalkBot - AI Talking Assistant")
@@ -613,6 +627,29 @@ class TalkBotGUI:
         vol_scale.configure(
             command=lambda v: self.volume_label.config(text=f"{int(float(v) * 100)}%")
         )
+
+        # Max tokens control
+        tokens_frame = tk.Frame(row2, bg=ModernStyle.BG_SECONDARY)
+        tokens_frame.pack(side=tk.LEFT, padx=(12, 0))
+        tk.Label(
+            tokens_frame,
+            text="Max Tokens:",
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+        ).pack(side=tk.LEFT)
+        self.max_tokens_var = tk.StringVar(value=str(self.default_max_tokens))
+        self.max_tokens_entry = tk.Entry(
+            tokens_frame,
+            textvariable=self.max_tokens_var,
+            width=6,
+            bg=ModernStyle.BG_TERTIARY,
+            fg=ModernStyle.TEXT_PRIMARY,
+            insertbackground=ModernStyle.TEXT_PRIMARY,
+            relief=tk.FLAT,
+            bd=4,
+        )
+        self.max_tokens_entry.pack(side=tk.LEFT, padx=(8, 0))
 
         # Voice chat controls
         row3 = tk.Frame(settings_frame, bg=ModernStyle.BG_SECONDARY)
@@ -1269,11 +1306,20 @@ class TalkBotGUI:
             if local_models and self.model_var.get() not in local_models:
                 self.model_var.set(local_models[0])
             self.local_row.pack(fill=tk.X, pady=(0, 8), before=self._slider_row_ref)
-            self.status_var.set("Provider: Local llama.cpp")
+            self.status_var.set("Provider: Local (non-server)")
 
     def _get_system_prompt(self) -> str | None:
         text = self.prompt_text.get("1.0", tk.END).strip()
         return apply_thinking_system_prompt(text or None, self.thinking_var.get())
+
+    def _current_max_tokens(self) -> int:
+        try:
+            value = int(self.max_tokens_var.get().strip())
+        except Exception:
+            value = self.default_max_tokens
+        value = max(32, min(8192, value))
+        self.max_tokens_var.set(str(value))
+        return value
 
     def _display_response_text(self, response: str) -> str:
         """Return chat-display text based on thinking toggle."""
@@ -1733,27 +1779,38 @@ class TalkBotGUI:
                         break
 
             # Get response
+            max_tokens = self._current_max_tokens()
             with self._create_client() as client:
                 system_prompt = self._get_system_prompt()
                 use_tools = self.tools_var.get()
+                messages: list[dict] = []
+                if system_prompt:
+                    messages.append({"role": "system", "content": system_prompt})
+                messages.append({"role": "user", "content": message})
+
+                usage: dict = {}
                 if use_tools and supports_tools(client):
                     register_all_tools(client)
-                    response = client.chat_with_system_tools(
-                        message, system_prompt=system_prompt
-                    )
+                    response = client.chat_with_tools(messages, max_tokens=max_tokens)
                 else:
-                    response = client.simple_chat(message, system_prompt=system_prompt)
+                    data = client.chat_completion(messages, max_tokens=max_tokens)
+                    usage = data.get("usage") or {}
+                    response = data["choices"][0]["message"].get("content", "")
+
+                if not usage:
+                    usage = getattr(client, "last_usage", {}) or {}
+                provider_name = getattr(client, "provider_name", self.provider_var.get())
 
                 if self.stop_requested.is_set():
                     return
 
             # Update UI in main thread
-            self.root.after(0, self._on_response, response)
+            self.root.after(0, self._on_response, response, usage, provider_name)
         except (LLMProviderError, Exception) as e:
             if not self.stop_requested.is_set():
                 self.root.after(0, self._on_error, str(e))
 
-    def _on_response(self, response: str) -> None:
+    def _on_response(self, response: str, usage: dict | None = None, provider: str = "") -> None:
         """Handle AI response."""
         if self.stop_requested.is_set():
             self._reset_ui()
@@ -1762,6 +1819,13 @@ class TalkBotGUI:
         display_response = self._display_response_text(response)
         speech_response = self._speech_response_text(response)
         self._add_message("AI", display_response, is_user=False)
+        if usage:
+            total = int(usage.get("total_tokens", 0) or 0)
+            prompt = int(usage.get("prompt_tokens", 0) or 0)
+            completion = int(usage.get("completion_tokens", 0) or 0)
+            self.token_var.set(f"{total:,} tok  ({prompt:,}+{completion:,})")
+        elif provider == "local":
+            self.token_var.set("tok n/a (local)")
 
         if self.speak_var.get() and self.tts and not self.stop_requested.is_set():
             self.status_var.set("Speaking...")
