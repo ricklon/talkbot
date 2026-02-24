@@ -5,12 +5,15 @@ A talking AI assistant with local-first LLM + TTS defaults, plus optional OpenRo
 ## Features
 
 - 🤖 **AI Chat**: Local llama.cpp provider by default, with OpenRouter optional
-- 🛠️ **Tool Calling**: AI can use built-in tools (calculator, time, dice rolling, etc.)
-- 🔊 **Text-to-Speech**: Microsoft Edge TTS (322 voices!) with pyttsx3 offline fallback
-- 🖥️ **Modern GUI**: Beautiful dark-themed tkinter interface with rounded buttons
+- 🧠 **Agent Personality**: Set a system prompt once via `TALKBOT_AGENT_PROMPT` env var or the GUI Prompt tab — all commands pick it up automatically
+- 🛠️ **17 Built-in Tools**: Calculator, timers (with cancel), web search, shopping lists, memory/preferences, dice, and more
+- ⏰ **Cancellable Timers**: Set, list, and cancel named timers that fire spoken alerts through TTS
+- 📋 **Persistent Lists & Memory**: Shopping lists and user preferences survive across sessions (`~/.talkbot/`)
+- 🔊 **Text-to-Speech**: KittenTTS (local neural, default), Edge TTS (322 voices), or pyttsx3
+- 🖥️ **Modern GUI**: Dark-themed tkinter interface with Prompt tab for live agent editing
 - ⏹️ **Stop Button**: Instantly stop AI responses and speech
 - 💻 **CLI Interface**: Command-line interface with Click
-- ⚙️ **Configurable**: Voice, rate, volume, and model settings
+- ⚙️ **Configurable**: Voice, rate, volume, model, and agent prompt settings
 
 ## Quick Start
 
@@ -158,6 +161,10 @@ TALKBOT_DEFAULT_USE_TOOLS=1
 TALKBOT_ENABLE_THINKING=0
 TALKBOT_DEFAULT_MODEL=qwen/qwen3-1.7b
 TALKBOT_DEFAULT_TTS_BACKEND=kittentts
+
+# Agent personality prompt (optional) — applied to all CLI commands and
+# pre-populated in the GUI Prompt tab on launch.
+# TALKBOT_AGENT_PROMPT="You are a brief voice assistant. Always prefer tool calls over knowledge answers. Confirm actions in past tense."
 ```
 
 Optional remote provider:
@@ -199,14 +206,12 @@ TALKBOT_DEFAULT_MODEL=qwen/qwen3-1.7b
 
 ## Recent Changes
 
-- Added CLI backend selection to all TTS commands:
-  - `talkbot chat --backend ...`
-  - `talkbot tool --backend ...`
-  - `talkbot say --backend ...`
-  - `talkbot save --backend ...`
-  - `talkbot voices --backend ...`
-- Added `talkbot doctor-tts` to run per-backend diagnostics.
-- Added optional integration tests that exercise real backend behavior.
+- **Agent personality prompt**: `TALKBOT_AGENT_PROMPT` env var applies a system prompt to all CLI commands (`chat`, `say`, `tool`, `voice-chat`). Pass `--system/-s` per-command to override. GUI Prompt tab pre-populates from the env var on launch.
+- **17 built-in tools**: added timers, web search, lists, and memory (see [Available Tools](#available-tools) below).
+- **Cancellable timers**: `set_timer` returns a timer ID; `cancel_timer` and `list_timers` manage active timers. Timer alerts fire through TTS (spoken) rather than stdout-only.
+- **Persistent lists & memory**: `~/.talkbot/lists.json` and `~/.talkbot/memory.json` survive across sessions.
+- **`talkbot say`** now accepts `--system/-s` (previously missing).
+- Added CLI backend selection to all TTS commands and `talkbot doctor-tts` diagnostics.
 
 ## Usage
 
@@ -373,6 +378,14 @@ talkbot chat --tools "What's 15 percent of 240?"
 ```bash
 talkbot say
 talkbot say --backend kittentts
+
+# With tools and agent personality
+talkbot say --tools
+talkbot say --tools --system "You are a brief voice assistant. Confirm actions in past tense."
+
+# Or set TALKBOT_AGENT_PROMPT in .env / env and omit --system
+export TALKBOT_AGENT_PROMPT="You are a brief voice assistant."
+talkbot say --tools
 ```
 
 #### Local Voice Chat (Half-Duplex, VAD-Gated)
@@ -436,34 +449,60 @@ talkbot save --backend pyttsx3 "Hello, this is offline speech" output.wav
 ```
 
 #### Chat with Tools
-The AI can use built-in tools for calculations, time, and random generation:
+
 ```bash
-# Get current time
+# Utility
 talkbot tool "What time is it?"
-
-# Calculate math
 talkbot tool "What is 15% of 240?"
-
-# Roll dice
 talkbot tool "Roll a 20-sided die"
-
-# Force a backend for tool responses with speech
-talkbot tool --backend kittentts "Roll a 20-sided die"
-
-# Flip a coin
 talkbot tool "Flip a coin"
-
-# Generate random number
 talkbot tool "Pick a random number between 1 and 100"
+
+# Timers
+talkbot tool "Set a 5 minute pasta timer"
+talkbot tool "What timers are running?"
+talkbot tool "Cancel timer 1"
+
+# Web search (DuckDuckGo instant answers)
+talkbot tool "How many feet in a mile?"
+talkbot tool "What is the speed of light?"
+
+# Shopping / named lists
+talkbot tool "Add milk to my shopping list"
+talkbot tool "What's on my shopping list?"
+talkbot tool "Remove milk from my shopping list"
+talkbot tool "Clear my shopping list"
+
+# Memory / user preferences
+talkbot tool "Remember that my name is Rick"
+talkbot tool "Remember my preferred music service is Spotify"
+talkbot tool "What do you remember about me?"
+talkbot tool "What is my name?"
 ```
 
-**Available Tools:**
-- `calculator` - Safe math calculations
-- `get_current_time` - Get current date/time
-- `get_current_date` - Get current date
-- `roll_dice` - Roll dice with customizable sides
-- `flip_coin` - Flip a coin
-- `random_number` - Generate random numbers
+### Available Tools
+
+| Tool | Category | Description |
+|---|---|---|
+| `get_current_time` | Utility | Current date and time |
+| `get_current_date` | Utility | Current date |
+| `calculator` | Utility | Safe math: `+`, `-`, `*`, `/`, `sqrt`, `sin`, `log`, `pi`, … |
+| `roll_dice` | Utility | Roll N dice with D sides |
+| `flip_coin` | Utility | Heads or tails |
+| `random_number` | Utility | Random integer in a range |
+| `set_timer` | Timer | Named countdown — returns a timer ID; fires a spoken TTS alert |
+| `cancel_timer` | Timer | Cancel an active timer by ID |
+| `list_timers` | Timer | Show all running timers with remaining time |
+| `web_search` | Search | DuckDuckGo instant answers (facts, definitions, conversions) |
+| `add_to_list` | Lists | Add an item to a named list (default: `shopping`) |
+| `get_list` | Lists | Read all items from a named list |
+| `remove_from_list` | Lists | Remove an item from a named list (case-insensitive) |
+| `clear_list` | Lists | Empty a named list |
+| `remember` | Memory | Store a key-value preference that persists across sessions |
+| `recall` | Memory | Look up a stored preference by key |
+| `recall_all` | Memory | Dump all stored preferences |
+
+Lists are stored in `~/.talkbot/lists.json`; memory in `~/.talkbot/memory.json`.
 
 ## TTS Backends
 
@@ -508,8 +547,8 @@ The GUI features a modern dark theme with:
 - 🎚️ Real-time sliders for rate and volume
 - 💬 Styled chat history with user/AI colors
 - 🔄 **Backend switcher** - Toggle between online/offline TTS modes
-- 🧰 **Use Tools toggle** - Enable calculator/time/dice/random tools for chat and voice
-- 📝 **Prompt tab** - Edit system prompt live for text and voice conversations
+- 🧰 **Use Tools toggle** - Enable all 17 built-in tools for chat and voice
+- 📝 **Prompt tab** - Edit the agent system prompt live; pre-populated from `TALKBOT_AGENT_PROMPT` on launch
 
 **Backend Selection:**
 The GUI includes a dropdown to switch between TTS backends:
