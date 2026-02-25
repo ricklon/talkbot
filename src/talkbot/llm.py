@@ -46,6 +46,61 @@ def _response_content(response: dict[str, Any]) -> str:
     return ""
 
 
+def _normalize_tool_args_for_call(function_name: str, function_args: Any) -> dict[str, Any]:
+    """Normalize common alias parameters produced by smaller models."""
+    if not isinstance(function_args, dict):
+        return {}
+
+    args = dict(function_args)
+    if function_name == "roll_dice":
+        if "count" not in args and "dice" in args:
+            args["count"] = args.get("dice")
+        if "sides" not in args:
+            if "face" in args:
+                args["sides"] = args.get("face")
+            elif "faces" in args:
+                args["sides"] = args.get("faces")
+        args.pop("dice", None)
+        args.pop("face", None)
+        args.pop("faces", None)
+
+    alias_map: dict[str, dict[str, str]] = {
+        "set_timer": {
+            "duration": "seconds",
+            "time": "seconds",
+            "secs": "seconds",
+            "sec": "seconds",
+            "delay": "seconds",
+        },
+        "set_reminder": {
+            "duration": "seconds",
+            "time": "seconds",
+            "secs": "seconds",
+            "sec": "seconds",
+            "text": "message",
+            "label": "message",
+        },
+        "cancel_timer": {
+            "id": "timer_id",
+            "timer": "timer_id",
+            "timerid": "timer_id",
+        },
+        "create_list": {"name": "list_name", "list": "list_name"},
+        "get_list": {"name": "list_name", "list": "list_name"},
+        "clear_list": {"name": "list_name", "list": "list_name"},
+        "add_to_list": {"name": "list_name", "list": "list_name", "value": "item"},
+        "add_items_to_list": {"name": "list_name", "list": "list_name"},
+        "remove_from_list": {"name": "list_name", "list": "list_name", "value": "item"},
+        "remember": {"name": "key", "field": "key", "text": "value"},
+        "recall": {"name": "key", "field": "key"},
+    }
+
+    for alias, canonical in alias_map.get(function_name, {}).items():
+        if alias in args and canonical not in args:
+            args[canonical] = args[alias]
+    return args
+
+
 class LocalLlamaCppClient:
     """Non-server local client using llama.cpp CLI."""
 
@@ -306,6 +361,7 @@ class LocalLlamaCppClient:
                     function_args = json.loads(tool_call["function"]["arguments"])
                 except Exception:
                     function_args = {}
+                function_args = _normalize_tool_args_for_call(function_name, function_args)
                 if function_name in self.tools:
                     try:
                         result = self.tools[function_name](**function_args)
@@ -339,18 +395,7 @@ class LocalLlamaCppClient:
                     function_args = json.loads(tool_call["function"]["arguments"])
                 except Exception:
                     function_args = {}
-                if function_name == "roll_dice" and isinstance(function_args, dict):
-                    # Accept common alias argument names produced by small local models.
-                    if "count" not in function_args and "dice" in function_args:
-                        function_args["count"] = function_args.get("dice")
-                    if "sides" not in function_args:
-                        if "face" in function_args:
-                            function_args["sides"] = function_args.get("face")
-                        elif "faces" in function_args:
-                            function_args["sides"] = function_args.get("faces")
-                    function_args.pop("dice", None)
-                    function_args.pop("face", None)
-                    function_args.pop("faces", None)
+                function_args = _normalize_tool_args_for_call(function_name, function_args)
                 call_key = f"{function_name}|{json.dumps(function_args, sort_keys=True)}"
                 if call_key in executed_call_results:
                     current_messages.append(
@@ -824,6 +869,7 @@ class LocalServerClient:
                     function_args = json.loads(tool_call["function"]["arguments"])
                 except Exception:
                     function_args = {}
+                function_args = _normalize_tool_args_for_call(function_name, function_args)
                 call_key = f"{function_name}|{json.dumps(function_args, sort_keys=True)}"
                 if call_key in executed_call_results:
                     # Duplicate — replay original result to keep history valid, don't re-execute

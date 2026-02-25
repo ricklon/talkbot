@@ -3,6 +3,8 @@ from pathlib import Path
 
 from talkbot.benchmark import (
     BenchmarkProfile,
+    ToolCallTrace,
+    _evaluate_turn,
     build_leaderboard_markdown,
     load_scenarios,
     run_benchmark,
@@ -133,3 +135,45 @@ def test_write_outputs_and_leaderboard(tmp_path):
     assert Path(paths["leaderboard"]).exists()
     result_payload = json.loads(Path(paths["results"]).read_text())
     assert result_payload["run_count"] == 1
+
+
+def test_arg_alias_normalization_for_timer_and_cancel():
+    turn = {
+        "user": "Set and cancel",
+        "expect": {
+            "tool_calls": [
+                {"name": "set_timer", "args_contains": {"seconds": 10}},
+                {"name": "cancel_timer", "args_contains": {"timer_id": "1"}},
+            ]
+        },
+    }
+    tool_calls = [
+        ToolCallTrace(
+            scenario_id="s",
+            turn_index=0,
+            name="set_timer",
+            args={"duration": 10},
+            result="ok",
+            error=None,
+            latency_ms=1.0,
+        ),
+        ToolCallTrace(
+            scenario_id="s",
+            turn_index=0,
+            name="cancel_timer",
+            args={"id": 1},
+            result="ok",
+            error=None,
+            latency_ms=1.0,
+        ),
+    ]
+    passed, assertions, _, _, expected_arg_checks, matched_arg_checks = _evaluate_turn(
+        turn=turn,
+        response="ok",
+        tool_calls=tool_calls,
+        latency_ms=2.0,
+    )
+    assert passed is True
+    assert assertions == []
+    assert expected_arg_checks == 2
+    assert matched_arg_checks == 2

@@ -33,6 +33,46 @@ def _response_content(response: dict[str, Any]) -> str:
     return ""
 
 
+def _normalize_tool_args_for_call(function_name: str, function_args: Any) -> dict[str, Any]:
+    if not isinstance(function_args, dict):
+        return {}
+    args = dict(function_args)
+    alias_map: dict[str, dict[str, str]] = {
+        "set_timer": {
+            "duration": "seconds",
+            "time": "seconds",
+            "secs": "seconds",
+            "sec": "seconds",
+            "delay": "seconds",
+        },
+        "set_reminder": {
+            "duration": "seconds",
+            "time": "seconds",
+            "secs": "seconds",
+            "sec": "seconds",
+            "text": "message",
+            "label": "message",
+        },
+        "cancel_timer": {
+            "id": "timer_id",
+            "timer": "timer_id",
+            "timerid": "timer_id",
+        },
+        "create_list": {"name": "list_name", "list": "list_name"},
+        "get_list": {"name": "list_name", "list": "list_name"},
+        "clear_list": {"name": "list_name", "list": "list_name"},
+        "add_to_list": {"name": "list_name", "list": "list_name", "value": "item"},
+        "add_items_to_list": {"name": "list_name", "list": "list_name"},
+        "remove_from_list": {"name": "list_name", "list": "list_name", "value": "item"},
+        "remember": {"name": "key", "field": "key", "text": "value"},
+        "recall": {"name": "key", "field": "key"},
+    }
+    for alias, canonical in alias_map.get(function_name, {}).items():
+        if alias in args and canonical not in args:
+            args[canonical] = args[alias]
+    return args
+
+
 class OpenRouterClient:
     """Client for interacting with OpenRouter API with tool support."""
 
@@ -201,6 +241,7 @@ class OpenRouterClient:
                     function_args = json.loads(tool_call["function"]["arguments"])
                 except Exception:
                     function_args = {}
+                function_args = _normalize_tool_args_for_call(function_name, function_args)
 
                 if function_name in self.tools:
                     try:
