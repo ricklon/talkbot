@@ -44,7 +44,10 @@ def test_random_number_validates_bounds():
 
 def test_time_and_date_format():
     assert re.match(r"^\d{4}-\d{2}-\d{2}$", tools.get_current_date())
-    assert re.match(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$", tools.get_current_time())
+    assert re.match(
+        r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?: [A-Z0-9+\-:]+)?$",
+        tools.get_current_time(),
+    )
 
 
 def test_register_all_tools_registers_every_definition():
@@ -57,3 +60,42 @@ def test_register_all_tools_registers_every_definition():
 
     assert got == expected
     assert len(client.calls) == len(expected)
+
+
+def test_set_timer_accepts_seconds_string_and_can_cancel():
+    tools._timers.clear()
+    tools._timer_counter = 0
+
+    msg = tools.set_timer("10 secs")
+    assert "Timer #1 set." in msg
+    assert "10 seconds" in msg
+    assert tools.cancel_timer("1").startswith("Timer #1")
+
+
+def test_list_tools_validate_and_parse_inputs(tmp_path, monkeypatch):
+    monkeypatch.setattr(tools, "_data_dir", lambda: tmp_path)
+
+    assert tools.create_list("   ") == "Error: list_name must not be empty."
+    assert tools.add_to_list("  ", "shopping") == "Error: item must not be empty."
+
+    assert tools.create_list("shopping") == "Created 'shopping' list."
+    msg = tools.add_items_to_list("milk, eggs, bread", "shopping")
+    assert "Added milk, eggs, bread to the shopping list." == msg
+    got = tools.get_list("shopping")
+    assert "- milk" in got and "- eggs" in got and "- bread" in got
+
+
+def test_data_dir_env_override_and_runtime_reset(tmp_path, monkeypatch):
+    custom_dir = tmp_path / "bench-state"
+    monkeypatch.setenv("TALKBOT_DATA_DIR", str(custom_dir))
+
+    assert tools.create_list("bench") == "Created 'bench' list."
+    assert tools.remember("key", "value").startswith("Remembered:")
+    assert "Timer #" in tools.set_timer(3)
+    assert tools._timers
+
+    tools.reset_runtime_state(clear_persistent=True)
+
+    assert not tools._timers
+    assert not (custom_dir / tools._LISTS_FILE).exists()
+    assert not (custom_dir / tools._MEMORY_FILE).exists()

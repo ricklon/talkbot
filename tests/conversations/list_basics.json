@@ -1,0 +1,41 @@
+{
+  "id": "list_basics",
+  "name": "List Basics",
+  "description": "Create and inspect a grocery-style list.",
+  "tags": ["lists", "tools", "core"],
+  "reset_state": true,
+  "turns": [
+    {
+      "user": "Create a grocery list.",
+      "expect": {
+        "tool_calls": [
+          {
+            "name_any": ["create_list", "get_list"]
+          }
+        ]
+      }
+    },
+    {
+      "user": "Add milk to the grocery list.",
+      "expect": {
+        "tool_calls": [
+          {
+            "name_any": ["add_to_list", "add_items_to_list"]
+          }
+        ]
+      }
+    },
+    {
+      "user": "What lists do you have?",
+      "expect": {
+        "tool_calls": [
+          {
+            "name": "list_all_lists"
+          }
+        ],
+        "response_contains": ["grocery"]
+      }
+    }
+  ]
+}
+

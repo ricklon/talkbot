@@ -1,0 +1,43 @@
+{
+  "id": "timer_basics",
+  "name": "Timer Basics",
+  "description": "Basic set/list/cancel timer flow.",
+  "tags": ["timers", "tools", "core"],
+  "reset_state": true,
+  "turns": [
+    {
+      "user": "Set a timer for 10 seconds.",
+      "expect": {
+        "tool_calls": [
+          {
+            "name": "set_timer",
+            "args_contains": {
+              "seconds": 10
+            }
+          }
+        ]
+      }
+    },
+    {
+      "user": "List timers.",
+      "expect": {
+        "tool_calls": [
+          {
+            "name": "list_timers"
+          }
+        ]
+      }
+    },
+    {
+      "user": "Cancel timer 1.",
+      "expect": {
+        "tool_calls": [
+          {
+            "name_any": ["cancel_timer", "list_timers", "set_timer"]
+          }
+        ],
+        "min_tool_calls": 1
+      }
+    }
+  ]
+}

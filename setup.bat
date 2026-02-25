@@ -36,7 +36,6 @@ echo       Without it, use a pre-built llama-cli.exe and set TALKBOT_LLAMACPP_BI
 exit /b 0
 
 :install
-set UV_SKIP_WHEEL_FILENAME_CHECK=1
 set UV_PROJECT_ENVIRONMENT=%LOCALAPPDATA%\talkbot\.venv
 if "%with_llama_python%"=="1" (
     uv tool install --reinstall ^

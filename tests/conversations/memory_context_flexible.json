@@ -1,0 +1,22 @@
+{
+  "id": "memory_context_flexible",
+  "name": "Memory Context (Flexible)",
+  "description": "Practical behavior check: accepts contextual answers even if recall tool is skipped.",
+  "tags": ["memory", "tools", "practical"],
+  "reset_state": true,
+  "turns": [
+    {
+      "user": "Remember that my favorite color is blue.",
+      "expect": {
+        "response_contains": ["blue"]
+      }
+    },
+    {
+      "user": "What is my favorite color?",
+      "expect": {
+        "response_contains": ["blue"]
+      }
+    }
+  ]
+}
+

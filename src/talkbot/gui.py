@@ -22,12 +22,12 @@ from talkbot.tools import register_all_tools, set_alert_callback
 from talkbot.tts import TTSManager
 from talkbot.voice import MissingVoiceDependencies, VoiceConfig, VoicePipeline
 
-FREE_OPENROUTER_MODELS = [
-    "deepseek/deepseek-r1:free",
-    "google/gemma-3-27b-it:free",
-    "meta-llama/llama-3.3-70b-instruct:free",
-    "qwen/qwen-2.5-72b-instruct:free",
-    "mistralai/mistral-7b-instruct:free",
+OPENROUTER_MODELS = [
+    "google/gemini-2.5-flash-lite",
+    "google/gemini-2.0-flash-lite-001",
+    "mistralai/mistral-small-3.1-24b-instruct:free",
+    "qwen/qwen3-8b",
+    "qwen/qwen3-4b:free",
 ]
 
 
@@ -57,6 +57,17 @@ def _env_bool(name: str, default: bool) -> bool:
     if value is None:
         return default
     return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _env_int(name: str, default: int, *, min_value: int, max_value: int) -> int:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    try:
+        parsed = int(value.strip())
+    except ValueError:
+        return default
+    return max(min_value, min(max_value, parsed))
 
 
 class ModernStyle:
@@ -202,7 +213,7 @@ class TalkBotGUI:
         """Initialize the GUI."""
         self.api_key = api_key or os.getenv("OPENROUTER_API_KEY")
         self.provider = os.getenv("TALKBOT_LLM_PROVIDER", "local")
-        self.model = model or os.getenv("TALKBOT_DEFAULT_MODEL", "qwen/qwen3-1.7b")
+        self.model = model or os.getenv("TALKBOT_DEFAULT_MODEL", "google/gemini-2.5-flash-lite")
         self.local_model_path = _default_local_model_path()
         self.llamacpp_bin = _default_llamacpp_bin()
         self.local_server_url = os.getenv(
@@ -222,6 +233,10 @@ class TalkBotGUI:
         self.default_tts_backend = os.getenv("TALKBOT_DEFAULT_TTS_BACKEND", "edge-tts")
         self.default_use_tools = _env_bool("TALKBOT_DEFAULT_USE_TOOLS", True)
         self.enable_thinking = env_thinking_default()
+        self.default_max_tokens = _env_int(
+            "TALKBOT_MAX_TOKENS", 512, min_value=32, max_value=8192
+        )
+        self._all_voices: list[dict] = []
 
         self.root = tk.Tk()
         self.root.title("TalkBot - AI Talking Assistant")
@@ -482,6 +497,22 @@ class TalkBotGUI:
             row_tts, textvariable=self.voice_var, width=40, style="Modern.TCombobox"
         )
         self.voice_combo.pack(side=tk.LEFT, padx=(10, 0))
+        self.voice_combo.bind("<<ComboboxSelected>>", self._on_voice_selected)
+
+        self.english_only_var = tk.BooleanVar(value=True)
+        self.english_only_check = tk.Checkbutton(
+            row_tts,
+            text="English only",
+            variable=self.english_only_var,
+            command=self._on_voice_filter_toggled,
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            selectcolor=ModernStyle.BG_TERTIARY,
+            activebackground=ModernStyle.BG_SECONDARY,
+            activeforeground=ModernStyle.TEXT_PRIMARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_SMALL),
+        )
+        self.english_only_check.pack(side=tk.LEFT, padx=(12, 0))
 
         # Local paths row — shown only when provider=local, packed dynamically
         self.local_row = tk.Frame(settings_frame, bg=ModernStyle.BG_SECONDARY)
@@ -613,6 +644,29 @@ class TalkBotGUI:
         vol_scale.configure(
             command=lambda v: self.volume_label.config(text=f"{int(float(v) * 100)}%")
         )
+
+        # Max tokens control
+        tokens_frame = tk.Frame(row2, bg=ModernStyle.BG_SECONDARY)
+        tokens_frame.pack(side=tk.LEFT, padx=(12, 0))
+        tk.Label(
+            tokens_frame,
+            text="Max Tokens:",
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+        ).pack(side=tk.LEFT)
+        self.max_tokens_var = tk.StringVar(value=str(self.default_max_tokens))
+        self.max_tokens_entry = tk.Entry(
+            tokens_frame,
+            textvariable=self.max_tokens_var,
+            width=6,
+            bg=ModernStyle.BG_TERTIARY,
+            fg=ModernStyle.TEXT_PRIMARY,
+            insertbackground=ModernStyle.TEXT_PRIMARY,
+            relief=tk.FLAT,
+            bd=4,
+        )
+        self.max_tokens_entry.pack(side=tk.LEFT, padx=(8, 0))
 
         # Voice chat controls
         row3 = tk.Frame(settings_frame, bg=ModernStyle.BG_SECONDARY)
@@ -1073,16 +1127,10 @@ class TalkBotGUI:
             self.tts = TTSManager(backend=backend)
             set_alert_callback(self.tts.speak)
             voices = self.tts.available_voices
+            self._all_voices = voices
 
-            self.voice_combo["values"] = [v["name"] for v in voices]
+            self._refresh_voice_dropdown(voices)
             if voices:
-                # Find English voice as default
-                default_voice = next(
-                    (v for v in voices if "en" in v.get("languages", [])), voices[0]
-                )
-                self.voice_var.set(default_voice["name"])
-                self.tts.set_voice(default_voice["id"])
-
                 # Update status label
                 if backend == "edge-tts":
                     self.backend_status_label.config(
@@ -1247,14 +1295,96 @@ class TalkBotGUI:
         current = self.local_model_path_var.get().strip()
         return [current] if current else []
 
+    def _is_english_voice(self, voice: dict) -> bool:
+        """Best-effort English detection across backend voice metadata."""
+
+        def normalize(value: object) -> str:
+            if value is None:
+                return ""
+            if isinstance(value, bytes):
+                text = value.decode("utf-8", errors="ignore")
+            else:
+                text = str(value)
+            filtered = "".join(
+                ch.lower() if ch.isalnum() or ch in {" ", "-", "_"} else " "
+                for ch in text
+            )
+            return " ".join(filtered.split())
+
+        candidates: list[object] = [voice.get("id"), voice.get("name")]
+        languages = voice.get("languages", [])
+        if isinstance(languages, (list, tuple, set)):
+            candidates.extend(languages)
+        else:
+            candidates.append(languages)
+
+        for candidate in candidates:
+            text = normalize(candidate).replace("_", "-")
+            if not text:
+                continue
+            if "english" in text:
+                return True
+            if text.startswith("en"):
+                return True
+            if any(token in {"en", "eng"} for token in text.replace("-", " ").split()):
+                return True
+        return False
+
+    def _voice_id_for_name(self, voice_name: str) -> str | None:
+        for voice in self._all_voices:
+            if voice["name"] == voice_name:
+                return voice["id"]
+        return None
+
+    def _refresh_voice_dropdown(
+        self, voices: list[dict], preferred_name: str | None = None
+    ) -> None:
+        selected_name = preferred_name or self.voice_var.get().strip()
+        visible_voices = (
+            [v for v in voices if self._is_english_voice(v)]
+            if self.english_only_var.get()
+            else voices
+        )
+        self.voice_combo["values"] = [v["name"] for v in visible_voices]
+        if not visible_voices:
+            self.voice_var.set("")
+            return
+
+        selected_voice = next(
+            (v for v in visible_voices if v["name"] == selected_name), None
+        )
+        if selected_voice is None:
+            selected_voice = next(
+                (v for v in visible_voices if self._is_english_voice(v)),
+                visible_voices[0],
+            )
+
+        self.voice_var.set(selected_voice["name"])
+        if self.tts:
+            self.tts.set_voice(selected_voice["id"])
+
+    def _on_voice_filter_toggled(self) -> None:
+        if not self.tts:
+            return
+        self._refresh_voice_dropdown(self._all_voices)
+
+    def _on_voice_selected(self, event=None) -> None:
+        """Apply the selected voice immediately when the user picks from the dropdown."""
+        del event
+        if not self.tts:
+            return
+        voice_id = self._voice_id_for_name(self.voice_var.get())
+        if voice_id:
+            self.tts.set_voice(voice_id)
+
     def _on_provider_changed(self, event=None) -> None:
         del event
         provider = self.provider_var.get()
         if provider == "openrouter":
-            self.model_combo["values"] = FREE_OPENROUTER_MODELS
+            self.model_combo["values"] = OPENROUTER_MODELS
             self.model_combo.config(state="readonly")
-            if self.model_var.get() not in FREE_OPENROUTER_MODELS:
-                self.model_var.set(FREE_OPENROUTER_MODELS[0])
+            if self.model_var.get() not in OPENROUTER_MODELS:
+                self.model_var.set(OPENROUTER_MODELS[0])
             self.local_row.pack_forget()
             self.status_var.set("Provider: OpenRouter")
         elif provider == "local_server":
@@ -1269,11 +1399,20 @@ class TalkBotGUI:
             if local_models and self.model_var.get() not in local_models:
                 self.model_var.set(local_models[0])
             self.local_row.pack(fill=tk.X, pady=(0, 8), before=self._slider_row_ref)
-            self.status_var.set("Provider: Local llama.cpp")
+            self.status_var.set("Provider: Local (non-server)")
 
     def _get_system_prompt(self) -> str | None:
         text = self.prompt_text.get("1.0", tk.END).strip()
         return apply_thinking_system_prompt(text or None, self.thinking_var.get())
+
+    def _current_max_tokens(self) -> int:
+        try:
+            value = int(self.max_tokens_var.get().strip())
+        except Exception:
+            value = self.default_max_tokens
+        value = max(32, min(8192, value))
+        self.max_tokens_var.set(str(value))
+        return value
 
     def _display_response_text(self, response: str) -> str:
         """Return chat-display text based on thinking toggle."""
@@ -1361,10 +1500,9 @@ class TalkBotGUI:
                     device_out=self._parse_device_selection(self.spk_var.get()),
                     allow_barge_in=True,
                 )
-                tts_voice_id = next(
-                    (v["id"] for v in self.tts.available_voices if v["name"] == self.voice_var.get()),
-                    None,
-                ) if self.tts else None
+                tts_voice_id = (
+                    self._voice_id_for_name(self.voice_var.get()) if self.tts else None
+                )
                 self.voice_pipeline = VoicePipeline(
                     api_key=self.api_key,
                     provider=self.provider_var.get(),
@@ -1727,33 +1865,50 @@ class TalkBotGUI:
                 self.tts.set_volume(self.volume_var.get())
 
                 # Find voice ID from name
-                for voice in self.tts.available_voices:
-                    if voice["name"] == self.voice_var.get():
-                        self.tts.set_voice(voice["id"])
-                        break
+                voice_id = self._voice_id_for_name(self.voice_var.get())
+                if voice_id:
+                    self.tts.set_voice(voice_id)
 
             # Get response
+            max_tokens = self._current_max_tokens()
             with self._create_client() as client:
                 system_prompt = self._get_system_prompt()
                 use_tools = self.tools_var.get()
+                messages: list[dict] = []
+                if system_prompt:
+                    messages.append({"role": "system", "content": system_prompt})
+                messages.append({"role": "user", "content": message})
+
+                usage: dict = {}
                 if use_tools and supports_tools(client):
                     register_all_tools(client)
-                    response = client.chat_with_system_tools(
-                        message, system_prompt=system_prompt
-                    )
+                    response = client.chat_with_tools(messages, max_tokens=max_tokens)
                 else:
-                    response = client.simple_chat(message, system_prompt=system_prompt)
+                    data = client.chat_completion(messages, max_tokens=max_tokens)
+                    usage = data.get("usage") or {}
+                    choices = data.get("choices")
+                    if isinstance(choices, list) and choices:
+                        first = choices[0] if isinstance(choices[0], dict) else {}
+                        message = first.get("message", {}) if isinstance(first, dict) else {}
+                        content = message.get("content", "") if isinstance(message, dict) else ""
+                        response = str(content)
+                    else:
+                        response = ""
+
+                if not usage:
+                    usage = getattr(client, "last_usage", {}) or {}
+                provider_name = getattr(client, "provider_name", self.provider_var.get())
 
                 if self.stop_requested.is_set():
                     return
 
             # Update UI in main thread
-            self.root.after(0, self._on_response, response)
+            self.root.after(0, self._on_response, response, usage, provider_name)
         except (LLMProviderError, Exception) as e:
             if not self.stop_requested.is_set():
                 self.root.after(0, self._on_error, str(e))
 
-    def _on_response(self, response: str) -> None:
+    def _on_response(self, response: str, usage: dict | None = None, provider: str = "") -> None:
         """Handle AI response."""
         if self.stop_requested.is_set():
             self._reset_ui()
@@ -1762,6 +1917,13 @@ class TalkBotGUI:
         display_response = self._display_response_text(response)
         speech_response = self._speech_response_text(response)
         self._add_message("AI", display_response, is_user=False)
+        if usage:
+            total = int(usage.get("total_tokens", 0) or 0)
+            prompt = int(usage.get("prompt_tokens", 0) or 0)
+            completion = int(usage.get("completion_tokens", 0) or 0)
+            self.token_var.set(f"{total:,} tok  ({prompt:,}+{completion:,})")
+        elif provider == "local":
+            self.token_var.set("tok n/a (local)")
 
         if self.speak_var.get() and self.tts and not self.stop_requested.is_set():
             self.status_var.set("Speaking...")
@@ -1847,16 +2009,10 @@ class TalkBotGUI:
             self.tts = TTSManager(backend=new_backend)
             set_alert_callback(self.tts.speak)
             voices = self.tts.available_voices
+            self._all_voices = voices
 
             # Update voice dropdown
-            self.voice_combo["values"] = [v["name"] for v in voices]
-            if voices:
-                # Try to find an English voice
-                default_voice = next(
-                    (v for v in voices if "en" in v.get("languages", [])), voices[0]
-                )
-                self.voice_var.set(default_voice["name"])
-                self.tts.set_voice(default_voice["id"])
+            self._refresh_voice_dropdown(voices)
 
             self.status_var.set(f"Switched to {new_backend}")
         except Exception as e:

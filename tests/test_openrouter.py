@@ -125,3 +125,11 @@ def test_chat_with_tools_without_registered_tools(monkeypatch):
     )
 
     assert client.chat_with_tools([{"role": "user", "content": "hello"}]) == "plain response"
+
+
+def test_chat_with_tools_handles_empty_choices(monkeypatch):
+    client = OpenRouterClient(api_key="k")
+
+    monkeypatch.setattr(client, "chat_completion", lambda *_args, **_kwargs: {"choices": []})
+
+    assert client.chat_with_tools([{"role": "user", "content": "hello"}]) == ""

@@ -65,7 +65,7 @@ talkbot-gui
 | **setup.bat / run-*.bat** | ✅ | N/A | Windows-only; Linux/macOS uses setup.sh |
 | **setup.sh / download-model.sh** | N/A | ✅ | Linux/macOS only; Windows uses .bat equivalents |
 
-> **Windows note:** `UV_SKIP_WHEEL_FILENAME_CHECK=1` is required on every `uv` invocation due to a version tag mismatch in the kittentts wheel. All `.bat` scripts set this automatically.
+> **Dependency note (2026-02-24):** TalkBot now uses `kittentts` from PyPI, so `UV_SKIP_WHEEL_FILENAME_CHECK` is no longer required.
 
 ## Installation
 
@@ -78,6 +78,21 @@ sudo apt install python3-tk        # Debian/Ubuntu
 sudo dnf install python3-tkinter   # Fedora/RHEL
 ```
 
+KittenTTS also needs eSpeak NG:
+
+```bash
+sudo apt install espeak-ng espeak-ng-data   # Debian/Ubuntu
+sudo dnf install espeak-ng                  # Fedora/RHEL
+```
+
+### Prerequisites (macOS)
+
+KittenTTS needs eSpeak NG:
+
+```bash
+brew install espeak-ng
+```
+
 ### Prerequisites (Windows)
 
 The recommended Windows setup uses the pre-built `llama-server.exe` binary (no MSVC required):
@@ -87,14 +102,13 @@ The recommended Windows setup uses the pre-built `llama-server.exe` binary (no M
 3. Use `run-server.bat` (included) to start the server before launching the GUI
 4. Use `run-gui.bat` (included) to launch the GUI — sets required env vars automatically
 
-> **Note:** `UV_SKIP_WHEEL_FILENAME_CHECK=1` is required on every `uv` invocation due to a version mismatch in the kittentts wheel. `run-gui.bat` sets this automatically.
+> **Note:** The `.venv` is placed in `%LOCALAPPDATA%\talkbot\.venv` (outside OneDrive) to avoid file-locking issues.
 >
-> The `.venv` is placed in `%LOCALAPPDATA%\talkbot\.venv` (outside OneDrive) to avoid file-locking issues.
+> **KittenTTS note:** install eSpeak NG and ensure `espeak-ng.exe` (or `espeak.exe`) is on your `PATH`.
 
 If you want the `llama-cpp-python` backend instead of a server:
 
 ```bat
-set UV_SKIP_WHEEL_FILENAME_CHECK=1
 uv sync --extra local
 ```
 
@@ -104,14 +118,14 @@ Makes `talkbot` and `talkbot-gui` available anywhere in your shell:
 
 ```bash
 cd talkbot
-UV_SKIP_WHEEL_FILENAME_CHECK=1 uv tool install --python /usr/bin/python3.12 . --with llama-cpp-python --with faster-whisper --with silero-vad --with sounddevice --with soundfile
+uv tool install --python /usr/bin/python3.12 . --with llama-cpp-python --with faster-whisper --with silero-vad --with sounddevice --with soundfile
 ```
 
 To refresh an existing install:
 
 ```bash
 cd talkbot
-UV_SKIP_WHEEL_FILENAME_CHECK=1 uv tool install --reinstall --python /usr/bin/python3.12 . --with llama-cpp-python --with faster-whisper --with silero-vad --with sounddevice --with soundfile
+uv tool install --reinstall --python /usr/bin/python3.12 . --with llama-cpp-python --with faster-whisper --with silero-vad --with sounddevice --with soundfile
 ```
 
 Or use:
@@ -128,18 +142,35 @@ Or use:
 Install into your active Python environment:
 
 ```bash
-UV_SKIP_WHEEL_FILENAME_CHECK=1 uv pip install .
+uv pip install .
 ```
 
 Editable install (for local development while importing `talkbot`):
 
 ```bash
-UV_SKIP_WHEEL_FILENAME_CHECK=1 uv pip install -e .
+uv pip install -e .
 ```
 
 ### Install for development
 
 ```bash
+uv sync
+```
+
+#### Troubleshooting: stale lockfile/cache after the KittenTTS fix
+
+If your local checkout or cache still reflects the old direct-wheel setup, you may still see lock/resolve failures mentioning `kittentts` wheel filename/version mismatch.
+
+From a fresh checkout of main, run:
+
+```bash
+uv sync --refresh
+```
+
+If you still see the old error, clear local cache and retry:
+
+```bash
+uv cache clean
 uv sync
 ```
 
@@ -206,6 +237,7 @@ TALKBOT_LOCAL_SERVER_URL=http://127.0.0.1:8000/v1
 TALKBOT_LOCAL_SERVER_MODEL=models/qwen3-1.7b-q4_k_m.gguf
 TALKBOT_LOCAL_MODEL_PATH=./models/qwen3-1.7b-q4_k_m.gguf
 TALKBOT_LOCAL_N_CTX=8192
+TALKBOT_MAX_TOKENS=512
 TALKBOT_DEFAULT_USE_TOOLS=1
 TALKBOT_ENABLE_THINKING=0
 TALKBOT_DEFAULT_MODEL=qwen3-1.7b-q4_k_m
@@ -213,6 +245,9 @@ TALKBOT_DEFAULT_TTS_BACKEND=kittentts
 
 # Agent personality (optional) — applied to all CLI commands and GUI Prompt tab
 # TALKBOT_AGENT_PROMPT="You are a voice-first assistant with access to tools. Be extremely brief."
+# Keep TALKBOT_AGENT_PROMPT single-line in .env.
+# For multiline markdown prompts, store them in a file (for example: prompts/agent.md)
+# and pass with --system "$(cat prompts/agent.md)".
 ```
 
 Optional remote provider:
@@ -235,6 +270,8 @@ The application automatically loads environment variables from `.env` using pyth
 - Default tools toggle is ON in GUI (`TALKBOT_DEFAULT_USE_TOOLS=1`).
 
 `TALKBOT_LOCAL_N_CTX` controls local llama context size. 8192 is recommended for tool calling with conversation history.
+`TALKBOT_MAX_TOKENS` sets the default generation cap used by the GUI `Max Tokens` field.
+`TALKBOT_LOCAL_DIRECT_TOOL_ROUTING=1` enables deterministic local intent routing for a few common voice/tool intents (off by default).
 
 ## Recent Changes
 
@@ -245,9 +282,11 @@ The application automatically loads environment variables from `.env` using pyth
 - **Python-style tool call fallback**: model output like `set_timer(seconds=10, label="pasta")` is now parsed and executed rather than displayed as raw text.
 - **Timestamps on conversation messages**: every chat entry shows `[HH:MM:SS]`.
 - **Token counter**: toolbar shows prompt/completion token counts after each response.
+- **GUI max tokens control**: Configuration panel now includes `Max Tokens` (default from `TALKBOT_MAX_TOKENS`, clamped 32-8192).
 - **Timer alerts in GUI**: timer alerts appear in the conversation panel instead of being spoken (prevents mic echo loop during voice chat).
 - **`</think>` tag stripping**: lone closing think tags no longer leak into displayed responses.
 - **Date/time injection**: `LocalServerClient` now injects current date and time into the system prompt so day-of-week and time queries work without a tool call.
+- **`local` provider tools**: in-process local mode now supports tool calling with text-call parsing and `<think>`-safe output cleaning.
 - **19 built-in tools**: added `set_reminder` (custom spoken message on fire), `list_all_lists` (show all named lists at once).
 - **Lists tab**: GUI now has a live Lists tab showing all named lists and their contents (updates every 2s).
 - **`local_server` is now the default provider**: enables proper tool calling, KV cache, and Qwen3 chat templates via `--jinja`.
@@ -263,13 +302,13 @@ The application automatically loads environment variables from `.env` using pyth
 | Provider | Runs Where | Tool Calling | Setup Complexity | Recommended For |
 |---|---|---|---|---|
 | `local_server` | OpenAI-compatible local server (`llama-server` / `llama_cpp.server`) | Yes (standard tools flow; includes `<tool_call>` text fallback) | Medium | **Default — best local option for tool-calling** |
-| `local` | In-process (`llama-cpp-python` or `llama-cli`) | No standard tools loop | Low | Fastest local CPU path, no server needed |
+| `local` | In-process (`llama-cpp-python` or `llama-cli`) | Yes (text-call tool parsing + local execution) | Low | Fastest local CPU path without server |
 | `openrouter` | Remote API | Yes | Low | Easiest cloud setup / strongest tool reliability |
 
 Quick guidance:
 
 - Use `local_server` (default) for local inference with tool calling.
-- Use `local` for lowest overhead when tools are not needed.
+- Use `local` for lowest overhead local inference (tools supported via text-call parsing).
 - Use `openrouter` when you want managed reliability and broader model access.
 
 ### LLM Provider Selection
@@ -391,6 +430,9 @@ talkbot say --tools --system "You are a brief voice assistant."
 # Or set TALKBOT_AGENT_PROMPT in .env / env and omit --system
 export TALKBOT_AGENT_PROMPT="You are a brief voice assistant."
 talkbot say --tools
+
+# For multiline markdown prompts, keep them in a file
+talkbot say --tools --system "$(cat prompts/agent.md)"
 ```
 
 #### Local Voice Chat (Half-Duplex, VAD-Gated)
@@ -594,6 +636,58 @@ Any model available on OpenRouter can be used. See [OpenRouter Models](https://o
 
 For local inference, any GGUF-format model supported by llama.cpp works. Default: `Qwen3-1.7B-Q4_K_M`.
 
+## Conversation Benchmarking
+
+Use scripted multi-turn conversations to score tool reliability, latency, context usage, and memory footprint.
+
+### Run a single profile
+
+```bash
+uv run -- python scripts/benchmark_conversations.py \
+  --scenarios tests/conversations \
+  --provider local \
+  --model qwen/qwen3-1.7b \
+  --local-model-path models/default.gguf \
+  --n-ctx 2048 \
+  --output benchmark_results/local-qwen3-1.7b-ctx2048
+```
+
+### Prompt-driven capability runs
+
+Use a strict tool-use system prompt (instead of direct intent routing) to evaluate what the model can do on its own:
+
+```bash
+uv run -- python scripts/benchmark_conversations.py \
+  --scenarios tests/conversations \
+  --provider local \
+  --model qwen/qwen3-1.7b \
+  --local-model-path models/qwen3-1.7b-q4_k_m.gguf \
+  --system-prompt-file prompts/tool_benchmark.md \
+  --output benchmark_results/capability-prompt
+```
+
+### Run a model matrix
+
+```bash
+uv run -- python scripts/benchmark_conversations.py \
+  --scenarios tests/conversations \
+  --matrix benchmarks/model_matrix.example.json \
+  --output benchmark_results/matrix
+```
+
+Outputs:
+- `results.json`: per-run traces + metrics (`task_success_rate`, `tool_selection_accuracy`, `argument_accuracy`, tokens, latency, memory)
+- `leaderboard.md`: quality, low-memory, and balanced rankings
+
+Scenario files are JSON scripts in `tests/conversations/` and support per-turn assertions:
+- expected tool names (`name` or `name_any`)
+- argument subset checks (`args_contains`)
+- response checks (`response_contains`, `response_regex`)
+
+Included memory tracks:
+- `memory_persistent_strict`: requires `remember` + `recall` tool calls (capability score)
+- `memory_context_flexible`: accepts correct contextual answer even without `recall` (practical score)
+
 ## Project Structure
 
 ```
@@ -611,7 +705,11 @@ talkbot/
 ├── tools/llama-cpp/       # llama-server binary and DLLs (Windows)
 ├── scripts/
 │   ├── download-model.sh  # Download default GGUF (Linux/macOS)
-│   └── download-model.bat # Download default GGUF (Windows)
+│   ├── download-model.bat # Download default GGUF (Windows)
+│   └── benchmark_conversations.py # Conversation benchmark runner
+├── benchmarks/
+│   └── model_matrix.example.json  # Example benchmark matrix
+├── tests/conversations/   # Benchmark conversation scenarios
 ├── run-server.bat         # Start llama-server (Windows)
 ├── run-gui.bat            # Start GUI with correct env vars (Windows)
 ├── pyproject.toml         # Project configuration

@@ -11,6 +11,7 @@ def test_local_provider_uses_repo_default_model_path(monkeypatch, tmp_path):
 
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("TALKBOT_LOCAL_MODEL_PATH", raising=False)
+    monkeypatch.delenv("TALKBOT_LOCAL_N_CTX", raising=False)
 
     captured = {}
 
@@ -20,12 +21,14 @@ def test_local_provider_uses_repo_default_model_path(monkeypatch, tmp_path):
             *,
             model_path,
             binary="llama-cli",
+            n_ctx=2048,
             enable_thinking=False,
             temperature=0.7,
             max_tokens=512,
         ):
             captured["model_path"] = model_path
             captured["binary"] = binary
+            captured["n_ctx"] = n_ctx
             captured["enable_thinking"] = enable_thinking
 
     monkeypatch.setattr(llm_module, "LocalLlamaCppClient", DummyLocalClient)
@@ -34,4 +37,5 @@ def test_local_provider_uses_repo_default_model_path(monkeypatch, tmp_path):
 
     assert Path(captured["model_path"]).resolve() == model_path.resolve()
     assert captured["binary"] == "llama-cli"
+    assert captured["n_ctx"] == 2048
     assert captured["enable_thinking"] is False

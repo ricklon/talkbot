@@ -279,7 +279,13 @@ class VoicePipeline:
             content = client.chat_with_tools(self._history).strip()
         else:
             response = client.chat_completion(self._history)
-            content = response["choices"][0]["message"].get("content", "").strip()
+            choices = response.get("choices")
+            if isinstance(choices, list) and choices:
+                message = choices[0].get("message", {}) if isinstance(choices[0], dict) else {}
+                raw_content = message.get("content", "") if isinstance(message, dict) else ""
+                content = str(raw_content).strip()
+            else:
+                content = ""
         # Keep history compact so long chain-of-thought content doesn't exhaust context.
         assistant_visible = strip_thinking(content).strip() or content
         self._history.append({"role": "assistant", "content": assistant_visible})

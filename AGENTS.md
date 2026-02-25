@@ -33,6 +33,12 @@ uv run talkbot say --tools
 
 No test suite or linter is configured yet.
 
+## Dependency Note
+
+- As of 2026-02-24, `kittentts` is installed from PyPI (`kittentts>=0.1.0`) instead of a direct GitHub wheel URL.
+- This avoids `uv` lockfile parse failures caused by wheel filename/version mismatches.
+- `UV_SKIP_WHEEL_FILENAME_CHECK` is no longer required for normal `uv` commands in this repo.
+
 ## Architecture
 
 All source lives in `src/talkbot/`. The package exposes `OpenRouterClient`, `TTSManager`, and `tools` from `__init__.py`.

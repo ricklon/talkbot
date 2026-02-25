@@ -7,6 +7,75 @@ from typing import Any, Callable, Optional
 import httpx
 
 
+def _response_message(response: dict[str, Any]) -> dict[str, Any]:
+    choices = response.get("choices")
+    if isinstance(choices, list) and choices:
+        first = choices[0]
+        if isinstance(first, dict):
+            message = first.get("message")
+            if isinstance(message, dict):
+                return message
+    return {}
+
+
+def _response_content(response: dict[str, Any]) -> str:
+    message = _response_message(response)
+    content = message.get("content")
+    if content is not None:
+        return content if isinstance(content, str) else str(content)
+
+    error = response.get("error")
+    if isinstance(error, dict):
+        detail = error.get("message") or error.get("code") or str(error)
+        return f"Error: {detail}"
+    if error:
+        return f"Error: {error}"
+    return ""
+
+
+def _normalize_tool_args_for_call(function_name: str, function_args: Any) -> dict[str, Any]:
+    if not isinstance(function_args, dict):
+        return {}
+    args = dict(function_args)
+    alias_map: dict[str, dict[str, str]] = {
+        "set_timer": {
+            "duration": "seconds",
+            "time": "seconds",
+            "secs": "seconds",
+            "sec": "seconds",
+            "delay": "seconds",
+        },
+        "set_reminder": {
+            "duration": "seconds",
+            "time": "seconds",
+            "secs": "seconds",
+            "sec": "seconds",
+            "text": "message",
+            "label": "message",
+        },
+        "cancel_timer": {
+            "id": "timer_id",
+            "timer": "timer_id",
+            "timerid": "timer_id",
+        },
+        "create_list": {"name": "list_name", "list": "list_name"},
+        "get_list": {"name": "list_name", "list": "list_name"},
+        "clear_list": {"name": "list_name", "list": "list_name"},
+        "add_to_list": {"name": "list_name", "list": "list_name", "value": "item"},
+        "add_items_to_list": {"name": "list_name", "list": "list_name"},
+        "remove_from_list": {"name": "list_name", "list": "list_name", "value": "item"},
+        "remember": {"name": "key", "field": "key", "text": "value"},
+        "recall": {"name": "key", "field": "key"},
+    }
+    for alias, canonical in alias_map.get(function_name, {}).items():
+        if alias in args and canonical not in args:
+            args[canonical] = args[alias]
+    for alias, canonical in alias_map.get(function_name, {}).items():
+        if canonical in args and alias in args:
+            args.pop(alias, None)
+    return args
+
+
 class OpenRouterClient:
     """Client for interacting with OpenRouter API with tool support."""
 
@@ -43,6 +112,7 @@ class OpenRouterClient:
         # Tool registry
         self.tools: dict[str, Callable] = {}
         self.tool_definitions: list[dict] = []
+        self.last_usage: dict = {}
 
     def register_tool(
         self, name: str, func: Callable, description: str, parameters: dict
@@ -121,8 +191,9 @@ class OpenRouterClient:
             json=payload,
         )
         response.raise_for_status()
-
-        return response.json()
+        data = response.json()
+        self.last_usage = data.get("usage") or {}
+        return data
 
     def chat_with_tools(
         self,
@@ -145,20 +216,22 @@ class OpenRouterClient:
         if not self.tools:
             # No tools registered, do simple completion
             response = self.chat_completion(messages, temperature, max_tokens)
-            return response["choices"][0]["message"]["content"]
+            return _response_content(response)
 
         tool_call_count = 0
         current_messages = messages.copy()
 
         while tool_call_count < max_tool_calls:
             response = self.chat_completion(current_messages, temperature, max_tokens)
-            message = response["choices"][0]["message"]
+            message = _response_message(response)
+            if not message:
+                return _response_content(response)
 
             # Check if the model wants to call tools
             tool_calls = message.get("tool_calls")
             if not tool_calls:
                 # No tool calls, return the content
-                return message.get("content", "")
+                return _response_content(response)
 
             # Add assistant message to conversation
             current_messages.append(message)
@@ -167,7 +240,11 @@ class OpenRouterClient:
             for tool_call in tool_calls:
                 tool_call_count += 1
                 function_name = tool_call["function"]["name"]
-                function_args = json.loads(tool_call["function"]["arguments"])
+                try:
+                    function_args = json.loads(tool_call["function"]["arguments"])
+                except Exception:
+                    function_args = {}
+                function_args = _normalize_tool_args_for_call(function_name, function_args)
 
                 if function_name in self.tools:
                     try:
@@ -189,7 +266,7 @@ class OpenRouterClient:
 
         # Max tool calls reached, get final response
         response = self.chat_completion(current_messages, temperature, max_tokens)
-        return response["choices"][0]["message"].get("content", "")
+        return _response_content(response)
 
     def simple_chat(self, message: str, system_prompt: Optional[str] = None) -> str:
         """Send a simple chat message.
@@ -206,7 +283,7 @@ class OpenRouterClient:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": message})
 
-        return self.chat_completion(messages)["choices"][0]["message"]["content"]
+        return _response_content(self.chat_completion(messages))
 
     def chat_with_system_tools(
         self, message: str, system_prompt: Optional[str] = None

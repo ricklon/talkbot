@@ -3,7 +3,9 @@
 import datetime
 import json
 import math
+import os
 import random
+import re
 import threading
 import time
 from pathlib import Path
@@ -15,7 +17,8 @@ from typing import Any
 # ---------------------------------------------------------------------------
 
 def _data_dir() -> Path:
-    d = Path.home() / ".talkbot"
+    configured = os.getenv("TALKBOT_DATA_DIR", "").strip()
+    d = Path(configured).expanduser() if configured else (Path.home() / ".talkbot")
     d.mkdir(parents=True, exist_ok=True)
     return d
 
@@ -171,6 +174,88 @@ _timer_lock = threading.Lock()
 _timer_counter = 0
 
 
+def reset_runtime_state(*, clear_persistent: bool = False) -> None:
+    """Reset in-memory timer state and optionally clear persisted tool files.
+
+    Args:
+        clear_persistent: When True, deletes lists/memory JSON files in TALKBOT_DATA_DIR.
+    """
+    global _timer_counter
+    with _timer_lock:
+        for _label, cancel_event, _fire_at in list(_timers.values()):
+            cancel_event.set()
+        _timers.clear()
+        _timer_counter = 0
+
+    if clear_persistent:
+        for filename in (_LISTS_FILE, _MEMORY_FILE):
+            try:
+                (_data_dir() / filename).unlink(missing_ok=True)
+            except Exception:
+                continue
+
+
+def _coerce_positive_seconds(value: Any) -> int | None:
+    """Parse a positive seconds value from ints/floats/strings like '10 sec'."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value if value > 0 else None
+    if isinstance(value, float):
+        seconds = int(value)
+        return seconds if seconds > 0 else None
+
+    text = str(value).strip().lower()
+    if not text:
+        return None
+
+    match = re.search(r"-?\d+(?:\.\d+)?", text)
+    if not match:
+        return None
+    try:
+        seconds = int(float(match.group(0)))
+    except ValueError:
+        return None
+    return seconds if seconds > 0 else None
+
+
+def _normalize_text(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="ignore").strip()
+    return str(value).strip()
+
+
+def _normalize_list_name(value: Any, *, default: str | None = None) -> str:
+    name = _normalize_text(value)
+    if not name and default is not None:
+        return default
+    return name
+
+
+def _normalize_list_data(data: dict) -> dict[str, list[str]]:
+    """Sanitize persisted list payload to avoid type errors from malformed JSON."""
+    if not isinstance(data, dict):
+        return {}
+
+    normalized: dict[str, list[str]] = {}
+    for raw_name, raw_items in data.items():
+        name = _normalize_list_name(raw_name)
+        if not name:
+            continue
+
+        if isinstance(raw_items, list):
+            values = [_normalize_text(item) for item in raw_items]
+        elif raw_items is None:
+            values = []
+        else:
+            values = [_normalize_text(raw_items)]
+
+        normalized[name] = [v for v in values if v]
+    return normalized
+
+
 def set_timer(seconds: int, label: str = "") -> str:
     """Set a timer that fires after the specified number of seconds.
 
@@ -179,26 +264,27 @@ def set_timer(seconds: int, label: str = "") -> str:
         label: Optional name for the timer (e.g., "pasta", "meeting")
     """
     global _timer_counter
-    if seconds <= 0:
+    seconds_value = _coerce_positive_seconds(seconds)
+    if seconds_value is None:
         return "Error: seconds must be a positive integer"
 
-    display = label if label else f"{seconds}-second timer"
+    display = _normalize_text(label) or f"{seconds_value}-second timer"
 
     with _timer_lock:
         _timer_counter += 1
         timer_id = str(_timer_counter)
         cancel_event = threading.Event()
-        _timers[timer_id] = (display, cancel_event, time.time() + seconds)
+        _timers[timer_id] = (display, cancel_event, time.time() + seconds_value)
 
     def _fire() -> None:
-        cancelled = cancel_event.wait(timeout=seconds)
+        cancelled = cancel_event.wait(timeout=seconds_value)
         with _timer_lock:
             _timers.pop(timer_id, None)
         if not cancelled:
             _fire_alert(f"{display} is done!")
 
     threading.Thread(target=_fire, daemon=True).start()
-    return f"Timer #{timer_id} set. '{display}' will fire in {seconds} seconds."
+    return f"Timer #{timer_id} set. '{display}' will fire in {seconds_value} seconds."
 
 
 def set_reminder(seconds: int, message: str) -> str:
@@ -208,9 +294,11 @@ def set_reminder(seconds: int, message: str) -> str:
         seconds: How many seconds until the reminder fires
         message: The exact message to speak when the reminder fires (e.g., "Time to take your medication")
     """
-    if seconds <= 0:
+    seconds_value = _coerce_positive_seconds(seconds)
+    if seconds_value is None:
         return "Error: seconds must be a positive integer"
-    if not message.strip():
+    message_text = _normalize_text(message)
+    if not message_text:
         return "Error: message must not be empty"
 
     global _timer_counter
@@ -218,19 +306,19 @@ def set_reminder(seconds: int, message: str) -> str:
         _timer_counter += 1
         timer_id = str(_timer_counter)
         cancel_event = threading.Event()
-        _timers[timer_id] = (message.strip(), cancel_event, time.time() + seconds)
+        _timers[timer_id] = (message_text, cancel_event, time.time() + seconds_value)
 
     def _fire() -> None:
-        cancelled = cancel_event.wait(timeout=seconds)
+        cancelled = cancel_event.wait(timeout=seconds_value)
         with _timer_lock:
             _timers.pop(timer_id, None)
         if not cancelled:
-            _fire_alert(message.strip())
+            _fire_alert(message_text)
 
     threading.Thread(target=_fire, daemon=True).start()
-    mins, secs = divmod(seconds, 60)
+    mins, secs = divmod(seconds_value, 60)
     duration = f"{mins}m {secs}s" if mins else f"{secs}s"
-    return f"Reminder #{timer_id} set for {duration}: \"{message.strip()}\""
+    return f"Reminder #{timer_id} set for {duration}: \"{message_text}\""
 
 
 def cancel_timer(timer_id: str) -> str:
@@ -239,13 +327,17 @@ def cancel_timer(timer_id: str) -> str:
     Args:
         timer_id: The timer ID returned by set_timer (e.g., "1")
     """
+    timer_key = _normalize_text(timer_id)
+    if not timer_key:
+        return "Error: timer_id must not be empty."
+
     with _timer_lock:
-        entry = _timers.get(timer_id)
+        entry = _timers.get(timer_key)
     if not entry:
-        return f"No active timer with ID '{timer_id}'. Use list_timers to see active timers."
+        return f"No active timer with ID '{timer_key}'. Use list_timers to see active timers."
     label, cancel_event, _ = entry
     cancel_event.set()
-    return f"Timer #{timer_id} ('{label}') cancelled."
+    return f"Timer #{timer_key} ('{label}') cancelled."
 
 
 def list_timers() -> str:
@@ -314,7 +406,11 @@ def create_list(list_name: str) -> str:
     Args:
         list_name: The name of the list to create (e.g., 'shopping', 'todo', 'groceries')
     """
-    data = _load_json(_LISTS_FILE)
+    list_name = _normalize_list_name(list_name)
+    if not list_name:
+        return "Error: list_name must not be empty."
+
+    data = _normalize_list_data(_load_json(_LISTS_FILE))
     if list_name in data:
         items = data[list_name]
         if items:
@@ -331,13 +427,20 @@ def add_to_list(item: str, list_name: str = "shopping") -> str:
         item: The item to add
         list_name: Which list to add to (default 'shopping')
     """
-    data = _load_json(_LISTS_FILE)
+    list_name = _normalize_list_name(list_name, default="shopping")
+    if not list_name:
+        return "Error: list_name must not be empty."
+    item_text = _normalize_text(item)
+    if not item_text:
+        return "Error: item must not be empty."
+
+    data = _normalize_list_data(_load_json(_LISTS_FILE))
     lst = data.setdefault(list_name, [])
-    if item in lst:
-        return f"'{item}' is already on the {list_name} list."
-    lst.append(item)
+    if item_text in lst:
+        return f"'{item_text}' is already on the {list_name} list."
+    lst.append(item_text)
     _save_json(_LISTS_FILE, data)
-    return f"Added '{item}' to the {list_name} list."
+    return f"Added '{item_text}' to the {list_name} list."
 
 
 def add_items_to_list(items: list, list_name: str = "shopping") -> str:
@@ -347,11 +450,22 @@ def add_items_to_list(items: list, list_name: str = "shopping") -> str:
         items: List of items to add (e.g. ["lettuce", "tomato", "onion"])
         list_name: Which list to add to (default 'shopping')
     """
-    data = _load_json(_LISTS_FILE)
+    list_name = _normalize_list_name(list_name, default="shopping")
+    if not list_name:
+        return "Error: list_name must not be empty."
+
+    if isinstance(items, str):
+        parsed_items: list[Any] = [part for part in re.split(r"[,\n]", items) if part.strip()]
+    elif isinstance(items, (list, tuple, set)):
+        parsed_items = list(items)
+    else:
+        return "Error: items must be a list of values."
+
+    data = _normalize_list_data(_load_json(_LISTS_FILE))
     lst = data.setdefault(list_name, [])
     added = []
     skipped = []
-    for item in items:
+    for item in parsed_items:
         item = str(item).strip()
         if not item:
             continue
@@ -375,7 +489,11 @@ def get_list(list_name: str = "shopping") -> str:
     Args:
         list_name: Which list to retrieve (default 'shopping')
     """
-    data = _load_json(_LISTS_FILE)
+    list_name = _normalize_list_name(list_name, default="shopping")
+    if not list_name:
+        return "Error: list_name must not be empty."
+
+    data = _normalize_list_data(_load_json(_LISTS_FILE))
     lst = data.get(list_name, [])
     if not lst:
         return f"The {list_name} list is empty."
@@ -390,12 +508,19 @@ def remove_from_list(item: str, list_name: str = "shopping") -> str:
         item: The item to remove
         list_name: Which list to remove from (default 'shopping')
     """
-    data = _load_json(_LISTS_FILE)
+    list_name = _normalize_list_name(list_name, default="shopping")
+    if not list_name:
+        return "Error: list_name must not be empty."
+    item_text = _normalize_text(item)
+    if not item_text:
+        return "Error: item must not be empty."
+
+    data = _normalize_list_data(_load_json(_LISTS_FILE))
     lst = data.get(list_name, [])
     # Case-insensitive match
-    matches = [x for x in lst if x.lower() == item.lower()]
+    matches = [x for x in lst if x.lower() == item_text.lower()]
     if not matches:
-        return f"'{item}' was not found on the {list_name} list."
+        return f"'{item_text}' was not found on the {list_name} list."
     for m in matches:
         lst.remove(m)
     data[list_name] = lst
@@ -409,7 +534,11 @@ def clear_list(list_name: str = "shopping") -> str:
     Args:
         list_name: Which list to clear (default 'shopping')
     """
-    data = _load_json(_LISTS_FILE)
+    list_name = _normalize_list_name(list_name, default="shopping")
+    if not list_name:
+        return "Error: list_name must not be empty."
+
+    data = _normalize_list_data(_load_json(_LISTS_FILE))
     data[list_name] = []
     _save_json(_LISTS_FILE, data)
     return f"Cleared the {list_name} list."
@@ -417,7 +546,7 @@ def clear_list(list_name: str = "shopping") -> str:
 
 def list_all_lists() -> str:
     """List all named lists and their contents."""
-    data = _load_json(_LISTS_FILE)
+    data = _normalize_list_data(_load_json(_LISTS_FILE))
     if not data:
         return "No lists found."
     parts = []
