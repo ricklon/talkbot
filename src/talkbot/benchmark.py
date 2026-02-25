@@ -41,6 +41,7 @@ class BenchmarkProfile:
     local_server_api_key: str | None = None
     enable_thinking: bool = False
     use_tools: bool = True
+    system_prompt: str | None = None
     max_tokens: int = 512
     temperature: float = 0.0
     env: dict[str, str] = field(default_factory=dict)
@@ -543,9 +544,18 @@ def run_benchmark(
                         if scenario.get("reset_state", True):
                             reset_runtime_state(clear_persistent=True)
                         messages: list[dict[str, str]] = []
+                        system_parts: list[str] = []
+                        if profile.system_prompt:
+                            system_parts.append(str(profile.system_prompt).strip())
                         if scenario.get("system_prompt"):
+                            system_parts.append(str(scenario["system_prompt"]).strip())
+                        system_parts = [part for part in system_parts if part]
+                        if system_parts:
                             messages.append(
-                                {"role": "system", "content": scenario["system_prompt"]}
+                                {
+                                    "role": "system",
+                                    "content": "\n\n".join(system_parts),
+                                }
                             )
 
                         turns: list[TurnResult] = []

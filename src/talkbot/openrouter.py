@@ -70,6 +70,9 @@ def _normalize_tool_args_for_call(function_name: str, function_args: Any) -> dic
     for alias, canonical in alias_map.get(function_name, {}).items():
         if alias in args and canonical not in args:
             args[canonical] = args[alias]
+    for alias, canonical in alias_map.get(function_name, {}).items():
+        if canonical in args and alias in args:
+            args.pop(alias, None)
     return args
 
 

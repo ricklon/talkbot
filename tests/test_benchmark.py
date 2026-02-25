@@ -68,7 +68,12 @@ class FakeBenchClient:
 def test_load_scenarios_from_directory():
     scenarios = load_scenarios("tests/conversations")
     ids = {scenario["id"] for scenario in scenarios}
-    assert {"timer_basics", "list_basics", "memory_basics"}.issubset(ids)
+    assert {
+        "timer_basics",
+        "list_basics",
+        "memory_persistent_strict",
+        "memory_context_flexible",
+    }.issubset(ids)
 
 
 def test_run_benchmark_with_fake_client(tmp_path):
@@ -137,6 +142,43 @@ def test_write_outputs_and_leaderboard(tmp_path):
     assert result_payload["run_count"] == 1
 
 
+def test_profile_system_prompt_is_prepended(tmp_path):
+    scenarios = [
+        {
+            "id": "prompt-check",
+            "name": "Prompt Check",
+            "description": "",
+            "tags": [],
+            "system_prompt": None,
+            "reset_state": True,
+            "turns": [{"user": "What lists do you have?", "expect": {}}],
+        }
+    ]
+
+    class PromptClient(FakeBenchClient):
+        def chat_with_tools(self, messages, temperature=0.0, max_tokens=None):
+            del temperature, max_tokens
+            assert messages[0]["role"] == "system"
+            assert "tool-use reliability" in messages[0]["content"]
+            self.last_usage = {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}
+            return self.tools["list_all_lists"]()
+
+    report = run_benchmark(
+        profiles=[
+            BenchmarkProfile(
+                name="prompt",
+                provider="local",
+                model="fake/model",
+                system_prompt="You are being evaluated for tool-use reliability.",
+            )
+        ],
+        scenarios=scenarios,
+        output_dir=tmp_path,
+        client_factory=lambda _profile: PromptClient(),
+    )
+    assert report["runs"][0]["status"] == "ok"
+
+
 def test_arg_alias_normalization_for_timer_and_cancel():
     turn = {
         "user": "Set and cancel",
@@ -177,3 +219,35 @@ def test_arg_alias_normalization_for_timer_and_cancel():
     assert assertions == []
     assert expected_arg_checks == 2
     assert matched_arg_checks == 2
+
+
+def test_subset_match_treats_numeric_strings_as_equal():
+    turn = {
+        "user": "cancel timer",
+        "expect": {
+            "tool_calls": [
+                {"name": "cancel_timer", "args_contains": {"timer_id": "1"}}
+            ]
+        },
+    }
+    tool_calls = [
+        ToolCallTrace(
+            scenario_id="s",
+            turn_index=0,
+            name="cancel_timer",
+            args={"id": 1},
+            result="ok",
+            error=None,
+            latency_ms=1.0,
+        )
+    ]
+    passed, assertions, _, _, expected_arg_checks, matched_arg_checks = _evaluate_turn(
+        turn=turn,
+        response="ok",
+        tool_calls=tool_calls,
+        latency_ms=2.0,
+    )
+    assert passed is True
+    assert assertions == []
+    assert expected_arg_checks == 1
+    assert matched_arg_checks == 1

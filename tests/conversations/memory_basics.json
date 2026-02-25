@@ -1,7 +1,7 @@
 {
-  "id": "memory_basics",
-  "name": "Memory Basics",
-  "description": "Remember and recall a user preference.",
+  "id": "memory_persistent_strict",
+  "name": "Memory Persistent (Strict)",
+  "description": "Strict tool-capability check: requires remember + recall tool calls.",
   "tags": ["memory", "tools", "core"],
   "reset_state": true,
   "turns": [
@@ -34,4 +34,3 @@
     }
   ]
 }
-
