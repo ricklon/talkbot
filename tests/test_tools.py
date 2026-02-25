@@ -83,3 +83,19 @@ def test_list_tools_validate_and_parse_inputs(tmp_path, monkeypatch):
     assert "Added milk, eggs, bread to the shopping list." == msg
     got = tools.get_list("shopping")
     assert "- milk" in got and "- eggs" in got and "- bread" in got
+
+
+def test_data_dir_env_override_and_runtime_reset(tmp_path, monkeypatch):
+    custom_dir = tmp_path / "bench-state"
+    monkeypatch.setenv("TALKBOT_DATA_DIR", str(custom_dir))
+
+    assert tools.create_list("bench") == "Created 'bench' list."
+    assert tools.remember("key", "value").startswith("Remembered:")
+    assert "Timer #" in tools.set_timer(3)
+    assert tools._timers
+
+    tools.reset_runtime_state(clear_persistent=True)
+
+    assert not tools._timers
+    assert not (custom_dir / tools._LISTS_FILE).exists()
+    assert not (custom_dir / tools._MEMORY_FILE).exists()

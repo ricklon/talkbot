@@ -1,0 +1,33 @@
+{
+  "profiles": [
+    {
+      "name": "local-qwen3-1.7b-nctx2048",
+      "provider": "local",
+      "model": "qwen/qwen3-1.7b",
+      "local_model_path": "models/default.gguf",
+      "llamacpp_bin": "llama-cli",
+      "enable_thinking": false,
+      "use_tools": true,
+      "max_tokens": 256,
+      "temperature": 0.0,
+      "env": {
+        "TALKBOT_LOCAL_N_CTX": "2048"
+      }
+    },
+    {
+      "name": "local-qwen3-1.7b-nctx4096",
+      "provider": "local",
+      "model": "qwen/qwen3-1.7b",
+      "local_model_path": "models/default.gguf",
+      "llamacpp_bin": "llama-cli",
+      "enable_thinking": false,
+      "use_tools": true,
+      "max_tokens": 256,
+      "temperature": 0.0,
+      "env": {
+        "TALKBOT_LOCAL_N_CTX": "4096"
+      }
+    }
+  ]
+}
+

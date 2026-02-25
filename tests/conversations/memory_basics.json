@@ -1,0 +1,37 @@
+{
+  "id": "memory_basics",
+  "name": "Memory Basics",
+  "description": "Remember and recall a user preference.",
+  "tags": ["memory", "tools", "core"],
+  "reset_state": true,
+  "turns": [
+    {
+      "user": "Remember that my favorite color is blue.",
+      "expect": {
+        "tool_calls": [
+          {
+            "name": "remember",
+            "args_contains": {
+              "key": "favorite_color"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "user": "What is my favorite color?",
+      "expect": {
+        "tool_calls": [
+          {
+            "name": "recall",
+            "args_contains": {
+              "key": "favorite_color"
+            }
+          }
+        ],
+        "response_contains": ["blue"]
+      }
+    }
+  ]
+}
+

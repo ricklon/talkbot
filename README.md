@@ -636,6 +636,40 @@ Any model available on OpenRouter can be used. See [OpenRouter Models](https://o
 
 For local inference, any GGUF-format model supported by llama.cpp works. Default: `Qwen3-1.7B-Q4_K_M`.
 
+## Conversation Benchmarking
+
+Use scripted multi-turn conversations to score tool reliability, latency, context usage, and memory footprint.
+
+### Run a single profile
+
+```bash
+uv run -- python scripts/benchmark_conversations.py \
+  --scenarios tests/conversations \
+  --provider local \
+  --model qwen/qwen3-1.7b \
+  --local-model-path models/default.gguf \
+  --n-ctx 2048 \
+  --output benchmark_results/local-qwen3-1.7b-ctx2048
+```
+
+### Run a model matrix
+
+```bash
+uv run -- python scripts/benchmark_conversations.py \
+  --scenarios tests/conversations \
+  --matrix benchmarks/model_matrix.example.json \
+  --output benchmark_results/matrix
+```
+
+Outputs:
+- `results.json`: per-run traces + metrics (`task_success_rate`, `tool_selection_accuracy`, `argument_accuracy`, tokens, latency, memory)
+- `leaderboard.md`: quality, low-memory, and balanced rankings
+
+Scenario files are JSON scripts in `tests/conversations/` and support per-turn assertions:
+- expected tool names (`name` or `name_any`)
+- argument subset checks (`args_contains`)
+- response checks (`response_contains`, `response_regex`)
+
 ## Project Structure
 
 ```
@@ -653,7 +687,11 @@ talkbot/
 ├── tools/llama-cpp/       # llama-server binary and DLLs (Windows)
 ├── scripts/
 │   ├── download-model.sh  # Download default GGUF (Linux/macOS)
-│   └── download-model.bat # Download default GGUF (Windows)
+│   ├── download-model.bat # Download default GGUF (Windows)
+│   └── benchmark_conversations.py # Conversation benchmark runner
+├── benchmarks/
+│   └── model_matrix.example.json  # Example benchmark matrix
+├── tests/conversations/   # Benchmark conversation scenarios
 ├── run-server.bat         # Start llama-server (Windows)
 ├── run-gui.bat            # Start GUI with correct env vars (Windows)
 ├── pyproject.toml         # Project configuration

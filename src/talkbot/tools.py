@@ -3,6 +3,7 @@
 import datetime
 import json
 import math
+import os
 import random
 import re
 import threading
@@ -16,7 +17,8 @@ from typing import Any
 # ---------------------------------------------------------------------------
 
 def _data_dir() -> Path:
-    d = Path.home() / ".talkbot"
+    configured = os.getenv("TALKBOT_DATA_DIR", "").strip()
+    d = Path(configured).expanduser() if configured else (Path.home() / ".talkbot")
     d.mkdir(parents=True, exist_ok=True)
     return d
 
@@ -170,6 +172,27 @@ def _fire_alert(text: str) -> None:
 _timers: dict[str, tuple[str, threading.Event, float]] = {}
 _timer_lock = threading.Lock()
 _timer_counter = 0
+
+
+def reset_runtime_state(*, clear_persistent: bool = False) -> None:
+    """Reset in-memory timer state and optionally clear persisted tool files.
+
+    Args:
+        clear_persistent: When True, deletes lists/memory JSON files in TALKBOT_DATA_DIR.
+    """
+    global _timer_counter
+    with _timer_lock:
+        for _label, cancel_event, _fire_at in list(_timers.values()):
+            cancel_event.set()
+        _timers.clear()
+        _timer_counter = 0
+
+    if clear_persistent:
+        for filename in (_LISTS_FILE, _MEMORY_FILE):
+            try:
+                (_data_dir() / filename).unlink(missing_ok=True)
+            except Exception:
+                continue
 
 
 def _coerce_positive_seconds(value: Any) -> int | None:
