@@ -98,6 +98,11 @@ def _normalize_tool_args_for_call(function_name: str, function_args: Any) -> dic
     for alias, canonical in alias_map.get(function_name, {}).items():
         if alias in args and canonical not in args:
             args[canonical] = args[alias]
+    # Remove alias keys once canonical key is populated so duplicate calls
+    # with different alias spellings dedupe to the same call signature.
+    for alias, canonical in alias_map.get(function_name, {}).items():
+        if canonical in args and alias in args:
+            args.pop(alias, None)
     return args
 
 
@@ -205,9 +210,13 @@ class LocalLlamaCppClient:
             "After tool results are available, answer the user using those results.\n"
             "Examples:\n"
             "- get_current_time()\n"
+            "- set_timer(seconds=10)\n"
+            "- cancel_timer(timer_id=\"1\")\n"
             "- create_list(list_name=\"grocery\")\n"
             "- add_to_list(item=\"milk\", list_name=\"grocery\")\n"
             "- list_all_lists()\n"
+            "- remember(key=\"favorite_color\", value=\"blue\")\n"
+            "- recall(key=\"favorite_color\")\n"
             "If no tool fits, answer normally in one short sentence.\n"
             f"Available tools: {', '.join(tool_names)}"
         )
@@ -530,14 +539,8 @@ class LocalLlamaCppClient:
 
         # Heuristic aliases for common tool intents.
         lowered = line.lower()
-        if "time" in lowered:
-            return [{"id": "alias-time-0", "function": {"name": "get_current_time", "arguments": "{}"}}]
-        if "date" in lowered:
-            return [{"id": "alias-date-0", "function": {"name": "get_current_date", "arguments": "{}"}}]
-        if "coin" in lowered:
-            return [{"id": "alias-coin-0", "function": {"name": "flip_coin", "arguments": "{}"}}]
-        if "list" in lowered and "all" in lowered:
-            return [{"id": "alias-lists-0", "function": {"name": "list_all_lists", "arguments": "{}"}}]
+        if re.search(r"\b(list|show)\s+timers?\b|\bactive\s+timers?\b", lowered):
+            return [{"id": "alias-timers-0", "function": {"name": "list_timers", "arguments": "{}"}}]
         if "list timer" in lowered or "active timer" in lowered:
             return [{"id": "alias-timers-0", "function": {"name": "list_timers", "arguments": "{}"}}]
         cancel_match = re.search(r"cancel\s+timer\s+#?(\d+)", lowered)
@@ -551,6 +554,47 @@ class LocalLlamaCppClient:
                     },
                 }
             ]
+        remember_match = re.search(
+            r"\bremember(?:\s+that)?\s+(?:my\s+)?([a-z0-9_ ]{2,40}?)\s+is\s+(.+)$",
+            lowered,
+        )
+        if remember_match:
+            key = remember_match.group(1).strip().replace(" ", "_")
+            value = remember_match.group(2).strip().strip(".!?")
+            if key and value:
+                return [
+                    {
+                        "id": "alias-remember-0",
+                        "function": {
+                            "name": "remember",
+                            "arguments": json.dumps({"key": key, "value": value}),
+                        },
+                    }
+                ]
+        recall_match = re.search(
+            r"\b(?:what\s+is|recall)\s+(?:my\s+)?([a-z0-9_ ]{2,40})\??$",
+            lowered,
+        )
+        if recall_match:
+            key = recall_match.group(1).strip().replace(" ", "_")
+            if key:
+                return [
+                    {
+                        "id": "alias-recall-0",
+                        "function": {
+                            "name": "recall",
+                            "arguments": json.dumps({"key": key}),
+                        },
+                    }
+                ]
+        if re.search(r"\bwhat\s+time\b|\bcurrent\s+time\b|\btime\s+is\s+it\b", lowered):
+            return [{"id": "alias-time-0", "function": {"name": "get_current_time", "arguments": "{}"}}]
+        if re.search(r"\bwhat\s+date\b|\bcurrent\s+date\b|\btoday'?s\s+date\b", lowered):
+            return [{"id": "alias-date-0", "function": {"name": "get_current_date", "arguments": "{}"}}]
+        if re.search(r"\bcoin\b", lowered):
+            return [{"id": "alias-coin-0", "function": {"name": "flip_coin", "arguments": "{}"}}]
+        if "list" in lowered and "all" in lowered:
+            return [{"id": "alias-lists-0", "function": {"name": "list_all_lists", "arguments": "{}"}}]
         timer_match = re.search(
             r"(?:set\s+)?(?:a\s+)?timer(?:\s+for)?\s+(\d+)\s*(?:s|sec|secs|second|seconds)\b",
             lowered,
@@ -622,6 +666,39 @@ class LocalLlamaCppClient:
             return [{"id": "direct-lists-0", "function": {"name": "list_all_lists", "arguments": "{}"}}]
         if "list timers" in user_text or "active timers" in user_text:
             return [{"id": "direct-timers-0", "function": {"name": "list_timers", "arguments": "{}"}}]
+        remember_match = re.search(
+            r"\bremember(?:\s+that)?\s+(?:my\s+)?([a-z0-9_ ]{2,40}?)\s+is\s+(.+)$",
+            user_text,
+        )
+        if remember_match:
+            key = remember_match.group(1).strip().replace(" ", "_")
+            value = remember_match.group(2).strip().strip(".!?")
+            if key and value:
+                return [
+                    {
+                        "id": "direct-remember-0",
+                        "function": {
+                            "name": "remember",
+                            "arguments": json.dumps({"key": key, "value": value}),
+                        },
+                    }
+                ]
+        recall_match = re.search(
+            r"\b(?:what\s+is|recall)\s+(?:my\s+)?([a-z0-9_ ]{2,40})\??$",
+            user_text,
+        )
+        if recall_match:
+            key = recall_match.group(1).strip().replace(" ", "_")
+            if key:
+                return [
+                    {
+                        "id": "direct-recall-0",
+                        "function": {
+                            "name": "recall",
+                            "arguments": json.dumps({"key": key}),
+                        },
+                    }
+                ]
         cancel_match = re.search(r"cancel\s+timer\s+#?(\d+)", user_text)
         if cancel_match:
             return [

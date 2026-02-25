@@ -652,6 +652,20 @@ uv run -- python scripts/benchmark_conversations.py \
   --output benchmark_results/local-qwen3-1.7b-ctx2048
 ```
 
+### Prompt-driven capability runs
+
+Use a strict tool-use system prompt (instead of direct intent routing) to evaluate what the model can do on its own:
+
+```bash
+uv run -- python scripts/benchmark_conversations.py \
+  --scenarios tests/conversations \
+  --provider local \
+  --model qwen/qwen3-1.7b \
+  --local-model-path models/qwen3-1.7b-q4_k_m.gguf \
+  --system-prompt-file prompts/tool_benchmark.md \
+  --output benchmark_results/capability-prompt
+```
+
 ### Run a model matrix
 
 ```bash
@@ -669,6 +683,10 @@ Scenario files are JSON scripts in `tests/conversations/` and support per-turn a
 - expected tool names (`name` or `name_any`)
 - argument subset checks (`args_contains`)
 - response checks (`response_contains`, `response_regex`)
+
+Included memory tracks:
+- `memory_persistent_strict`: requires `remember` + `recall` tool calls (capability score)
+- `memory_context_flexible`: accepts correct contextual answer even without `recall` (practical score)
 
 ## Project Structure
 

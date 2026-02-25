@@ -25,6 +25,12 @@ def _default_profile_from_args(args: argparse.Namespace) -> BenchmarkProfile:
     if args.n_ctx is not None:
         env["TALKBOT_LOCAL_N_CTX"] = str(args.n_ctx)
 
+    system_prompt: str | None = None
+    if args.system_prompt_file:
+        system_prompt = Path(args.system_prompt_file).read_text(encoding="utf-8").strip()
+    elif args.system_prompt:
+        system_prompt = args.system_prompt.strip()
+
     return BenchmarkProfile(
         name=profile_name,
         provider=args.provider,
@@ -36,6 +42,7 @@ def _default_profile_from_args(args: argparse.Namespace) -> BenchmarkProfile:
         local_server_api_key=args.local_server_api_key,
         enable_thinking=args.thinking,
         use_tools=not args.no_tools,
+        system_prompt=system_prompt or None,
         max_tokens=args.max_tokens,
         temperature=args.temperature,
         env=env,
@@ -101,6 +108,16 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
     parser.add_argument("--thinking", action="store_true", help="Enable thinking mode")
     parser.add_argument("--no-tools", action="store_true", help="Disable tool mode")
+    parser.add_argument(
+        "--system-prompt",
+        default=None,
+        help="System prompt text to prepend to each scenario (single-profile mode)",
+    )
+    parser.add_argument(
+        "--system-prompt-file",
+        default=None,
+        help="Path to a system prompt file to prepend to each scenario (single-profile mode)",
+    )
     parser.add_argument("--max-tokens", type=int, default=512)
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument(
@@ -136,4 +153,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
