@@ -4,7 +4,7 @@
       "name": "local-qwen3-1.7b-nctx2048",
       "provider": "local",
       "model": "qwen/qwen3-1.7b",
-      "local_model_path": "models/default.gguf",
+      "local_model_path": "models/qwen3-1.7b-q4_k_m.gguf",
       "llamacpp_bin": "llama-cli",
       "enable_thinking": false,
       "use_tools": true,
@@ -18,7 +18,7 @@
       "name": "local-qwen3-1.7b-nctx4096",
       "provider": "local",
       "model": "qwen/qwen3-1.7b",
-      "local_model_path": "models/default.gguf",
+      "local_model_path": "models/qwen3-1.7b-q4_k_m.gguf",
       "llamacpp_bin": "llama-cli",
       "enable_thinking": false,
       "use_tools": true,
@@ -30,4 +30,3 @@
     }
   ]
 }
-

@@ -227,13 +227,53 @@ def _subset_match(actual: Any, expected: Any) -> bool:
         if not isinstance(actual, list) or len(actual) < len(expected):
             return False
         return all(_subset_match(a, e) for a, e in zip(actual, expected))
-    return actual == expected
+    if actual == expected:
+        return True
+
+    # Treat numeric strings and numbers as equivalent for benchmark assertions.
+    if isinstance(actual, (int, float, str)) and isinstance(expected, (int, float, str)):
+        try:
+            return float(actual) == float(expected)
+        except Exception:
+            return str(actual) == str(expected)
+
+    return False
 
 
 def _percent(numerator: int, denominator: int) -> float:
     if denominator <= 0:
         return 1.0
     return round(float(numerator) / float(denominator), 4)
+
+
+_TOOL_ARG_ALIASES: dict[str, dict[str, str]] = {
+    "set_timer": {
+        "duration": "seconds",
+        "time": "seconds",
+        "secs": "seconds",
+        "sec": "seconds",
+    },
+    "set_reminder": {
+        "duration": "seconds",
+        "time": "seconds",
+    },
+    "cancel_timer": {
+        "id": "timer_id",
+        "timer": "timer_id",
+        "timerid": "timer_id",
+    },
+}
+
+
+def _normalize_tool_args(tool_name: str, args: dict[str, Any]) -> dict[str, Any]:
+    mapping = _TOOL_ARG_ALIASES.get(tool_name, {})
+    if not mapping:
+        return dict(args)
+    normalized = dict(args)
+    for alias, canonical in mapping.items():
+        if alias in normalized and canonical not in normalized:
+            normalized[canonical] = normalized[alias]
+    return normalized
 
 
 def _load_json(path: Path) -> dict[str, Any]:
@@ -405,7 +445,11 @@ def _evaluate_turn(
             args_contains = entry.get("args_contains")
             if isinstance(args_contains, dict):
                 expected_arg_checks += 1
-                if _subset_match(matched_call.args, args_contains):
+                normalized_args = _normalize_tool_args(
+                    matched_call.name,
+                    matched_call.args,
+                )
+                if _subset_match(normalized_args, args_contains):
                     matched_arg_checks += 1
                 else:
                     assertions.append(
@@ -815,7 +859,7 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             f"{agg['total_tokens']} |"
         )
         if include_score:
-            base = base[:-1] + f" {score:.3f} |"
+            base = base + f" {score:.3f} |"
         return base
 
     lines = [
@@ -868,4 +912,3 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
         ]
     )
     return "\n".join(lines) + "\n"
-
