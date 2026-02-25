@@ -22,12 +22,12 @@ from talkbot.tools import register_all_tools, set_alert_callback
 from talkbot.tts import TTSManager
 from talkbot.voice import MissingVoiceDependencies, VoiceConfig, VoicePipeline
 
-FREE_OPENROUTER_MODELS = [
-    "deepseek/deepseek-r1:free",
-    "google/gemma-3-27b-it:free",
-    "meta-llama/llama-3.3-70b-instruct:free",
-    "qwen/qwen-2.5-72b-instruct:free",
-    "mistralai/mistral-7b-instruct:free",
+OPENROUTER_MODELS = [
+    "google/gemini-2.5-flash-lite",
+    "google/gemini-2.0-flash-lite-001",
+    "mistralai/mistral-small-3.1-24b-instruct:free",
+    "qwen/qwen3-8b",
+    "qwen/qwen3-4b:free",
 ]
 
 
@@ -213,7 +213,7 @@ class TalkBotGUI:
         """Initialize the GUI."""
         self.api_key = api_key or os.getenv("OPENROUTER_API_KEY")
         self.provider = os.getenv("TALKBOT_LLM_PROVIDER", "local")
-        self.model = model or os.getenv("TALKBOT_DEFAULT_MODEL", "qwen/qwen3-1.7b")
+        self.model = model or os.getenv("TALKBOT_DEFAULT_MODEL", "google/gemini-2.5-flash-lite")
         self.local_model_path = _default_local_model_path()
         self.llamacpp_bin = _default_llamacpp_bin()
         self.local_server_url = os.getenv(
@@ -236,6 +236,7 @@ class TalkBotGUI:
         self.default_max_tokens = _env_int(
             "TALKBOT_MAX_TOKENS", 512, min_value=32, max_value=8192
         )
+        self._all_voices: list[dict] = []
 
         self.root = tk.Tk()
         self.root.title("TalkBot - AI Talking Assistant")
@@ -496,6 +497,22 @@ class TalkBotGUI:
             row_tts, textvariable=self.voice_var, width=40, style="Modern.TCombobox"
         )
         self.voice_combo.pack(side=tk.LEFT, padx=(10, 0))
+        self.voice_combo.bind("<<ComboboxSelected>>", self._on_voice_selected)
+
+        self.english_only_var = tk.BooleanVar(value=True)
+        self.english_only_check = tk.Checkbutton(
+            row_tts,
+            text="English only",
+            variable=self.english_only_var,
+            command=self._on_voice_filter_toggled,
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            selectcolor=ModernStyle.BG_TERTIARY,
+            activebackground=ModernStyle.BG_SECONDARY,
+            activeforeground=ModernStyle.TEXT_PRIMARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_SMALL),
+        )
+        self.english_only_check.pack(side=tk.LEFT, padx=(12, 0))
 
         # Local paths row — shown only when provider=local, packed dynamically
         self.local_row = tk.Frame(settings_frame, bg=ModernStyle.BG_SECONDARY)
@@ -1110,16 +1127,10 @@ class TalkBotGUI:
             self.tts = TTSManager(backend=backend)
             set_alert_callback(self.tts.speak)
             voices = self.tts.available_voices
+            self._all_voices = voices
 
-            self.voice_combo["values"] = [v["name"] for v in voices]
+            self._refresh_voice_dropdown(voices)
             if voices:
-                # Find English voice as default
-                default_voice = next(
-                    (v for v in voices if "en" in v.get("languages", [])), voices[0]
-                )
-                self.voice_var.set(default_voice["name"])
-                self.tts.set_voice(default_voice["id"])
-
                 # Update status label
                 if backend == "edge-tts":
                     self.backend_status_label.config(
@@ -1284,14 +1295,96 @@ class TalkBotGUI:
         current = self.local_model_path_var.get().strip()
         return [current] if current else []
 
+    def _is_english_voice(self, voice: dict) -> bool:
+        """Best-effort English detection across backend voice metadata."""
+
+        def normalize(value: object) -> str:
+            if value is None:
+                return ""
+            if isinstance(value, bytes):
+                text = value.decode("utf-8", errors="ignore")
+            else:
+                text = str(value)
+            filtered = "".join(
+                ch.lower() if ch.isalnum() or ch in {" ", "-", "_"} else " "
+                for ch in text
+            )
+            return " ".join(filtered.split())
+
+        candidates: list[object] = [voice.get("id"), voice.get("name")]
+        languages = voice.get("languages", [])
+        if isinstance(languages, (list, tuple, set)):
+            candidates.extend(languages)
+        else:
+            candidates.append(languages)
+
+        for candidate in candidates:
+            text = normalize(candidate).replace("_", "-")
+            if not text:
+                continue
+            if "english" in text:
+                return True
+            if text.startswith("en"):
+                return True
+            if any(token in {"en", "eng"} for token in text.replace("-", " ").split()):
+                return True
+        return False
+
+    def _voice_id_for_name(self, voice_name: str) -> str | None:
+        for voice in self._all_voices:
+            if voice["name"] == voice_name:
+                return voice["id"]
+        return None
+
+    def _refresh_voice_dropdown(
+        self, voices: list[dict], preferred_name: str | None = None
+    ) -> None:
+        selected_name = preferred_name or self.voice_var.get().strip()
+        visible_voices = (
+            [v for v in voices if self._is_english_voice(v)]
+            if self.english_only_var.get()
+            else voices
+        )
+        self.voice_combo["values"] = [v["name"] for v in visible_voices]
+        if not visible_voices:
+            self.voice_var.set("")
+            return
+
+        selected_voice = next(
+            (v for v in visible_voices if v["name"] == selected_name), None
+        )
+        if selected_voice is None:
+            selected_voice = next(
+                (v for v in visible_voices if self._is_english_voice(v)),
+                visible_voices[0],
+            )
+
+        self.voice_var.set(selected_voice["name"])
+        if self.tts:
+            self.tts.set_voice(selected_voice["id"])
+
+    def _on_voice_filter_toggled(self) -> None:
+        if not self.tts:
+            return
+        self._refresh_voice_dropdown(self._all_voices)
+
+    def _on_voice_selected(self, event=None) -> None:
+        """Apply the selected voice immediately when the user picks from the dropdown."""
+        del event
+        if not self.tts:
+            return
+        voice_id = self._voice_id_for_name(self.voice_var.get())
+        if voice_id:
+            self.tts.set_voice(voice_id)
+
     def _on_provider_changed(self, event=None) -> None:
         del event
         provider = self.provider_var.get()
         if provider == "openrouter":
-            self.model_combo["values"] = FREE_OPENROUTER_MODELS
+            self.model_combo["values"] = OPENROUTER_MODELS
             self.model_combo.config(state="readonly")
-            if self.model_var.get() not in FREE_OPENROUTER_MODELS:
-                self.model_var.set(FREE_OPENROUTER_MODELS[0])
+            if self.model_var.get() not in OPENROUTER_MODELS:
+                self.model_var.set(OPENROUTER_MODELS[0])
             self.local_row.pack_forget()
             self.status_var.set("Provider: OpenRouter")
         elif provider == "local_server":
@@ -1407,10 +1500,9 @@ class TalkBotGUI:
                     device_out=self._parse_device_selection(self.spk_var.get()),
                     allow_barge_in=True,
                 )
-                tts_voice_id = next(
-                    (v["id"] for v in self.tts.available_voices if v["name"] == self.voice_var.get()),
-                    None,
-                ) if self.tts else None
+                tts_voice_id = (
+                    self._voice_id_for_name(self.voice_var.get()) if self.tts else None
+                )
                 self.voice_pipeline = VoicePipeline(
                     api_key=self.api_key,
                     provider=self.provider_var.get(),
@@ -1773,10 +1865,9 @@ class TalkBotGUI:
                 self.tts.set_volume(self.volume_var.get())
 
                 # Find voice ID from name
-                for voice in self.tts.available_voices:
-                    if voice["name"] == self.voice_var.get():
-                        self.tts.set_voice(voice["id"])
-                        break
+                voice_id = self._voice_id_for_name(self.voice_var.get())
+                if voice_id:
+                    self.tts.set_voice(voice_id)
 
             # Get response
             max_tokens = self._current_max_tokens()
@@ -1795,7 +1886,14 @@ class TalkBotGUI:
                 else:
                     data = client.chat_completion(messages, max_tokens=max_tokens)
                     usage = data.get("usage") or {}
-                    response = data["choices"][0]["message"].get("content", "")
+                    choices = data.get("choices")
+                    if isinstance(choices, list) and choices:
+                        first = choices[0] if isinstance(choices[0], dict) else {}
+                        message = first.get("message", {}) if isinstance(first, dict) else {}
+                        content = message.get("content", "") if isinstance(message, dict) else ""
+                        response = str(content)
+                    else:
+                        response = ""
 
                 if not usage:
                     usage = getattr(client, "last_usage", {}) or {}
@@ -1911,16 +2009,10 @@ class TalkBotGUI:
             self.tts = TTSManager(backend=new_backend)
             set_alert_callback(self.tts.speak)
             voices = self.tts.available_voices
+            self._all_voices = voices
 
             # Update voice dropdown
-            self.voice_combo["values"] = [v["name"] for v in voices]
-            if voices:
-                # Try to find an English voice
-                default_voice = next(
-                    (v for v in voices if "en" in v.get("languages", [])), voices[0]
-                )
-                self.voice_var.set(default_voice["name"])
-                self.tts.set_voice(default_voice["id"])
+            self._refresh_voice_dropdown(voices)
 
             self.status_var.set(f"Switched to {new_backend}")
         except Exception as e:

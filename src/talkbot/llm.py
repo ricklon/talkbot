@@ -9,7 +9,7 @@ import shutil
 import subprocess
 import difflib
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 import httpx
 from talkbot.openrouter import OpenRouterClient
@@ -18,6 +18,32 @@ from talkbot.thinking import NO_THINK_INSTRUCTION
 
 class LLMProviderError(RuntimeError):
     """Raised when an LLM provider cannot be initialized or used."""
+
+
+def _response_message(response: dict[str, Any]) -> dict[str, Any]:
+    choices = response.get("choices")
+    if isinstance(choices, list) and choices:
+        first = choices[0]
+        if isinstance(first, dict):
+            message = first.get("message")
+            if isinstance(message, dict):
+                return message
+    return {}
+
+
+def _response_content(response: dict[str, Any]) -> str:
+    message = _response_message(response)
+    content = message.get("content")
+    if content is not None:
+        return content if isinstance(content, str) else str(content)
+
+    error = response.get("error")
+    if isinstance(error, dict):
+        detail = error.get("message") or error.get("code") or str(error)
+        return f"Error: {detail}"
+    if error:
+        return f"Error: {error}"
+    return ""
 
 
 class LocalLlamaCppClient:
@@ -224,11 +250,7 @@ class LocalLlamaCppClient:
                 raise LLMProviderError(
                     f"Local llama-cpp-python generation failed: {e}"
                 ) from e
-            content = (
-                response.get("choices", [{}])[0]
-                .get("message", {})
-                .get("content", "")
-            )
+            content = _response_content(response)
             content = self._clean_output(content)
             self.last_usage = response.get("usage") or {}
             return {"choices": [{"message": {"content": content}}], "usage": self.last_usage}
@@ -248,7 +270,7 @@ class LocalLlamaCppClient:
             {"role": "system", "content": augmented},
             {"role": "user", "content": message},
         ]
-        return self.chat_completion(messages)["choices"][0]["message"]["content"]
+        return _response_content(self.chat_completion(messages))
 
     def chat_with_system_tools(
         self, message: str, system_prompt: Optional[str] = None
@@ -268,7 +290,7 @@ class LocalLlamaCppClient:
     ) -> str:
         if not self.tools:
             response = self.chat_completion(messages, temperature=temperature, max_tokens=max_tokens)
-            return response["choices"][0]["message"].get("content", "")
+            return _response_content(response)
 
         current_messages = self._with_tool_guidance(messages)
         tool_call_count = 0
@@ -296,7 +318,7 @@ class LocalLlamaCppClient:
 
         while tool_call_count < max_tool_calls:
             response = self.chat_completion(current_messages, temperature=temperature, max_tokens=max_tokens)
-            content = self._clean_output(response["choices"][0]["message"].get("content", ""))
+            content = self._clean_output(_response_content(response))
             tool_calls = self._extract_tag_tool_calls(content)
 
             if not tool_calls:
@@ -365,7 +387,7 @@ class LocalLlamaCppClient:
             # directly instead of asking the model to paraphrase again.
             return "\n".join(s.split(" -> ", 1)[-1] for s in executed_tool_summaries)
         response = self.chat_completion(current_messages, temperature=temperature, max_tokens=max_tokens)
-        return response["choices"][0]["message"].get("content", "").strip()
+        return _response_content(response).strip()
 
     def register_tool(
         self, name: str, func: Callable, description: str, parameters: dict
@@ -471,6 +493,33 @@ class LocalLlamaCppClient:
             return [{"id": "alias-coin-0", "function": {"name": "flip_coin", "arguments": "{}"}}]
         if "list" in lowered and "all" in lowered:
             return [{"id": "alias-lists-0", "function": {"name": "list_all_lists", "arguments": "{}"}}]
+        if "list timer" in lowered or "active timer" in lowered:
+            return [{"id": "alias-timers-0", "function": {"name": "list_timers", "arguments": "{}"}}]
+        cancel_match = re.search(r"cancel\s+timer\s+#?(\d+)", lowered)
+        if cancel_match:
+            return [
+                {
+                    "id": "alias-cancel-timer-0",
+                    "function": {
+                        "name": "cancel_timer",
+                        "arguments": json.dumps({"timer_id": cancel_match.group(1)}),
+                    },
+                }
+            ]
+        timer_match = re.search(
+            r"(?:set\s+)?(?:a\s+)?timer(?:\s+for)?\s+(\d+)\s*(?:s|sec|secs|second|seconds)\b",
+            lowered,
+        )
+        if timer_match:
+            return [
+                {
+                    "id": "alias-set-timer-0",
+                    "function": {
+                        "name": "set_timer",
+                        "arguments": json.dumps({"seconds": int(timer_match.group(1))}),
+                    },
+                }
+            ]
 
         # Dice-like aliases: rolled_d20_total, d20, 2d20, etc.
         if "roll" in lowered or re.search(r"\d+d\d+|d\d+", lowered):
@@ -526,6 +575,33 @@ class LocalLlamaCppClient:
             return [{"id": "direct-coin-0", "function": {"name": "flip_coin", "arguments": "{}"}}]
         if "what lists do you have" in user_text or "list all lists" in user_text:
             return [{"id": "direct-lists-0", "function": {"name": "list_all_lists", "arguments": "{}"}}]
+        if "list timers" in user_text or "active timers" in user_text:
+            return [{"id": "direct-timers-0", "function": {"name": "list_timers", "arguments": "{}"}}]
+        cancel_match = re.search(r"cancel\s+timer\s+#?(\d+)", user_text)
+        if cancel_match:
+            return [
+                {
+                    "id": "direct-cancel-timer-0",
+                    "function": {
+                        "name": "cancel_timer",
+                        "arguments": json.dumps({"timer_id": cancel_match.group(1)}),
+                    },
+                }
+            ]
+        timer_match = re.search(
+            r"(?:set\s+)?(?:a\s+)?timer(?:\s+for)?\s+(\d+)\s*(?:s|sec|secs|second|seconds)\b",
+            user_text,
+        )
+        if timer_match:
+            return [
+                {
+                    "id": "direct-set-timer-0",
+                    "function": {
+                        "name": "set_timer",
+                        "arguments": json.dumps({"seconds": int(timer_match.group(1))}),
+                    },
+                }
+            ]
 
         dm = re.search(r"\b(\d+)\s*d\s*(\d+)(?:s)?\b", user_text)
         if dm:
@@ -684,7 +760,7 @@ class LocalServerClient:
     ) -> str:
         if not self.tools:
             response = self.chat_completion(messages, temperature, max_tokens)
-            return response["choices"][0]["message"].get("content", "")
+            return _response_content(response)
 
         current_messages = messages.copy()
         tool_call_count = 0
@@ -711,13 +787,15 @@ class LocalServerClient:
                         max_tokens,
                         include_tools=False,
                     )
-                    return response["choices"][0]["message"].get("content", "")
+                    return _response_content(response)
                 response = self.chat_completion(
                     current_messages, temperature, max_tokens, include_tools=False
                 )
-                return response["choices"][0]["message"].get("content", "")
-            message = response["choices"][0]["message"]
-            content = message.get("content", "")
+                return _response_content(response)
+            message = _response_message(response)
+            if not message:
+                return _response_content(response)
+            content = _response_content(response)
             tool_calls = message.get("tool_calls") or self._extract_tag_tool_calls(content)
             # Fallback: bare tool name (e.g. "list_timers" or "list_timers()")
             if not tool_calls:
@@ -785,7 +863,7 @@ class LocalServerClient:
         response = self.chat_completion(
             current_messages, temperature, max_tokens, include_tools=False
         )
-        final_text = response["choices"][0]["message"].get("content", "").strip()
+        final_text = _response_content(response).strip()
         # If the model still outputs a tool-call pattern (can't escape it), return
         # the accumulated tool results instead of the raw function-call text.
         if executed_tool_summaries and (
@@ -868,7 +946,7 @@ class LocalServerClient:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": message})
         response = self.chat_completion(messages)
-        return response["choices"][0]["message"].get("content", "")
+        return _response_content(response)
 
     def chat_with_system_tools(
         self, message: str, system_prompt: Optional[str] = None

@@ -1,3 +1,5 @@
+import sys
+import types
 from types import SimpleNamespace
 
 import pytest
@@ -159,7 +161,9 @@ def test_kitten_backend_save_to_file(monkeypatch):
             return "fake-audio"
 
     monkeypatch.setattr(tts, "KITTENTTS_AVAILABLE", True)
-    monkeypatch.setattr(tts, "_KittenTTS", FakeModel)
+    fake_module = types.ModuleType("kittentts")
+    fake_module.KittenTTS = FakeModel
+    monkeypatch.setitem(sys.modules, "kittentts", fake_module)
 
     backend = tts.KittenTTSBackend(voice="Bella", model="test-model")
     written = {}
@@ -186,7 +190,9 @@ def test_kitten_backend_uses_library_default_model_when_unspecified(monkeypatch)
             created["args"] = args
 
     monkeypatch.setattr(tts, "KITTENTTS_AVAILABLE", True)
-    monkeypatch.setattr(tts, "_KittenTTS", FakeModel)
+    fake_module = types.ModuleType("kittentts")
+    fake_module.KittenTTS = FakeModel
+    monkeypatch.setitem(sys.modules, "kittentts", fake_module)
 
     tts.KittenTTSBackend()
 
