@@ -83,6 +83,13 @@ class FakeBenchClient:
         return "Unhandled"
 
 
+class ErrorBenchClient(FakeBenchClient):
+    def chat_with_tools(self, messages, temperature=0.0, max_tokens=None):
+        del messages, temperature, max_tokens
+        self.last_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+        raise RuntimeError("simulated model execution failure")
+
+
 def test_load_scenarios_from_directory():
     scenarios = load_scenarios("tests/conversations")
     ids = {scenario["id"] for scenario in scenarios}
@@ -129,23 +136,65 @@ def test_run_benchmark_with_fake_client(tmp_path):
     assert run["aggregate"]["model_execution_error_rate"] == 0.0
 
 
+def test_run_benchmark_model_execution_errors_do_not_score_tool_metrics_perfect(tmp_path):
+    scenarios = [
+        {
+            "id": "error-only",
+            "name": "Error Only",
+            "description": "",
+            "tags": [],
+            "system_prompt": None,
+            "reset_state": True,
+            "turns": [{"user": "hello", "expect": {}}],
+        }
+    ]
+    profiles = [
+        BenchmarkProfile(
+            name="fake-error",
+            provider="local",
+            model="fake/model",
+            use_tools=True,
+            max_tokens=32,
+            temperature=0.0,
+        )
+    ]
+    report = run_benchmark(
+        profiles=profiles,
+        scenarios=scenarios,
+        output_dir=tmp_path,
+        client_factory=lambda _profile: ErrorBenchClient(),
+    )
+    run = report["runs"][0]
+    assert run["status"] == "ok"
+    assert run["aggregate"]["model_execution_error_count"] == 1
+    assert run["aggregate"]["expected_tool_calls"] == 0
+    assert run["aggregate"]["expected_arg_checks"] == 0
+    assert run["aggregate"]["tool_selection_accuracy"] == 0.0
+    assert run["aggregate"]["argument_accuracy"] == 0.0
+
+
 def test_write_outputs_and_leaderboard(tmp_path):
     report = {
         "started_at": "2026-01-01T00:00:00+0000",
         "finished_at": "2026-01-01T00:00:10+0000",
-        "scenario_count": 1,
-        "run_count": 1,
+        "scenario_count": 2,
+        "run_count": 2,
         "rubric": {
             "version": "test.v1",
             "weights": {"task_success_rate": 1.0},
             "penalties": {"latency_ms_multiplier": 0.0},
         },
+        "context_analysis": {
+            "near_peak_ratio": 0.95,
+            "dropoff_ratio": 0.9,
+        },
         "runs": [
             {
                 "profile": {
-                    "name": "demo",
+                    "name": "demo-ctx2048",
                     "provider": "local",
                     "model": "fake/model",
+                    "env": {"TALKBOT_LOCAL_N_CTX": "2048"},
                 },
                 "status": "ok",
                 "aggregate": {
@@ -159,21 +208,47 @@ def test_write_outputs_and_leaderboard(tmp_path):
                     "total_tokens": 42,
                     "tag_success": {"recovery": 1.0},
                 },
+            },
+            {
+                "profile": {
+                    "name": "demo-ctx4096",
+                    "provider": "local",
+                    "model": "fake/model",
+                    "env": {"TALKBOT_LOCAL_N_CTX": "4096"},
+                },
+                "status": "ok",
+                "aggregate": {
+                    "task_success_rate": 0.85,
+                    "tool_selection_accuracy": 0.85,
+                    "argument_accuracy": 0.85,
+                    "avg_turn_latency_ms": 35.0,
+                    "memory_peak_mb": 24.0,
+                    "tool_call_error_rate": 0.01,
+                    "tokens_per_second": 3.5,
+                    "total_tokens": 55,
+                    "tag_success": {"recovery": 0.8},
+                },
             }
         ],
     }
     md = build_leaderboard_markdown(report)
+    assert "Tool Routing A/B (Will vs Can)" in md
+    assert "## Scope" in md
     assert "Quality Rank" in md
+    assert "| Run | Provider | Model | Routing |" in md
     assert "Low-Memory Rank" in md
     assert "Balanced Rank" in md
     assert "Pareto Frontier" in md
+    assert "Latency Snapshot (Local vs Remote)" in md
     assert "Rubric" in md
+    assert "Context Window Coherence Sweep" in md
+    assert "Optimal Ctx" in md
 
     paths = write_outputs(report, tmp_path)
     assert Path(paths["results"]).exists()
     assert Path(paths["leaderboard"]).exists()
     result_payload = json.loads(Path(paths["results"]).read_text())
-    assert result_payload["run_count"] == 1
+    assert result_payload["run_count"] == 2
 
 
 def test_load_matrix_config_expands_context_windows(tmp_path):
@@ -186,6 +261,10 @@ def test_load_matrix_config_expands_context_windows(tmp_path):
                     "rubric": {
                         "version": "custom",
                         "weights": {"task_success_rate": 0.7},
+                    },
+                    "context_analysis": {
+                        "near_peak_ratio": 0.96,
+                        "dropoff_ratio": 0.88,
                     },
                 },
                 "profiles": [
@@ -207,6 +286,113 @@ def test_load_matrix_config_expands_context_windows(tmp_path):
     assert matrix["profiles"][0].env["TALKBOT_LOCAL_N_CTX"] == "2048"
     assert matrix["rubric"]["version"] == "custom"
     assert matrix["rubric"]["weights"]["task_success_rate"] == 0.7
+    assert matrix["context_analysis"]["near_peak_ratio"] == 0.96
+    assert matrix["context_analysis"]["dropoff_ratio"] == 0.88
+
+
+def test_leaderboard_includes_ab_routing_section():
+    report = {
+        "started_at": "2026-01-01T00:00:00+0000",
+        "finished_at": "2026-01-01T00:00:10+0000",
+        "scenario_count": 1,
+        "run_count": 2,
+        "rubric": {
+            "version": "test.v1",
+            "weights": {"task_success_rate": 1.0},
+            "penalties": {"latency_ms_multiplier": 0.0},
+        },
+        "runs": [
+            {
+                "profile": {
+                    "name": "demo-llm-ctx2048",
+                    "provider": "local",
+                    "model": "fake/model",
+                    "local_model_path": "models/fake.gguf",
+                    "env": {
+                        "TALKBOT_LOCAL_N_CTX": "2048",
+                        "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "0",
+                    },
+                },
+                "status": "ok",
+                "aggregate": {
+                    "task_success_rate": 0.5,
+                    "tool_selection_accuracy": 0.7,
+                    "argument_accuracy": 0.9,
+                    "avg_turn_latency_ms": 20.0,
+                    "memory_peak_mb": 10.0,
+                    "tool_call_error_rate": 0.1,
+                    "model_execution_error_rate": 0.0,
+                    "tokens_per_second": 3.0,
+                    "total_tokens": 20,
+                    "tag_success": {},
+                },
+            },
+            {
+                "profile": {
+                    "name": "demo-intent-ctx2048",
+                    "provider": "local",
+                    "model": "fake/model",
+                    "local_model_path": "models/fake.gguf",
+                    "env": {
+                        "TALKBOT_LOCAL_N_CTX": "2048",
+                        "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "1",
+                    },
+                },
+                "status": "ok",
+                "aggregate": {
+                    "task_success_rate": 1.0,
+                    "tool_selection_accuracy": 1.0,
+                    "argument_accuracy": 1.0,
+                    "avg_turn_latency_ms": 15.0,
+                    "memory_peak_mb": 10.0,
+                    "tool_call_error_rate": 0.0,
+                    "model_execution_error_rate": 0.0,
+                    "tokens_per_second": 3.5,
+                    "total_tokens": 20,
+                    "tag_success": {},
+                },
+            },
+        ],
+    }
+    md = build_leaderboard_markdown(report)
+    assert "Tool Routing A/B (Will vs Can)" in md
+    assert "intent minus llm avg success delta" in md
+
+
+def test_leaderboard_ab_section_without_pairs_shows_guidance():
+    report = {
+        "started_at": "2026-01-01T00:00:00+0000",
+        "finished_at": "2026-01-01T00:00:10+0000",
+        "scenario_count": 1,
+        "run_count": 1,
+        "rubric": {"version": "test.v1", "weights": {"task_success_rate": 1.0}},
+        "runs": [
+            {
+                "profile": {
+                    "name": "demo-llm",
+                    "provider": "local",
+                    "model": "fake/model",
+                    "env": {"TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "0"},
+                },
+                "status": "ok",
+                "aggregate": {
+                    "task_success_rate": 0.5,
+                    "tool_selection_accuracy": 0.5,
+                    "argument_accuracy": 0.5,
+                    "avg_turn_latency_ms": 10.0,
+                    "memory_peak_mb": 10.0,
+                    "tool_call_error_rate": 0.0,
+                    "model_execution_error_rate": 0.0,
+                    "tokens_per_second": 1.0,
+                    "total_tokens": 10,
+                    "tag_success": {},
+                },
+            }
+        ],
+    }
+    md = build_leaderboard_markdown(report)
+    assert "Tool Routing A/B (Will vs Can)" in md
+    assert "No matched LLM/Intent profile pairs found" in md
 
 
 def test_profile_system_prompt_is_prepended(tmp_path):

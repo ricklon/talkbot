@@ -39,3 +39,36 @@ def test_local_provider_uses_repo_default_model_path(monkeypatch, tmp_path):
     assert captured["binary"] == "llama-cli"
     assert captured["n_ctx"] == 2048
     assert captured["enable_thinking"] is False
+
+
+def test_rewrite_recall_to_remember_for_explicit_remember_intent():
+    name, args = llm_module._rewrite_tool_call_for_user_intent(
+        "recall",
+        {"key": "favorite_color"},
+        "Remember that my favorite color is blue.",
+    )
+    assert name == "remember"
+    assert args == {"key": "favorite_color", "value": "blue"}
+
+
+def test_openrouter_provider_uses_env_api_key(monkeypatch):
+    captured = {}
+
+    class DummyOpenRouterClient:
+        def __init__(self, *, api_key, model, site_url=None, site_name=None):
+            captured["api_key"] = api_key
+            captured["model"] = model
+            captured["site_url"] = site_url
+            captured["site_name"] = site_name
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    monkeypatch.setattr(llm_module, "OpenRouterClient", DummyOpenRouterClient)
+
+    client = llm_module.create_llm_client(
+        provider="openrouter",
+        model="ibm-granite/granite-4.0-h-micro",
+    )
+
+    assert captured["api_key"] == "test-key"
+    assert captured["model"] == "ibm-granite/granite-4.0-h-micro"
+    assert getattr(client, "provider_name", "") == "openrouter"

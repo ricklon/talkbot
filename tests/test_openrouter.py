@@ -1,6 +1,8 @@
 import json
+import os
 
 import pytest
+import httpx
 
 from talkbot.openrouter import OpenRouterClient
 
@@ -26,6 +28,12 @@ class FakeHttpClient:
 
     def close(self):
         return None
+
+
+@pytest.fixture(autouse=True)
+def _disable_openrouter_tool_preflight(monkeypatch):
+    monkeypatch.setenv("TALKBOT_OPENROUTER_TOOL_PREFLIGHT", "0")
+    monkeypatch.delenv("TALKBOT_OPENROUTER_TOOL_TRANSPORT", raising=False)
 
 
 def test_requires_api_key(monkeypatch):
@@ -133,3 +141,101 @@ def test_chat_with_tools_handles_empty_choices(monkeypatch):
     monkeypatch.setattr(client, "chat_completion", lambda *_args, **_kwargs: {"choices": []})
 
     assert client.chat_with_tools([{"role": "user", "content": "hello"}]) == ""
+
+
+def test_chat_with_tools_prompt_transport_executes_tool(monkeypatch):
+    monkeypatch.setenv("TALKBOT_OPENROUTER_TOOL_TRANSPORT", "prompt")
+    client = OpenRouterClient(api_key="k")
+    client.register_tool(
+        "add", lambda a, b: str(a + b), "Add", {"type": "object", "properties": {}}
+    )
+
+    responses = iter(
+        [
+            {
+                "choices": [
+                    {
+                        "message": {
+                            "role": "assistant",
+                            "content": '<tool_call>{"name":"add","arguments":{"a":2,"b":3}}</tool_call>',
+                        }
+                    }
+                ],
+                "usage": {"prompt_tokens": 5, "completion_tokens": 5, "total_tokens": 10},
+            },
+            {
+                "choices": [{"message": {"role": "assistant", "content": "5"}}],
+                "usage": {"prompt_tokens": 5, "completion_tokens": 5, "total_tokens": 10},
+            },
+        ]
+    )
+
+    monkeypatch.setattr(
+        client,
+        "_request_completion",
+        lambda **_kwargs: next(responses),
+    )
+
+    output = client.chat_with_tools([{"role": "user", "content": "sum"}])
+    assert output == "5"
+
+
+def test_chat_with_tools_falls_back_to_prompt_on_native_unsupported(monkeypatch):
+    client = OpenRouterClient(api_key="k")
+    client.register_tool("echo", lambda text: text, "Echo", {"type": "object"})
+
+    request = httpx.Request("POST", "https://openrouter.ai/api/v1/chat/completions")
+    response = httpx.Response(
+        404,
+        request=request,
+        text='{"error":{"message":"No endpoints found that support tool use"}}',
+    )
+    error = httpx.HTTPStatusError(
+        "No endpoints found that support tool use",
+        request=request,
+        response=response,
+    )
+
+    monkeypatch.setattr(client, "_chat_with_native_tools", lambda *_args, **_kwargs: (_ for _ in ()).throw(error))
+    monkeypatch.setattr(client, "_chat_with_prompt_tools", lambda *_args, **_kwargs: "fallback-ok")
+
+    assert client.chat_with_tools([{"role": "user", "content": "hello"}]) == "fallback-ok"
+
+
+def test_chat_with_tools_native_mode_does_not_fallback_on_unsupported(monkeypatch):
+    monkeypatch.setenv("TALKBOT_OPENROUTER_TOOL_TRANSPORT", "native")
+    client = OpenRouterClient(api_key="k")
+    client.register_tool("echo", lambda text: text, "Echo", {"type": "object"})
+
+    request = httpx.Request("POST", "https://openrouter.ai/api/v1/chat/completions")
+    response = httpx.Response(
+        404,
+        request=request,
+        text='{"error":{"message":"No endpoints found that support tool use"}}',
+    )
+    error = httpx.HTTPStatusError(
+        "No endpoints found that support tool use",
+        request=request,
+        response=response,
+    )
+
+    monkeypatch.setattr(
+        client,
+        "_chat_with_native_tools",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(error),
+    )
+    monkeypatch.setattr(client, "_chat_with_prompt_tools", lambda *_args, **_kwargs: "fallback-ok")
+
+    with pytest.raises(httpx.HTTPStatusError):
+        client.chat_with_tools([{"role": "user", "content": "hello"}])
+
+
+def test_chat_with_tools_native_mode_preflight_rejects_unsupported(monkeypatch):
+    monkeypatch.setenv("TALKBOT_OPENROUTER_TOOL_TRANSPORT", "native")
+    monkeypatch.setenv("TALKBOT_OPENROUTER_TOOL_PREFLIGHT", "1")
+    client = OpenRouterClient(api_key="k")
+    client.register_tool("echo", lambda text: text, "Echo", {"type": "object"})
+    monkeypatch.setattr(client, "_detect_native_tool_support", lambda: False)
+
+    with pytest.raises(RuntimeError, match="does not advertise native tool calling"):
+        client.chat_with_tools([{"role": "user", "content": "hello"}])

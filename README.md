@@ -677,7 +677,24 @@ uv run -- python scripts/benchmark_conversations.py \
 
 Outputs:
 - `results.json`: per-run traces + metrics (`task_success_rate`, tool/arg accuracy, tool error rate, tokens/sec, latency, memory)
-- `leaderboard.md`: rubric-aware quality, low-memory, balanced, efficiency, and Pareto rankings
+- `leaderboard.md`: rubric-aware quality, low-memory, balanced, efficiency, Pareto, and context-dropoff recommendations
+- One-stop latest mirror (auto-updated): `benchmark_results/results.json` and `benchmark_results/leaderboard.md`
+
+For apples-to-apples OpenRouter benchmarking (standard OpenAI tool format only), set:
+
+```bash
+export TALKBOT_OPENROUTER_TOOL_TRANSPORT=native
+export TALKBOT_OPENROUTER_TOOL_PREFLIGHT=1
+```
+
+With this mode, models/routes that do not advertise native `tools` + `tool_choice` will fail fast instead of using prompt-tool fallback.
+
+The leaderboard includes an A/B section:
+- `LLM` mode: prompt-directed tool choice (will it use tools?)
+- `Intent` mode: deterministic routing (can it use tools with enforced intents?)
+- Use paired profiles (same model + same `n_ctx`) with:
+  - `TALKBOT_LOCAL_DIRECT_TOOL_ROUTING=0` for `LLM`
+  - `TALKBOT_LOCAL_DIRECT_TOOL_ROUTING=1` for `Intent`
 
 Matrix files can also define benchmark rubric and context-window sweeps:
 
@@ -696,6 +713,10 @@ Matrix files can also define benchmark rubric and context-window sweeps:
         "robustness_success_rate": 0.05,
         "context_success_rate": 0.05
       }
+    },
+    "context_analysis": {
+      "near_peak_ratio": 0.95,
+      "dropoff_ratio": 0.9
     }
   },
   "profiles": [
@@ -706,6 +727,16 @@ Matrix files can also define benchmark rubric and context-window sweeps:
   ]
 }
 ```
+
+Team benchmark values and decision policy are tracked in:
+- `benchmarks/evaluation_values.json`
+- `benchmarks/decision_strategy.md`
+
+That file explicitly defines:
+- Primary goal: prompt-driven tool choice (`llm` mode, no intent routing)
+- Secondary goal: deterministic fallback ceiling (`intent` mode)
+- How to interpret `llm` vs `intent` gaps
+- Context-dropoff policy (coherence-first, efficiency separate)
 
 Scenario files are JSON scripts in `tests/conversations/` and support per-turn assertions:
 - expected tool names (`name` or `name_any`)

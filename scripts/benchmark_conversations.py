@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -78,6 +79,16 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         default="benchmark_results/latest",
         help="Output directory for results.json and leaderboard.md",
     )
+    parser.add_argument(
+        "--main-output-root",
+        default="benchmark_results",
+        help="Canonical root to mirror latest results.json/leaderboard.md for one-stop access",
+    )
+    parser.add_argument(
+        "--no-update-main",
+        action="store_true",
+        help="Do not mirror outputs into <main-output-root>/results.json and leaderboard.md",
+    )
     parser.add_argument("--repeats", type=int, default=1, help="Repeat each profile N times")
 
     parser.add_argument("--name", default=None, help="Run name for single-profile mode")
@@ -133,10 +144,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
     scenarios = load_scenarios(args.scenarios)
     rubric: dict | None = None
+    context_analysis: dict | None = None
     if args.matrix:
         matrix_config = load_matrix_config(args.matrix)
         profiles = matrix_config["profiles"]
         rubric = matrix_config.get("rubric")
+        context_analysis = matrix_config.get("context_analysis")
     else:
         profiles = [_default_profile_from_args(args)]
 
@@ -146,12 +159,32 @@ def main(argv: list[str] | None = None) -> int:
         scenarios=scenarios,
         output_dir=Path(args.output),
         rubric=rubric,
+        context_analysis=context_analysis,
     )
+    report["meta"] = {
+        "main_output_root": str(Path(args.main_output_root)),
+        "latest_run": str(Path(args.output).resolve()),
+        "update_main": not args.no_update_main,
+    }
     paths = write_outputs(report, Path(args.output))
+
+    main_results = None
+    main_leaderboard = None
+    if not args.no_update_main:
+        main_root = Path(args.main_output_root)
+        main_root.mkdir(parents=True, exist_ok=True)
+        main_results = main_root / "results.json"
+        main_leaderboard = main_root / "leaderboard.md"
+        shutil.copyfile(paths["results"], main_results)
+        shutil.copyfile(paths["leaderboard"], main_leaderboard)
+        (main_root / "latest_run.txt").write_text(str(Path(args.output).resolve()), encoding="utf-8")
 
     print(f"Completed {report['run_count']} run(s) across {report['scenario_count']} scenario(s).")
     print(f"Results JSON: {paths['results']}")
     print(f"Leaderboard: {paths['leaderboard']}")
+    if main_results and main_leaderboard:
+        print(f"Main Results JSON: {main_results}")
+        print(f"Main Leaderboard: {main_leaderboard}")
     return 0
 
 
