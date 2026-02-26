@@ -26,6 +26,11 @@ try:
 except Exception:  # pragma: no cover - platform-dependent
     resource = None
 
+try:
+    import psutil
+except Exception:  # pragma: no cover - optional dependency
+    psutil = None
+
 
 @dataclass
 class BenchmarkProfile:
@@ -294,6 +299,11 @@ DEFAULT_RUBRIC: dict[str, Any] = {
     },
 }
 
+DEFAULT_CONTEXT_ANALYSIS: dict[str, float] = {
+    "near_peak_ratio": 0.95,
+    "dropoff_ratio": 0.9,
+}
+
 
 def _coerce_float(value: Any, default: float) -> float:
     try:
@@ -331,6 +341,19 @@ def _normalize_rubric(raw: Any) -> dict[str, Any]:
             if number >= 0.0:
                 normalized["penalties"][key] = number
 
+    return normalized
+
+
+def _normalize_context_analysis(raw: Any) -> dict[str, float]:
+    normalized = dict(DEFAULT_CONTEXT_ANALYSIS)
+    if not isinstance(raw, dict):
+        return normalized
+    near_peak = _coerce_float(raw.get("near_peak_ratio"), normalized["near_peak_ratio"])
+    dropoff = _coerce_float(raw.get("dropoff_ratio"), normalized["dropoff_ratio"])
+    if 0.0 < near_peak <= 1.0:
+        normalized["near_peak_ratio"] = near_peak
+    if 0.0 < dropoff <= 1.0:
+        normalized["dropoff_ratio"] = dropoff
     return normalized
 
 
@@ -433,6 +456,7 @@ def load_matrix_config(path: str | Path) -> dict[str, Any]:
     payload = _load_json(Path(path))
     raw_profiles: Any
     rubric_raw: Any = None
+    context_analysis_raw: Any = None
     matrix_version = "2026.1"
     if isinstance(payload, list):
         raw_profiles = payload
@@ -441,9 +465,12 @@ def load_matrix_config(path: str | Path) -> dict[str, Any]:
         benchmark_cfg = payload.get("benchmark")
         if isinstance(benchmark_cfg, dict):
             rubric_raw = benchmark_cfg.get("rubric")
+            context_analysis_raw = benchmark_cfg.get("context_analysis")
             matrix_version = str(benchmark_cfg.get("schema_version") or matrix_version)
         if payload.get("rubric") and rubric_raw is None:
             rubric_raw = payload.get("rubric")
+        if payload.get("context_analysis") and context_analysis_raw is None:
+            context_analysis_raw = payload.get("context_analysis")
     else:
         raw_profiles = []
 
@@ -460,6 +487,7 @@ def load_matrix_config(path: str | Path) -> dict[str, Any]:
         "schema_version": matrix_version,
         "profiles": profiles,
         "rubric": _normalize_rubric(rubric_raw),
+        "context_analysis": _normalize_context_analysis(context_analysis_raw),
     }
 
 
@@ -491,6 +519,16 @@ def _process_rss_mb() -> float:
     if sys.platform == "darwin":
         return round(raw / (1024.0 * 1024.0), 3)
     return round(raw / 1024.0, 3)
+
+
+def _current_rss_mb() -> float:
+    if psutil is None:
+        return 0.0
+    try:
+        rss = float(psutil.Process().memory_info().rss)
+    except Exception:
+        return 0.0
+    return round(rss / (1024.0 * 1024.0), 3)
 
 
 def _register_traced_tools(client: Any, recorder: ToolRecorder) -> None:
@@ -635,6 +673,7 @@ def run_benchmark(
     scenarios: list[dict[str, Any]],
     output_dir: str | Path,
     rubric: dict[str, Any] | None = None,
+    context_analysis: dict[str, Any] | None = None,
     client_factory: Callable[[BenchmarkProfile], Any] | None = None,
 ) -> dict[str, Any]:
     """Run all profiles against all scenarios and return a report dictionary."""
@@ -643,12 +682,15 @@ def run_benchmark(
     factory = client_factory or _default_client_factory
     started_at = time.strftime("%Y-%m-%dT%H:%M:%S%z")
     rubric_config = _normalize_rubric(rubric)
+    context_analysis_config = _normalize_context_analysis(context_analysis)
 
     run_results: list[RunResult] = []
     for profile in profiles:
         run_started = time.perf_counter()
         cpu_started = time.process_time()
-        rss_started = _process_rss_mb()
+        rss_started = _current_rss_mb()
+        rss_peak = rss_started
+        rss_max_started = _process_rss_mb()
         tracemalloc.start()
 
         recorder = ToolRecorder()
@@ -663,6 +705,7 @@ def run_benchmark(
         with _patched_env(env_overrides):
             try:
                 with factory(profile) as client:
+                    rss_peak = max(rss_peak, _current_rss_mb())
                     if profile.use_tools and supports_tools(client):
                         _register_traced_tools(client, recorder)
                     elif profile.use_tools:
@@ -778,6 +821,7 @@ def run_benchmark(
                                     history_chars=history_chars,
                                 )
                             )
+                            rss_peak = max(rss_peak, _current_rss_mb())
 
                         scenario_results.append(
                             ScenarioResult(
@@ -801,7 +845,8 @@ def run_benchmark(
 
         _, tracemalloc_peak = tracemalloc.get_traced_memory()
         tracemalloc.stop()
-        rss_ended = _process_rss_mb()
+        rss_peak = max(rss_peak, _current_rss_mb())
+        rss_max_ended = _process_rss_mb()
         run_duration = round(time.perf_counter() - run_started, 3)
         cpu_duration = round(time.process_time() - cpu_started, 3)
 
@@ -812,7 +857,10 @@ def run_benchmark(
                 tool_traces=recorder.calls,
                 cpu_time_s=cpu_duration,
                 python_peak_mb=round(tracemalloc_peak / (1024.0 * 1024.0), 3),
-                process_rss_delta_mb=max(0.0, round(rss_ended - rss_started, 3)),
+                process_rss_delta_mb=max(
+                    max(0.0, round(rss_peak - rss_started, 3)),
+                    max(0.0, round(rss_max_ended - rss_max_started, 3)),
+                ),
             )
 
         run_results.append(
@@ -834,6 +882,7 @@ def run_benchmark(
         "scenario_count": len(scenarios),
         "run_count": len(run_results),
         "rubric": rubric_config,
+        "context_analysis": context_analysis_config,
         "runs": [_run_to_dict(run) for run in run_results],
     }
     return report
@@ -895,6 +944,13 @@ def _build_aggregate(
         for trace in tool_traces
         if trace.error or str(trace.result).strip().lower().startswith("error:")
     )
+    tool_selection_accuracy = _percent(matched_tool_names, expected_tool_calls)
+    argument_accuracy = _percent(matched_arg_checks, expected_arg_checks)
+    # Avoid false-perfect metrics when execution errors prevent any tool assertions.
+    if model_execution_error_count > 0 and expected_tool_calls <= 0:
+        tool_selection_accuracy = 0.0
+    if model_execution_error_count > 0 and expected_arg_checks <= 0:
+        argument_accuracy = 0.0
 
     tag_totals: dict[str, int] = {}
     tag_passed: dict[str, int] = {}
@@ -930,10 +986,10 @@ def _build_aggregate(
         ),
         expected_tool_calls=expected_tool_calls,
         matched_tool_names=matched_tool_names,
-        tool_selection_accuracy=_percent(matched_tool_names, expected_tool_calls),
+        tool_selection_accuracy=tool_selection_accuracy,
         expected_arg_checks=expected_arg_checks,
         matched_arg_checks=matched_arg_checks,
-        argument_accuracy=_percent(matched_arg_checks, expected_arg_checks),
+        argument_accuracy=argument_accuracy,
         actual_tool_calls=actual_tool_calls,
         prompt_tokens=prompt_tokens,
         completion_tokens=completion_tokens,
@@ -1011,13 +1067,10 @@ def _rubric_metric(aggregate: dict[str, Any], metric: str) -> float:
     return 0.0
 
 
-def _rubric_score(aggregate: dict[str, Any], rubric: dict[str, Any]) -> float:
+def _rubric_quality_score(aggregate: dict[str, Any], rubric: dict[str, Any]) -> float:
     weights = rubric.get("weights") if isinstance(rubric, dict) else {}
-    penalties = rubric.get("penalties") if isinstance(rubric, dict) else {}
     if not isinstance(weights, dict):
         weights = {}
-    if not isinstance(penalties, dict):
-        penalties = {}
 
     weighted_total = 0.0
     weight_sum = 0.0
@@ -1030,6 +1083,13 @@ def _rubric_score(aggregate: dict[str, Any], rubric: dict[str, Any]) -> float:
         weight_sum += weight
 
     quality_score = (weighted_total / weight_sum) * 100.0 if weight_sum > 0 else 0.0
+    return round(quality_score, 3)
+
+
+def _rubric_penalty(aggregate: dict[str, Any], rubric: dict[str, Any]) -> float:
+    penalties = rubric.get("penalties") if isinstance(rubric, dict) else {}
+    if not isinstance(penalties, dict):
+        penalties = {}
     penalty = (
         _coerce_float(aggregate.get("avg_turn_latency_ms"), 0.0)
         * _coerce_float(penalties.get("latency_ms_multiplier"), 0.0)
@@ -1040,7 +1100,11 @@ def _rubric_score(aggregate: dict[str, Any], rubric: dict[str, Any]) -> float:
         + _coerce_float(aggregate.get("model_execution_error_rate"), 0.0)
         * _coerce_float(penalties.get("model_error_rate_multiplier"), 0.0)
     )
-    return round(quality_score - penalty, 3)
+    return round(penalty, 3)
+
+
+def _rubric_score(aggregate: dict[str, Any], rubric: dict[str, Any]) -> float:
+    return round(_rubric_quality_score(aggregate, rubric) - _rubric_penalty(aggregate, rubric), 3)
 
 
 def _dominates(
@@ -1080,12 +1144,227 @@ def _dominates(
     return at_least_one_better
 
 
+def _extract_context_window(profile: dict[str, Any]) -> int | None:
+    env = profile.get("env")
+    if isinstance(env, dict):
+        value = env.get("TALKBOT_LOCAL_N_CTX")
+        if value is not None:
+            try:
+                parsed = int(value)
+                if parsed > 0:
+                    return parsed
+            except Exception:
+                pass
+    name = str(profile.get("name") or "")
+    matches = re.findall(r"ctx(\d+)", name)
+    if matches:
+        try:
+            return int(matches[-1])
+        except Exception:
+            return None
+    return None
+
+
+def _context_family_key(profile: dict[str, Any]) -> tuple[str, str, str]:
+    provider = str(profile.get("provider") or "")
+    model = str(profile.get("model") or "")
+    local_path = str(profile.get("local_model_path") or "")
+    model_variant = Path(local_path).name if local_path else ""
+    return (provider, model, model_variant)
+
+
+def _context_family_label(key: tuple[str, str, str]) -> str:
+    provider, model, variant = key
+    if variant:
+        return f"{provider}/{model} ({variant})"
+    return f"{provider}/{model}"
+
+
+def _routing_mode(profile: dict[str, Any]) -> str:
+    env = profile.get("env")
+    if isinstance(env, dict):
+        raw = str(env.get("TALKBOT_LOCAL_DIRECT_TOOL_ROUTING", "")).strip().lower()
+        if raw in {"1", "true", "yes", "on"}:
+            return "intent"
+    return "llm"
+
+
+def _ab_compare_key(profile: dict[str, Any]) -> tuple[str, str, str, int]:
+    provider = str(profile.get("provider") or "")
+    model = str(profile.get("model") or "")
+    local_path = str(profile.get("local_model_path") or "")
+    variant = Path(local_path).name if local_path else ""
+    ctx = _extract_context_window(profile) or 0
+    return (provider, model, variant, ctx)
+
+
+def _ab_compare_label(key: tuple[str, str, str, int]) -> str:
+    provider, model, variant, ctx = key
+    base = f"{provider}/{model}"
+    if variant:
+        base = f"{base} ({variant})"
+    return f"{base} @ctx{ctx}"
+
+
+def _ab_comparison_rows(
+    runs: list[dict[str, Any]],
+    rubric: dict[str, Any],
+) -> list[dict[str, Any]]:
+    grouped: dict[tuple[str, str, str, int], dict[str, list[dict[str, float]]]] = {}
+    for run in runs:
+        profile = run.get("profile") or {}
+        aggregate = run.get("aggregate") or {}
+        key = _ab_compare_key(profile)
+        mode = _routing_mode(profile)
+        grouped.setdefault(key, {}).setdefault(mode, []).append(
+            {
+                "task_success_rate": _coerce_float(aggregate.get("task_success_rate"), 0.0),
+                "tool_selection_accuracy": _coerce_float(
+                    aggregate.get("tool_selection_accuracy"), 0.0
+                ),
+                "argument_accuracy": _coerce_float(aggregate.get("argument_accuracy"), 0.0),
+                "tool_call_error_rate": _coerce_float(
+                    aggregate.get("tool_call_error_rate"), 0.0
+                ),
+                "avg_turn_latency_ms": _coerce_float(
+                    aggregate.get("avg_turn_latency_ms"), 0.0
+                ),
+                "memory_peak_mb": _coerce_float(aggregate.get("memory_peak_mb"), 0.0),
+                "score": _rubric_score(aggregate, rubric),
+            }
+        )
+
+    def _avg(samples: list[dict[str, float]], metric: str) -> float:
+        return statistics.fmean(sample[metric] for sample in samples) if samples else 0.0
+
+    rows: list[dict[str, Any]] = []
+    for key, modes in grouped.items():
+        llm = modes.get("llm") or []
+        intent = modes.get("intent") or []
+        if not llm or not intent:
+            continue
+        rows.append(
+            {
+                "label": _ab_compare_label(key),
+                "llm_success": _avg(llm, "task_success_rate"),
+                "intent_success": _avg(intent, "task_success_rate"),
+                "llm_tool": _avg(llm, "tool_selection_accuracy"),
+                "intent_tool": _avg(intent, "tool_selection_accuracy"),
+                "llm_score": _avg(llm, "score"),
+                "intent_score": _avg(intent, "score"),
+                "success_delta": _avg(intent, "task_success_rate")
+                - _avg(llm, "task_success_rate"),
+                "tool_delta": _avg(intent, "tool_selection_accuracy")
+                - _avg(llm, "tool_selection_accuracy"),
+                "score_delta": _avg(intent, "score") - _avg(llm, "score"),
+            }
+        )
+    rows.sort(key=lambda row: (row["score_delta"], row["success_delta"]), reverse=True)
+    return rows
+
+
+def _context_sweep_summary(
+    runs: list[dict[str, Any]],
+    rubric: dict[str, Any],
+    context_analysis: dict[str, float],
+) -> list[dict[str, Any]]:
+    grouped: dict[tuple[str, str, str], dict[int, list[dict[str, float]]]] = {}
+    for run in runs:
+        profile = run.get("profile") or {}
+        aggregate = run.get("aggregate") or {}
+        ctx = _extract_context_window(profile)
+        if ctx is None:
+            continue
+        key = _context_family_key(profile)
+        sample = {
+            "coherence_score": _rubric_quality_score(aggregate, rubric),
+            "balanced_score": _rubric_score(aggregate, rubric),
+            "success": _coerce_float(aggregate.get("task_success_rate"), 0.0),
+            "latency_ms": _coerce_float(aggregate.get("avg_turn_latency_ms"), 0.0),
+            "memory_mb": _coerce_float(aggregate.get("memory_peak_mb"), 0.0),
+        }
+        grouped.setdefault(key, {}).setdefault(ctx, []).append(sample)
+
+    near_peak_ratio = _coerce_float(
+        context_analysis.get("near_peak_ratio"),
+        DEFAULT_CONTEXT_ANALYSIS["near_peak_ratio"],
+    )
+    dropoff_ratio = _coerce_float(
+        context_analysis.get("dropoff_ratio"),
+        DEFAULT_CONTEXT_ANALYSIS["dropoff_ratio"],
+    )
+
+    rows: list[dict[str, Any]] = []
+    for key, ctx_samples in grouped.items():
+        if len(ctx_samples) < 2:
+            continue
+        points: list[dict[str, float]] = []
+        for ctx in sorted(ctx_samples):
+            samples = ctx_samples[ctx]
+            points.append(
+                {
+                    "ctx": float(ctx),
+                    "coherence_score": statistics.fmean(
+                        s["coherence_score"] for s in samples
+                    ),
+                    "balanced_score": statistics.fmean(
+                        s["balanced_score"] for s in samples
+                    ),
+                    "success": statistics.fmean(s["success"] for s in samples),
+                    "latency_ms": statistics.fmean(s["latency_ms"] for s in samples),
+                    "memory_mb": statistics.fmean(s["memory_mb"] for s in samples),
+                }
+            )
+
+        peak = max(points, key=lambda point: point["coherence_score"])
+        peak_coherence_score = peak["coherence_score"]
+        near_peak_cutoff = peak_coherence_score * near_peak_ratio
+        dropoff_cutoff = peak_coherence_score * dropoff_ratio
+
+        optimal = next(
+            (point for point in points if point["coherence_score"] >= near_peak_cutoff),
+            peak,
+        )
+        dropoff = next(
+            (
+                point
+                for point in points
+                if point["ctx"] > peak["ctx"] and point["coherence_score"] < dropoff_cutoff
+            ),
+            None,
+        )
+        rows.append(
+            {
+                "family": _context_family_label(key),
+                "contexts": ", ".join(str(int(point["ctx"])) for point in points),
+                "peak_ctx": int(peak["ctx"]),
+                "peak_coherence_score": round(float(peak_coherence_score), 3),
+                "peak_balanced_score": round(float(peak["balanced_score"]), 3),
+                "optimal_ctx": int(optimal["ctx"]),
+                "dropoff_ctx": (int(dropoff["ctx"]) if dropoff else None),
+                "peak_success": round(float(peak["success"]), 4),
+                "peak_latency_ms": round(float(peak["latency_ms"]), 3),
+                "peak_memory_mb": round(float(peak["memory_mb"]), 3),
+            }
+        )
+
+    rows.sort(key=lambda row: row["family"])
+    return rows
+
+
 def build_leaderboard_markdown(report: dict[str, Any]) -> str:
     """Render a markdown leaderboard from run results."""
     runs = [run for run in report.get("runs", []) if run.get("status") == "ok"]
     if not runs:
         return "# Benchmark Leaderboard\n\nNo successful runs."
     rubric = _normalize_rubric(report.get("rubric"))
+    context_analysis = _normalize_context_analysis(report.get("context_analysis"))
+    meta = report.get("meta") if isinstance(report.get("meta"), dict) else {}
+    main_output_root = str(meta.get("main_output_root") or "benchmark_results")
+    latest_run = str(meta.get("latest_run") or "").strip()
+    latest_run_text = latest_run if latest_run else "not provided"
+    context_rows = _context_sweep_summary(runs, rubric, context_analysis)
+    ab_rows = _ab_comparison_rows(runs, rubric)
 
     quality_rank = sorted(
         runs,
@@ -1111,6 +1390,29 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
         key=lambda run: _rubric_score(run["aggregate"], rubric),
         reverse=True,
     )
+    remote_runs = [
+        run
+        for run in runs
+        if str((run.get("profile") or {}).get("provider") or "").strip().lower()
+        not in {"local", "local_server"}
+    ]
+    remote_rubric = {
+        "version": f"{rubric.get('version', '')}.remote",
+        "weights": dict(rubric.get("weights") or {}),
+        "penalties": dict(rubric.get("penalties") or {}),
+    }
+    remote_rubric["penalties"]["memory_mb_multiplier"] = 0.0
+    remote_rank = sorted(
+        remote_runs,
+        key=lambda run: _rubric_score(run["aggregate"], remote_rubric),
+        reverse=True,
+    )
+    local_runs = [
+        run
+        for run in runs
+        if str((run.get("profile") or {}).get("provider") or "").strip().lower()
+        in {"local", "local_server"}
+    ]
     efficiency_rank = sorted(
         runs,
         key=lambda run: (
@@ -1132,13 +1434,24 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
         reverse=True,
     )
 
-    def row(run: dict[str, Any], include_score: bool = False) -> str:
+    def row(
+        run: dict[str, Any],
+        include_score: bool = False,
+        score_override: float | None = None,
+    ) -> str:
+        profile = run.get("profile") or {}
         agg = run["aggregate"]
-        score = _rubric_score(agg, rubric)
+        score = (
+            float(score_override)
+            if score_override is not None
+            else _rubric_score(agg, rubric)
+        )
         recovery = _tag_metric(agg, "recovery")
+        routing = _routing_mode(profile).upper()
         base = (
-            f"| {run['profile']['name']} | {run['profile']['provider']} | "
-            f"{run['profile']['model']} | {_coerce_float(agg.get('task_success_rate'), 0.0):.2%} | "
+            f"| {profile.get('name', '')} | {profile.get('provider', '')} | "
+            f"{profile.get('model', '')} | {routing} | "
+            f"{_coerce_float(agg.get('task_success_rate'), 0.0):.2%} | "
             f"{_coerce_float(agg.get('tool_selection_accuracy'), 0.0):.2%} | "
             f"{_coerce_float(agg.get('argument_accuracy'), 0.0):.2%} | "
             f"{recovery:.2%} | {_coerce_float(agg.get('avg_turn_latency_ms'), 0.0):.1f} | "
@@ -1153,14 +1466,21 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
 
     lines = [
         "# Benchmark Leaderboard",
-        "",
-        f"- Generated: {report.get('finished_at', '')}",
-        f"- Runs: {report.get('run_count', 0)}",
-        f"- Scenarios: {report.get('scenario_count', 0)}",
-        f"- Rubric version: {rubric.get('version', '')}",
-        "",
-        "## Rubric",
-        "",
+            "",
+            f"- Generated: {report.get('finished_at', '')}",
+            f"- Runs: {report.get('run_count', 0)}",
+            f"- Scenarios: {report.get('scenario_count', 0)}",
+            f"- Rubric version: {rubric.get('version', '')}",
+            "",
+            "## Scope",
+            "",
+            "- Canonical latest leaderboard: `benchmark_results/leaderboard.md`",
+            f"- Canonical latest JSON: `{main_output_root}/results.json`",
+            f"- Latest run snapshot path: `{latest_run_text}`",
+            f"- Archived run folders: `{main_output_root}/<run_name>/leaderboard.md`",
+            "",
+            "## Rubric",
+            "",
         "| Metric | Weight |",
         "|---|---:|",
     ]
@@ -1185,8 +1505,8 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             "",
             "## Quality Rank",
             "",
-            "| Run | Provider | Model | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens |",
-            "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            "| Run | Provider | Model | Routing | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens |",
+            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     lines.extend(row(run) for run in quality_rank)
@@ -1196,8 +1516,8 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             "",
             "## Low-Memory Rank",
             "",
-            "| Run | Provider | Model | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens |",
-            "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            "| Run | Provider | Model | Routing | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens |",
+            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     lines.extend(row(run) for run in low_mem_rank)
@@ -1207,8 +1527,8 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             "",
             "## Balanced Rank",
             "",
-            "| Run | Provider | Model | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens | Score |",
-            "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            "| Run | Provider | Model | Routing | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens | Score |",
+            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     lines.extend(row(run, include_score=True) for run in balanced_rank)
@@ -1216,10 +1536,38 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
     lines.extend(
         [
             "",
+            "## Remote Rank (No Memory Penalty)",
+            "",
+            "- Purpose: compare hosted/API models without penalizing local process RSS.",
+            "- Score keeps quality and latency/error penalties; `memory_mb_multiplier` is forced to `0.0`.",
+            "",
+        ]
+    )
+    if remote_rank:
+        lines.extend(
+            [
+                "| Run | Provider | Model | Routing | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens | Score (Remote) |",
+                "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            ]
+        )
+        lines.extend(
+            row(
+                run,
+                include_score=True,
+                score_override=_rubric_score(run["aggregate"], remote_rubric),
+            )
+            for run in remote_rank
+        )
+    else:
+        lines.append("No remote-provider runs found in this report.")
+
+    lines.extend(
+        [
+            "",
             "## Efficiency Rank",
             "",
-            "| Run | Provider | Model | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens |",
-            "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            "| Run | Provider | Model | Routing | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens |",
+            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     lines.extend(row(run) for run in efficiency_rank)
@@ -1227,13 +1575,110 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
     lines.extend(
         [
             "",
+            "## Latency Snapshot (Local vs Remote)",
+            "",
+            "- Compares per-run `avg_turn_latency_ms` to show practical response-speed differences.",
+            "",
+            "| Group | Runs | Median Avg ms | Fastest Avg ms | Fastest Run |",
+            "|---|---:|---:|---:|---|",
+        ]
+    )
+
+    def _latency_group_row(group_name: str, group_runs: list[dict[str, Any]]) -> str:
+        if not group_runs:
+            return f"| {group_name} | 0 | n/a | n/a | n/a |"
+        latencies = [
+            _coerce_float((run.get("aggregate") or {}).get("avg_turn_latency_ms"), 0.0)
+            for run in group_runs
+        ]
+        median_ms = statistics.median(latencies) if latencies else 0.0
+        fastest = min(
+            group_runs,
+            key=lambda run: _coerce_float(
+                (run.get("aggregate") or {}).get("avg_turn_latency_ms"),
+                float("inf"),
+            ),
+        )
+        fastest_ms = _coerce_float(
+            (fastest.get("aggregate") or {}).get("avg_turn_latency_ms"),
+            0.0,
+        )
+        fastest_name = str((fastest.get("profile") or {}).get("name") or "")
+        return (
+            f"| {group_name} | {len(group_runs)} | {median_ms:.1f} | "
+            f"{fastest_ms:.1f} | {fastest_name} |"
+        )
+
+    lines.append(_latency_group_row("Local", local_runs))
+    lines.append(_latency_group_row("Remote", remote_runs))
+
+    lines.extend(
+        [
+            "",
             "## Pareto Frontier (Quality/Latency/Memory)",
             "",
-            "| Run | Provider | Model | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens | Score |",
-            "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            "| Run | Provider | Model | Routing | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens | Score |",
+            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     lines.extend(row(run, include_score=True) for run in pareto)
+
+    lines.extend(
+        [
+            "",
+            "## Tool Routing A/B (Will vs Can)",
+            "",
+            "- `LLM`: model-directed tool choice from prompt only (will it use tools correctly?)",
+            "- `Intent`: deterministic routing enabled (can the system force tool success?)",
+            "",
+        ]
+    )
+    if ab_rows:
+        lines.extend(
+            [
+                "| Model@Ctx | LLM Success | Intent Success | Delta | LLM Tool Sel | Intent Tool Sel | Delta | LLM Score | Intent Score | Delta |",
+                "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            ]
+        )
+        lines.extend(
+            (
+                f"| {row['label']} | "
+                f"{row['llm_success']:.2%} | {row['intent_success']:.2%} | {row['success_delta']:+.2%} | "
+                f"{row['llm_tool']:.2%} | {row['intent_tool']:.2%} | {row['tool_delta']:+.2%} | "
+                f"{row['llm_score']:.3f} | {row['intent_score']:.3f} | {row['score_delta']:+.3f} |"
+            )
+            for row in ab_rows
+        )
+    else:
+        lines.append(
+            "No matched LLM/Intent profile pairs found. Add profiles with the same model + context and "
+            "`TALKBOT_LOCAL_DIRECT_TOOL_ROUTING=0` (LLM) and `1` (Intent)."
+        )
+
+    if context_rows:
+        lines.extend(
+            [
+                "",
+                "## Context Window Coherence Sweep",
+                "",
+                f"- Near-peak ratio: {context_analysis['near_peak_ratio']:.2f}",
+                f"- Dropoff ratio: {context_analysis['dropoff_ratio']:.2f}",
+                "",
+                "| Model Family | Tested Contexts | Peak Coherence @Ctx | Peak Balanced | Optimal Ctx | Dropoff Ctx | Peak Success | Peak Avg ms | Peak Mem MB |",
+                "|---|---|---:|---:|---:|---:|---:|---:|---:|",
+            ]
+        )
+        lines.extend(
+            (
+                f"| {row['family']} | {row['contexts']} | "
+                f"{row['peak_coherence_score']:.3f} @ {row['peak_ctx']} | "
+                f"{row['peak_balanced_score']:.3f} | {row['optimal_ctx']} | "
+                f"{(row['dropoff_ctx'] if row['dropoff_ctx'] is not None else 'none')} | "
+                f"{row['peak_success']:.2%} | {row['peak_latency_ms']:.1f} | "
+                f"{row['peak_memory_mb']:.1f} |"
+            )
+            for row in context_rows
+        )
 
     best_low_mem = low_mem_rank[0]
     best_quality = quality_rank[0]
@@ -1251,4 +1696,33 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             f"({best_efficiency['aggregate']['tokens_per_second']:.1f} tokens/sec)",
         ]
     )
+    if remote_rank:
+        best_remote = remote_rank[0]
+        best_remote_score = _rubric_score(best_remote["aggregate"], remote_rubric)
+        lines.extend(
+            [
+                f"- Best remote option (memory-agnostic): `{best_remote['profile']['name']}` "
+                f"({best_remote['profile']['model']}, score={best_remote_score:.3f})",
+            ]
+        )
+    if context_rows:
+        lines.extend(
+            [
+                "- Context recommendations (near-peak quality at lowest context):",
+            ]
+        )
+        lines.extend(
+            f"  - `{row['family']}` -> `n_ctx={row['optimal_ctx']}` "
+            f"(dropoff: {row['dropoff_ctx'] if row['dropoff_ctx'] is not None else 'not observed'})"
+            for row in context_rows
+        )
+    if ab_rows:
+        avg_success_gap = statistics.fmean(row["success_delta"] for row in ab_rows)
+        avg_score_gap = statistics.fmean(row["score_delta"] for row in ab_rows)
+        lines.extend(
+            [
+                f"- Routing gap summary: intent minus llm avg success delta = {avg_success_gap:+.2%}",
+                f"- Routing gap summary: intent minus llm avg score delta = {avg_score_gap:+.3f}",
+            ]
+        )
     return "\n".join(lines) + "\n"

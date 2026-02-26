@@ -8,6 +8,7 @@ import re
 import shutil
 import subprocess
 import difflib
+import inspect
 from pathlib import Path
 from typing import Any, Callable, Optional
 
@@ -104,6 +105,71 @@ def _normalize_tool_args_for_call(function_name: str, function_args: Any) -> dic
         if canonical in args and alias in args:
             args.pop(alias, None)
     return args
+
+
+def _extract_remember_intent(text: str) -> tuple[str, str] | None:
+    candidate = str(text or "").strip()
+    if not candidate:
+        return None
+    match = re.search(
+        r"\b(?:remember|store|save)(?:\s+that)?\s+(?:my\s+)?([a-z0-9_ ]{2,40}?)\s+is\s+(.+)$",
+        candidate,
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return None
+    key = match.group(1).strip().lower().replace(" ", "_")
+    value = match.group(2).strip().strip(".!?")
+    if not key or not value:
+        return None
+    return key, value
+
+
+def _rewrite_tool_call_for_user_intent(
+    function_name: str,
+    function_args: dict[str, Any],
+    user_text: str,
+) -> tuple[str, dict[str, Any]]:
+    """Fix common wrong-tool calls based on explicit current-turn user intent."""
+    remember = _extract_remember_intent(user_text)
+    if remember and function_name in {"recall", "recall_all"}:
+        key, value = remember
+        return "remember", {"key": key, "value": value}
+    return function_name, dict(function_args)
+
+
+def _latest_user_text(messages: list[dict[str, Any]]) -> str:
+    for message in reversed(messages):
+        if str(message.get("role", "")).strip().lower() == "user":
+            return str(message.get("content", "")).strip()
+    return ""
+
+
+def _filter_tool_args_for_callable(func: Callable[..., Any], args: dict[str, Any]) -> dict[str, Any]:
+    """Drop kwargs that the target callable does not accept."""
+    if not isinstance(args, dict):
+        return {}
+    try:
+        signature = inspect.signature(func)
+    except Exception:
+        return dict(args)
+
+    accepts_var_kwargs = any(
+        parameter.kind == inspect.Parameter.VAR_KEYWORD
+        for parameter in signature.parameters.values()
+    )
+    if accepts_var_kwargs:
+        return dict(args)
+
+    allowed = {
+        name
+        for name, parameter in signature.parameters.items()
+        if parameter.kind in (
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            inspect.Parameter.KEYWORD_ONLY,
+        )
+    }
+    return {key: value for key, value in args.items() if key in allowed}
 
 
 class LocalLlamaCppClient:
@@ -205,6 +271,8 @@ class LocalLlamaCppClient:
         guidance = (
             "Tool mode is enabled.\n"
             "When a tool can help, choose the best tool and call it.\n"
+            "For memory/list/timer requests, always call tools first.\n"
+            "Do not answer memory/list/timer questions from chat memory alone.\n"
             "For tool calls, output ONLY a single Python-style function call with named args "
             "and no extra text.\n"
             "After tool results are available, answer the user using those results.\n"
@@ -357,6 +425,7 @@ class LocalLlamaCppClient:
             return _response_content(response)
 
         current_messages = self._with_tool_guidance(messages)
+        latest_user_text = _latest_user_text(messages)
         tool_call_count = 0
         executed_tool_summaries: list[str] = []
         executed_call_results: dict[str, str] = {}
@@ -370,10 +439,17 @@ class LocalLlamaCppClient:
                     function_args = json.loads(tool_call["function"]["arguments"])
                 except Exception:
                     function_args = {}
+                function_name, function_args = _rewrite_tool_call_for_user_intent(
+                    function_name,
+                    function_args,
+                    latest_user_text,
+                )
                 function_args = _normalize_tool_args_for_call(function_name, function_args)
                 if function_name in self.tools:
+                    tool_func = self.tools[function_name]
+                    function_args = _filter_tool_args_for_callable(tool_func, function_args)
                     try:
-                        result = self.tools[function_name](**function_args)
+                        result = tool_func(**function_args)
                     except Exception as e:
                         result = f"Error executing {function_name}: {e}"
                 else:
@@ -391,6 +467,8 @@ class LocalLlamaCppClient:
             if not tool_calls:
                 tool_calls = self._resolve_tool_like_text(content)
             if not tool_calls:
+                if executed_tool_summaries:
+                    return "\n".join(s.split(" -> ", 1)[-1] for s in executed_tool_summaries)
                 return content
 
             # Keep model transcript so the next turn can see what it attempted.
@@ -404,7 +482,16 @@ class LocalLlamaCppClient:
                     function_args = json.loads(tool_call["function"]["arguments"])
                 except Exception:
                     function_args = {}
+                function_name, function_args = _rewrite_tool_call_for_user_intent(
+                    function_name,
+                    function_args,
+                    latest_user_text,
+                )
                 function_args = _normalize_tool_args_for_call(function_name, function_args)
+                tool_func: Callable[..., Any] | None = None
+                if function_name in self.tools:
+                    tool_func = self.tools[function_name]
+                    function_args = _filter_tool_args_for_callable(tool_func, function_args)
                 call_key = f"{function_name}|{json.dumps(function_args, sort_keys=True)}"
                 if call_key in executed_call_results:
                     current_messages.append(
@@ -418,7 +505,7 @@ class LocalLlamaCppClient:
                 any_new_calls = True
                 if function_name in self.tools:
                     try:
-                        result = self.tools[function_name](**function_args)
+                        result = tool_func(**function_args) if tool_func is not None else ""
                     except Exception as e:
                         result = f"Error executing {function_name}: {e}"
                 else:
@@ -1130,6 +1217,7 @@ def create_llm_client(
         )
 
     if provider == "openrouter":
+        api_key = api_key or os.getenv("OPENROUTER_API_KEY")
         if not api_key:
             raise LLMProviderError(
                 "OpenRouter provider selected but OPENROUTER_API_KEY is not set."

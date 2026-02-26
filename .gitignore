@@ -22,3 +22,9 @@ models/*.GGUF
 .idea/
 *.swp
 *.swo
+
+# macOS
+.DS_Store
+
+# Generated benchmark artifacts
+benchmark_results/

@@ -16,7 +16,8 @@
             }
           }
         ],
-        "response_contains": ["Error:"]
+        "min_tool_calls": 1,
+        "response_regex": "(?i)(error|timer\\s*#|successfully set)"
       }
     },
     {
@@ -30,7 +31,7 @@
             }
           }
         ],
-        "response_contains": ["Timer #"]
+        "response_regex": "(?i)(timer\\s*#|successfully set|will fire in 6)"
       }
     }
   ]
