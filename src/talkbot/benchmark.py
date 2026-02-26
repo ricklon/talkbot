@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import json
 import os
+import platform
 import re
+import socket
 import statistics
 import sys
 import time
@@ -667,6 +669,48 @@ def _safe_name(value: str) -> str:
     return cleaned.strip("-") or "run"
 
 
+def _detect_raspberry_pi_model() -> str:
+    for path in ("/proc/device-tree/model", "/sys/firmware/devicetree/base/model"):
+        try:
+            text = Path(path).read_text(encoding="utf-8", errors="ignore").replace("\x00", "")
+            text = text.strip()
+            if text:
+                return text
+        except Exception:
+            continue
+    return ""
+
+
+def detect_runner_info(*, label: str | None = None, notes: str | None = None) -> dict[str, Any]:
+    """Collect host metadata for benchmark comparability across machines."""
+    runner_label = str(label or os.getenv("TALKBOT_BENCHMARK_RUNNER") or "").strip()
+    pi_model = _detect_raspberry_pi_model()
+    is_pi = "raspberry pi" in pi_model.lower()
+    logical_cpus = os.cpu_count()
+    physical_cpus: int | None = None
+    if psutil is not None:
+        try:
+            physical_cpus = psutil.cpu_count(logical=False)
+        except Exception:
+            physical_cpus = None
+
+    payload = {
+        "label": runner_label or None,
+        "hostname": socket.gethostname(),
+        "os": platform.system(),
+        "os_release": platform.release(),
+        "machine": platform.machine(),
+        "processor": platform.processor() or None,
+        "python_version": platform.python_version(),
+        "cpu_count_logical": int(logical_cpus) if isinstance(logical_cpus, int) else None,
+        "cpu_count_physical": int(physical_cpus) if isinstance(physical_cpus, int) else None,
+        "is_raspberry_pi": is_pi,
+        "raspberry_pi_model": pi_model or None,
+        "notes": str(notes or "").strip() or None,
+    }
+    return _json_safe(payload)
+
+
 def run_benchmark(
     *,
     profiles: list[BenchmarkProfile],
@@ -675,11 +719,13 @@ def run_benchmark(
     rubric: dict[str, Any] | None = None,
     context_analysis: dict[str, Any] | None = None,
     client_factory: Callable[[BenchmarkProfile], Any] | None = None,
+    runner_info: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Run all profiles against all scenarios and return a report dictionary."""
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     factory = client_factory or _default_client_factory
+    resolved_runner = _json_safe(runner_info) if runner_info else detect_runner_info()
     started_at = time.strftime("%Y-%m-%dT%H:%M:%S%z")
     rubric_config = _normalize_rubric(rubric)
     context_analysis_config = _normalize_context_analysis(context_analysis)
@@ -879,6 +925,7 @@ def run_benchmark(
     report = {
         "started_at": started_at,
         "finished_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+        "runner": resolved_runner,
         "scenario_count": len(scenarios),
         "run_count": len(run_results),
         "rubric": rubric_config,
@@ -1360,6 +1407,15 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
     rubric = _normalize_rubric(report.get("rubric"))
     context_analysis = _normalize_context_analysis(report.get("context_analysis"))
     meta = report.get("meta") if isinstance(report.get("meta"), dict) else {}
+    runner = report.get("runner") if isinstance(report.get("runner"), dict) else {}
+    runner_name = str(runner.get("label") or runner.get("hostname") or "").strip()
+    runner_os = " ".join(
+        part for part in [str(runner.get("os") or "").strip(), str(runner.get("os_release") or "").strip()] if part
+    ).strip()
+    runner_machine = str(runner.get("machine") or "").strip()
+    runner_python = str(runner.get("python_version") or "").strip()
+    runner_pi_model = str(runner.get("raspberry_pi_model") or "").strip()
+    runner_notes = str(runner.get("notes") or "").strip()
     main_output_root = str(meta.get("main_output_root") or "benchmark_results")
     latest_run = str(meta.get("latest_run") or "").strip()
     latest_run_text = latest_run if latest_run else "not provided"
@@ -1478,12 +1534,21 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             f"- Canonical latest JSON: `{main_output_root}/results.json`",
             f"- Latest run snapshot path: `{latest_run_text}`",
             f"- Archived run folders: `{main_output_root}/<run_name>/leaderboard.md`",
+            (
+                f"- Runner: `{runner_name}` ({runner_os}, {runner_machine}, py {runner_python})"
+                if runner_name and runner_os
+                else "- Runner: not provided"
+            ),
             "",
             "## Rubric",
             "",
         "| Metric | Weight |",
         "|---|---:|",
     ]
+    if runner_pi_model:
+        lines.insert(lines.index("## Rubric") - 1, f"- Raspberry Pi model: `{runner_pi_model}`")
+    if runner_notes:
+        lines.insert(lines.index("## Rubric") - 1, f"- Runner notes: {runner_notes}")
     lines.extend(
         f"| {metric} | {float(weight):.3f} |"
         for metric, weight in sorted((rubric.get("weights") or {}).items())

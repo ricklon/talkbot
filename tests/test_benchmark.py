@@ -123,6 +123,9 @@ def test_run_benchmark_with_fake_client(tmp_path):
         output_dir=tmp_path,
         client_factory=lambda _profile: FakeBenchClient(),
     )
+    assert isinstance(report.get("runner"), dict)
+    assert report["runner"].get("os")
+    assert report["runner"].get("python_version")
     assert report["run_count"] == 1
     run = report["runs"][0]
     assert run["status"] == "ok"
@@ -177,6 +180,16 @@ def test_write_outputs_and_leaderboard(tmp_path):
     report = {
         "started_at": "2026-01-01T00:00:00+0000",
         "finished_at": "2026-01-01T00:00:10+0000",
+        "runner": {
+            "label": "linux-main",
+            "hostname": "bench-host",
+            "os": "Linux",
+            "os_release": "6.8.0",
+            "machine": "x86_64",
+            "python_version": "3.12.8",
+            "raspberry_pi_model": None,
+            "notes": "cpu-only",
+        },
         "scenario_count": 2,
         "run_count": 2,
         "rubric": {
@@ -234,6 +247,8 @@ def test_write_outputs_and_leaderboard(tmp_path):
     md = build_leaderboard_markdown(report)
     assert "Tool Routing A/B (Will vs Can)" in md
     assert "## Scope" in md
+    assert "Runner: `linux-main`" in md
+    assert "Runner notes: cpu-only" in md
     assert "Quality Rank" in md
     assert "| Run | Provider | Model | Routing |" in md
     assert "Low-Memory Rank" in md

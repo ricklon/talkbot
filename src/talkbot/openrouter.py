@@ -7,6 +7,8 @@ from typing import Any, Callable, Optional
 
 import httpx
 
+from talkbot.protocol import LLMClient
+
 
 def _response_message(response: dict[str, Any]) -> dict[str, Any]:
     choices = response.get("choices")
@@ -82,6 +84,9 @@ _MODEL_TOOL_SUPPORT_CACHE: dict[str, bool] = {}
 
 class OpenRouterClient:
     """Client for interacting with OpenRouter API with tool support."""
+
+    supports_tools: bool = True
+    provider_name: str = "openrouter"
 
     BASE_URL = "https://openrouter.ai/api/v1"
     DEFAULT_MODEL = "openai/gpt-3.5-turbo"
@@ -538,15 +543,15 @@ class OpenRouterClient:
 
         return self.chat_with_tools(messages)
 
-    def close(self):
+    def close(self) -> None:
         """Close the HTTP client."""
         self.client.close()
 
-    def __enter__(self):
+    def __enter__(self) -> "OpenRouterClient":
         """Context manager entry."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
         """Context manager exit."""
         self.close()
         return False

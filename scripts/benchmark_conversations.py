@@ -6,18 +6,52 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import sys
+import time
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from talkbot.benchmark import (
     BenchmarkProfile,
+    detect_runner_info,
     load_matrix_config,
     load_scenarios,
     run_benchmark,
     write_outputs,
 )
 from talkbot.benchmark_publish import publish_benchmark_results
+
+
+def _safe_segment(value: str) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    return re.sub(r"[^A-Za-z0-9._-]+", "-", text).strip("-._")
+
+
+def _resolve_run_name(args: argparse.Namespace) -> str:
+    explicit = _safe_segment(args.run_name or "")
+    if explicit:
+        return explicit
+
+    output_name = _safe_segment(Path(args.output).name)
+    if output_name and output_name.lower() != "latest":
+        return output_name
+
+    if args.matrix:
+        matrix_name = _safe_segment(Path(args.matrix).stem)
+        matrix_name = matrix_name.replace("model_matrix.", "").replace("model_matrix_", "")
+        label = matrix_name or "matrix"
+    else:
+        provider = _safe_segment(args.provider)
+        model = _safe_segment(args.model)
+        label = f"{provider}-{model}".strip("-") or "single"
+
+    return f"{label}-{time.strftime('%Y%m%d-%H%M%S')}"
 
 
 def _default_profile_from_args(args: argparse.Namespace) -> BenchmarkProfile:
@@ -100,7 +134,22 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
         help="Do not publish into <publish-root> after run completion",
     )
+    parser.add_argument(
+        "--run-name",
+        default=None,
+        help="Optional publish run name. Auto-generated when output ends with 'latest'.",
+    )
     parser.add_argument("--repeats", type=int, default=1, help="Repeat each profile N times")
+    parser.add_argument(
+        "--runner-label",
+        default=os.getenv("TALKBOT_BENCHMARK_RUNNER", ""),
+        help="Optional machine label for cross-system comparison (e.g., linux-main, win-dev, pi5).",
+    )
+    parser.add_argument(
+        "--runner-notes",
+        default=None,
+        help="Optional free-form notes stored in report metadata.",
+    )
 
     parser.add_argument("--name", default=None, help="Run name for single-profile mode")
     parser.add_argument(
@@ -153,6 +202,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
+    resolved_run_name = _resolve_run_name(args)
+    runner_info = detect_runner_info(label=args.runner_label, notes=args.runner_notes)
     scenarios = load_scenarios(args.scenarios)
     rubric: dict | None = None
     context_analysis: dict | None = None
@@ -171,10 +222,13 @@ def main(argv: list[str] | None = None) -> int:
         output_dir=Path(args.output),
         rubric=rubric,
         context_analysis=context_analysis,
+        runner_info=runner_info,
     )
     report["meta"] = {
         "main_output_root": str(Path(args.main_output_root)),
         "latest_run": str(Path(args.output).resolve()),
+        "run_name": resolved_run_name,
+        "runner_label": runner_info.get("label"),
         "update_main": not args.no_update_main,
     }
     paths = write_outputs(report, Path(args.output))
@@ -196,7 +250,7 @@ def main(argv: list[str] | None = None) -> int:
         publish_paths = publish_benchmark_results(
             source_root=publish_source,
             published_root=Path(args.publish_root),
-            run_name=Path(args.output).name,
+            run_name=resolved_run_name,
         )
 
     print(f"Completed {report['run_count']} run(s) across {report['scenario_count']} scenario(s).")
