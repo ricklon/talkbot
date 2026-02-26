@@ -679,6 +679,19 @@ Outputs:
 - `results.json`: per-run traces + metrics (`task_success_rate`, tool/arg accuracy, tool error rate, tokens/sec, latency, memory)
 - `leaderboard.md`: rubric-aware quality, low-memory, balanced, efficiency, Pareto, and context-dropoff recommendations
 - One-stop latest mirror (auto-updated): `benchmark_results/results.json` and `benchmark_results/leaderboard.md`
+- Repo-published latest snapshot: `benchmarks/published/latest/results.json` and `benchmarks/published/latest/leaderboard.md`
+- Repo-published run history: `benchmarks/published/runs/<run_name>/...`
+
+`scripts/benchmark_conversations.py` publishes to `benchmarks/published/` by default.
+Use `--no-publish` to skip, or override destination with `--publish-root`.
+
+Manual publish command:
+
+```bash
+uv run -- python scripts/publish_benchmark_results.py \
+  --source-root benchmark_results \
+  --published-root benchmarks/published
+```
 
 For apples-to-apples OpenRouter benchmarking (standard OpenAI tool format only), set:
 

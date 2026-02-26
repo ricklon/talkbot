@@ -17,6 +17,7 @@ from talkbot.benchmark import (
     run_benchmark,
     write_outputs,
 )
+from talkbot.benchmark_publish import publish_benchmark_results
 
 
 def _default_profile_from_args(args: argparse.Namespace) -> BenchmarkProfile:
@@ -88,6 +89,16 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--no-update-main",
         action="store_true",
         help="Do not mirror outputs into <main-output-root>/results.json and leaderboard.md",
+    )
+    parser.add_argument(
+        "--publish-root",
+        default="benchmarks/published",
+        help="Repo-tracked publish root for latest + run snapshots",
+    )
+    parser.add_argument(
+        "--no-publish",
+        action="store_true",
+        help="Do not publish into <publish-root> after run completion",
     )
     parser.add_argument("--repeats", type=int, default=1, help="Repeat each profile N times")
 
@@ -170,6 +181,7 @@ def main(argv: list[str] | None = None) -> int:
 
     main_results = None
     main_leaderboard = None
+    publish_paths = None
     if not args.no_update_main:
         main_root = Path(args.main_output_root)
         main_root.mkdir(parents=True, exist_ok=True)
@@ -179,12 +191,24 @@ def main(argv: list[str] | None = None) -> int:
         shutil.copyfile(paths["leaderboard"], main_leaderboard)
         (main_root / "latest_run.txt").write_text(str(Path(args.output).resolve()), encoding="utf-8")
 
+    if not args.no_publish:
+        publish_source = Path(args.main_output_root if not args.no_update_main else args.output)
+        publish_paths = publish_benchmark_results(
+            source_root=publish_source,
+            published_root=Path(args.publish_root),
+            run_name=Path(args.output).name,
+        )
+
     print(f"Completed {report['run_count']} run(s) across {report['scenario_count']} scenario(s).")
     print(f"Results JSON: {paths['results']}")
     print(f"Leaderboard: {paths['leaderboard']}")
     if main_results and main_leaderboard:
         print(f"Main Results JSON: {main_results}")
         print(f"Main Leaderboard: {main_leaderboard}")
+    if publish_paths:
+        print(f"Published Latest Leaderboard: {publish_paths['latest_leaderboard']}")
+        print(f"Published Run Leaderboard: {publish_paths['run_leaderboard']}")
+        print(f"Published Index: {publish_paths['index']}")
     return 0
 
 
