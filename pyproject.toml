@@ -35,7 +35,7 @@ dev = [
 
 [project.scripts]
 talkbot = "talkbot.cli:main"
-talkbot-gui = "talkbot.gui:main"
+talkbot-gui = "talkbot.ui.app:main"
 
 [build-system]
 requires = ["hatchling"]

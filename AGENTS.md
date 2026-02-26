@@ -24,7 +24,7 @@ uv run talkbot doctor-tts                            # TTS backend diagnostics
 uv run talkbot doctor-voice                          # Voice pipeline diagnostics
 
 # Run GUI
-uv run python -m talkbot.gui
+uv run python -m talkbot.ui.app
 
 # Agent prompt via env (applies to all commands)
 export TALKBOT_AGENT_PROMPT="You are a brief voice assistant. Always prefer tool calls."

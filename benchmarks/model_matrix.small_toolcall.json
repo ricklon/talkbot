@@ -1,0 +1,62 @@
+{
+  "benchmark": {
+    "schema_version": "2026.1",
+    "values_file": "benchmarks/evaluation_values.json",
+    "rubric": {
+      "version": "2026.small-toolcall.v1",
+      "weights": {
+        "task_success_rate": 0.35,
+        "tool_selection_accuracy": 0.2,
+        "argument_accuracy": 0.15,
+        "recovery_success_rate": 0.1,
+        "multistep_success_rate": 0.1,
+        "robustness_success_rate": 0.05,
+        "context_success_rate": 0.05
+      },
+      "penalties": {
+        "latency_ms_multiplier": 0.002,
+        "memory_mb_multiplier": 0.002,
+        "tool_error_rate_multiplier": 20.0,
+        "model_error_rate_multiplier": 30.0
+      }
+    },
+    "context_analysis": {
+      "near_peak_ratio": 0.95,
+      "dropoff_ratio": 0.9
+    }
+  },
+  "profiles": [
+    {
+      "name": "openrouter-granite-4.0-h-micro",
+      "provider": "openrouter",
+      "model": "ibm-granite/granite-4.0-h-micro",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0
+    },
+    {
+      "name": "openrouter-ministral-3b-2512",
+      "provider": "openrouter",
+      "model": "mistralai/ministral-3b-2512",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0
+    },
+    {
+      "name": "openrouter-qwen-2.5-7b-instruct",
+      "provider": "openrouter",
+      "model": "qwen/qwen-2.5-7b-instruct",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0
+    },
+    {
+      "name": "openrouter-llama-3.1-8b-instruct",
+      "provider": "openrouter",
+      "model": "meta-llama/llama-3.1-8b-instruct",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0
+    }
+  ]
+}

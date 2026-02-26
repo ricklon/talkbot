@@ -15,6 +15,7 @@ from typing import Any, Callable, Optional
 import httpx
 from talkbot.openrouter import OpenRouterClient
 from talkbot.thinking import NO_THINK_INSTRUCTION
+from talkbot.protocol import LLMClient
 
 
 class LLMProviderError(RuntimeError):
@@ -830,10 +831,10 @@ class LocalLlamaCppClient:
     def close(self) -> None:
         return None
 
-    def __enter__(self):
+    def __enter__(self) -> "LocalLlamaCppClient":
         return self
 
-    def __exit__(self, exc_type, exc, tb):
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> bool:
         self.close()
         return False
 
@@ -1170,10 +1171,10 @@ class LocalServerClient:
     def close(self) -> None:
         self.client.close()
 
-    def __enter__(self):
+    def __enter__(self) -> "LocalServerClient":
         return self
 
-    def __exit__(self, exc_type, exc, tb):
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> bool:
         self.close()
         return False
 
@@ -1190,7 +1191,7 @@ def create_llm_client(
     local_server_url: Optional[str] = None,
     local_server_api_key: Optional[str] = None,
     enable_thinking: bool = False,
-):
+) -> LLMClient:
     """Create provider-specific LLM client."""
     provider = (provider or "local").strip().lower()
     if provider == "local":

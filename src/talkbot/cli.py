@@ -40,6 +40,16 @@ def _default_provider() -> str:
     return os.getenv("TALKBOT_LLM_PROVIDER", "local")
 
 
+def _default_model() -> str:
+    configured = os.getenv("TALKBOT_DEFAULT_MODEL", "").strip()
+    if configured:
+        return configured
+    provider = _default_provider()
+    if provider == "openrouter":
+        return "mistralai/ministral-3b-2512"
+    return "qwen/qwen3-1.7b"
+
+
 def _default_local_model_path() -> str:
     configured = os.getenv("TALKBOT_LOCAL_MODEL_PATH", "").strip()
     if configured:
@@ -76,8 +86,8 @@ def _create_client_from_ctx(ctx: click.Context):
 )
 @click.option(
     "--model",
-    default=lambda: os.getenv("TALKBOT_DEFAULT_MODEL", "qwen/qwen3-1.7b"),
-    show_default="env:TALKBOT_DEFAULT_MODEL or qwen/qwen3-1.7b",
+    default=lambda: _default_model(),
+    show_default="env:TALKBOT_DEFAULT_MODEL or provider-based default",
     help="Model id (OpenRouter) or local label",
 )
 @click.option(

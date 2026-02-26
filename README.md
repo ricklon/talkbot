@@ -17,35 +17,24 @@ A talking AI assistant with local-first LLM + TTS defaults, plus optional OpenRo
 
 ## Quick Start
 
-### Windows
-```bat
-REM 1) Run setup (installs talkbot + voice extras into %LOCALAPPDATA%\talkbot\.venv)
-setup.bat
+TalkBot uses `uv` for easy, platform-agnostic dependency management.
 
-REM 2) Download default model
-scripts\download-model.bat
-
-REM 3) Copy and edit config
-copy .env.example .env
-
-REM 4) Start llama-server (keep this window open)
-run-server.bat
-
-REM 5) Start the GUI (new window)
-run-gui.bat
-```
-
-### Linux / macOS
 ```bash
-# 1) Install
-./setup.sh --download-model
+# 1) Install dependencies
+uv sync --extra voice
 
-# 2) Configure
+# 2) Download default model
+uv run python scripts/download_model.py
+
+# 3) Copy and edit config
 cp .env.example .env
 
-# 3) Start server + GUI
+# 4) Start local llama-server (in a separate terminal)
+# Windows: use the pre-built binary in tools/llama-cpp/llama-server.exe
 llama-server -m models/qwen3-1.7b-q4_k_m.gguf --jinja -c 8192 -n 256 --temp 0.7 --port 8000 &
-talkbot-gui
+
+# 5) Start the GUI
+uv run talkbot-gui
 ```
 
 ## Platform Compatibility
@@ -62,8 +51,7 @@ talkbot-gui
 | **silero-vad** (VAD) | ✅ | ✅ | Pre-built PyPI wheels |
 | **sounddevice / soundfile** | ✅ | ✅ | PortAudio; well-tested on Windows |
 | **GUI (tkinter)** | ✅ | ✅ | tkinter bundled with Python on Windows; system package on Linux |
-| **setup.bat / run-*.bat** | ✅ | N/A | Windows-only; Linux/macOS uses setup.sh |
-| **setup.sh / download-model.sh** | N/A | ✅ | Linux/macOS only; Windows uses .bat equivalents |
+| **download_model.py** | ✅ | ✅ | Platform-agnostic Python downloader for GGUF models |
 
 > **Dependency note (2026-02-24):** TalkBot now uses `kittentts` from PyPI, so `UV_SKIP_WHEEL_FILENAME_CHECK` is no longer required.
 
@@ -99,11 +87,9 @@ The recommended Windows setup uses the pre-built `llama-server.exe` binary (no M
 
 1. Download a pre-built llama.cpp release from https://github.com/ggerganov/llama.cpp/releases
 2. Extract and place `llama-server.exe` (and its `.dll` files) in `tools/llama-cpp/`
-3. Use `run-server.bat` (included) to start the server before launching the GUI
-4. Use `run-gui.bat` (included) to launch the GUI — sets required env vars automatically
+3. Run the server manually: `tools\llama-cpp\llama-server.exe -m models\qwen3-1.7b-q4_k_m.gguf --jinja -c 8192 -n 256 --temp 0.7 --port 8000`
+4. Use `uv run talkbot-gui` to launch the GUI.
 
-> **Note:** The `.venv` is placed in `%LOCALAPPDATA%\talkbot\.venv` (outside OneDrive) to avoid file-locking issues.
->
 > **KittenTTS note:** install eSpeak NG and ensure `espeak-ng.exe` (or `espeak.exe`) is on your `PATH`.
 
 If you want the `llama-cpp-python` backend instead of a server:
@@ -126,13 +112,6 @@ To refresh an existing install:
 ```bash
 cd talkbot
 uv tool install --reinstall --python /usr/bin/python3.12 . --with llama-cpp-python --with faster-whisper --with silero-vad --with sounddevice --with soundfile
-```
-
-Or use:
-
-```bash
-./setup.sh
-./setup.sh --download-model
 ```
 
 > **Note:** `--python /usr/bin/python3.12` tells uv to use the system Python, which has tkinter. uv's own bundled Python builds omit it.
@@ -182,7 +161,7 @@ The default provider is `local_server`, which requires llama-server to be runnin
 
 Start the server (Windows):
 ```bat
-run-server.bat
+tools\llama-cpp\llama-server.exe -m models\qwen3-1.7b-q4_k_m.gguf --jinja -c 8192 -n 512 --temp 0.6 --top-p 0.95 --min-p 0.0 --port 8000
 ```
 
 Start the server (Linux/macOS — example):
@@ -211,8 +190,7 @@ uv sync --extra voice
 ### Download a default local GGUF
 
 ```bash
-./scripts/download-model.sh        # Linux/macOS
-scripts\download-model.bat         # Windows
+uv run python scripts/download_model.py
 ```
 
 Default model: `Qwen/Qwen3-1.7B-GGUF` → `Qwen3-1.7B-Q4_K_M.gguf`, saved as `models/qwen3-1.7b-q4_k_m.gguf`
@@ -220,7 +198,7 @@ Default model: `Qwen/Qwen3-1.7B-GGUF` → `Qwen3-1.7B-Q4_K_M.gguf`, saved as `mo
 Override URL or output path:
 
 ```bash
-./scripts/download-model.sh --output models/my-model.gguf --url "https://..."
+uv run python scripts/download_model.py --output models/my-model.gguf --url "https://..."
 ```
 
 ## Configuration
@@ -608,8 +586,7 @@ The GUI includes a dropdown to switch between TTS backends:
 - 💻 **pyttsx3** (Offline) — System voices, always available
 
 ```bash
-talkbot-gui
-# Windows: use run-gui.bat instead
+uv run talkbot-gui
 ```
 
 ### Python API
@@ -672,8 +649,24 @@ uv run -- python scripts/benchmark_conversations.py \
 uv run -- python scripts/benchmark_conversations.py \
   --scenarios tests/conversations \
   --matrix benchmarks/model_matrix.example.json \
+  --runner-label linux-main \
   --output benchmark_results/matrix
 ```
+
+For cross-system comparisons (Linux, Windows, Raspberry Pi), set a stable runner label per machine:
+
+```bash
+# Linux workstation
+uv run -- python scripts/benchmark_conversations.py --matrix benchmarks/model_matrix.example.json --runner-label linux-main
+
+# Windows workstation
+uv run -- python scripts/benchmark_conversations.py --matrix benchmarks/model_matrix.example.json --runner-label windows-dev
+
+# Raspberry Pi
+uv run -- python scripts/benchmark_conversations.py --matrix benchmarks/model_matrix.example.json --runner-label pi5-lab
+```
+
+Each `results.json` now stores runner metadata (label, OS/release, machine arch, CPU counts, Python version, and Raspberry Pi model when detected), and the leaderboard shows runner identity in the Scope section.
 
 Outputs:
 - `results.json`: per-run traces + metrics (`task_success_rate`, tool/arg accuracy, tool error rate, tokens/sec, latency, memory)

@@ -1,7 +1,11 @@
 {
-  "updated_at": "2026-02-26T13:47:40-0500",
-  "latest_run": "openrouter_small3",
+  "updated_at": "2026-02-26T18:44:14-0500",
+  "latest_run": "full_all-with-smalltoolcall-20260226-184414",
   "runs": [
-    "openrouter_small3"
+    "openrouter_small3",
+    "latest",
+    "full_remote-20260226-175045",
+    "full_all-with-smalltoolcall-20260226-184414",
+    "full_all-20260226-180616"
   ]
 }

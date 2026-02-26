@@ -1,0 +1,190 @@
+{
+  "benchmark": {
+    "schema_version": "2026.1",
+    "values_file": "benchmarks/evaluation_values.json",
+    "rubric": {
+      "version": "2026.full-suite.v1",
+      "weights": {
+        "task_success_rate": 0.35,
+        "tool_selection_accuracy": 0.2,
+        "argument_accuracy": 0.15,
+        "recovery_success_rate": 0.1,
+        "multistep_success_rate": 0.1,
+        "robustness_success_rate": 0.05,
+        "context_success_rate": 0.05
+      },
+      "penalties": {
+        "latency_ms_multiplier": 0.002,
+        "memory_mb_multiplier": 0.002,
+        "tool_error_rate_multiplier": 20.0,
+        "model_error_rate_multiplier": 30.0
+      }
+    },
+    "context_analysis": {
+      "near_peak_ratio": 0.95,
+      "dropoff_ratio": 0.9
+    }
+  },
+  "profiles": [
+    {
+      "name": "local-qwen3-1.7b-llm",
+      "provider": "local",
+      "model": "qwen/qwen3-1.7b",
+      "local_model_path": "models/qwen3-1.7b-q4_k_m.gguf",
+      "llamacpp_bin": "llama-cli",
+      "enable_thinking": false,
+      "use_tools": true,
+      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+      "max_tokens": 256,
+      "temperature": 0.0,
+      "context_windows": [2048, 4096],
+      "env": {
+        "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "0"
+      }
+    },
+    {
+      "name": "local-qwen3-1.7b-intent",
+      "provider": "local",
+      "model": "qwen/qwen3-1.7b",
+      "local_model_path": "models/qwen3-1.7b-q4_k_m.gguf",
+      "llamacpp_bin": "llama-cli",
+      "enable_thinking": false,
+      "use_tools": true,
+      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+      "max_tokens": 256,
+      "temperature": 0.0,
+      "context_windows": [2048, 4096],
+      "env": {
+        "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "1"
+      }
+    },
+    {
+      "name": "local-qwen3-8b-llm",
+      "provider": "local",
+      "model": "qwen/qwen3-8b",
+      "local_model_path": "models/qwen3-8b-q4_k_m.gguf",
+      "llamacpp_bin": "llama-cli",
+      "enable_thinking": false,
+      "use_tools": true,
+      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+      "max_tokens": 256,
+      "temperature": 0.0,
+      "context_windows": [4096, 8192],
+      "env": {
+        "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "0"
+      }
+    },
+    {
+      "name": "local-qwen3-8b-intent",
+      "provider": "local",
+      "model": "qwen/qwen3-8b",
+      "local_model_path": "models/qwen3-8b-q4_k_m.gguf",
+      "llamacpp_bin": "llama-cli",
+      "enable_thinking": false,
+      "use_tools": true,
+      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+      "max_tokens": 256,
+      "temperature": 0.0,
+      "context_windows": [4096, 8192],
+      "env": {
+        "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "1"
+      }
+    },
+    {
+      "name": "openrouter-granite-4.0-h-micro",
+      "provider": "openrouter",
+      "model": "ibm-granite/granite-4.0-h-micro",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0
+    },
+    {
+      "name": "openrouter-ministral-3b-2512",
+      "provider": "openrouter",
+      "model": "mistralai/ministral-3b-2512",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0
+    },
+    {
+      "name": "openrouter-qwen-2.5-7b-instruct",
+      "provider": "openrouter",
+      "model": "qwen/qwen-2.5-7b-instruct",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0
+    },
+    {
+      "name": "openrouter-llama-3.1-8b-instruct",
+      "provider": "openrouter",
+      "model": "meta-llama/llama-3.1-8b-instruct",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0
+    },
+    {
+      "name": "openrouter-gemini-2.5-flash-lite",
+      "provider": "openrouter",
+      "model": "google/gemini-2.5-flash-lite",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0
+    },
+    {
+      "name": "openrouter-gemini-2.0-flash-lite-001",
+      "provider": "openrouter",
+      "model": "google/gemini-2.0-flash-lite-001",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0
+    },
+    {
+      "name": "openrouter-gemini-2.5-flash",
+      "provider": "openrouter",
+      "model": "google/gemini-2.5-flash",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0
+    },
+    {
+      "name": "openrouter-gemini-2.5-pro",
+      "provider": "openrouter",
+      "model": "google/gemini-2.5-pro",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0
+    },
+    {
+      "name": "openrouter-gpt-4o-mini",
+      "provider": "openrouter",
+      "model": "openai/gpt-4o-mini",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0
+    },
+    {
+      "name": "openrouter-claude-3.5-sonnet",
+      "provider": "openrouter",
+      "model": "anthropic/claude-3.5-sonnet",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0
+    },
+    {
+      "name": "openrouter-deepseek-chat",
+      "provider": "openrouter",
+      "model": "deepseek/deepseek-chat",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0
+    },
+    {
+      "name": "openrouter-minimax-01",
+      "provider": "openrouter",
+      "model": "minimax/minimax-01",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0
+    }
+  ]
+}

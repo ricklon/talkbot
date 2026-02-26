@@ -19,11 +19,13 @@ def _safe_segment(value: str) -> str:
 
 def _run_name_from_report(report: dict[str, Any]) -> str:
     meta = report.get("meta") if isinstance(report.get("meta"), dict) else {}
-    for key in ("latest_run", "run_name"):
+    for key in ("run_name", "latest_run"):
         raw = str(meta.get(key) or "").strip()
         if not raw:
             continue
         candidate = _safe_segment(Path(raw).name)
+        if key == "latest_run" and candidate.lower() == "latest":
+            continue
         if candidate:
             return candidate
 
@@ -116,4 +118,3 @@ def publish_benchmark_results(
         "index": str(index_path),
         "run_name": run_folder,
     }
-

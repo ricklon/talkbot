@@ -22,7 +22,14 @@ from talkbot.tools import register_all_tools, set_alert_callback
 from talkbot.tts import TTSManager
 from talkbot.voice import MissingVoiceDependencies, VoiceConfig, VoicePipeline
 
+from talkbot.ui.components import ModernStyle, RoundedButton
+from talkbot.ui.tabs.chat_tab import create_chat_tab
+from talkbot.ui.tabs.timers_tab import create_timers_tab
+from talkbot.ui.tabs.lists_tab import create_lists_tab
+from talkbot.ui.tabs.prompt_tab import create_prompt_tab
+
 OPENROUTER_MODELS = [
+    "mistralai/ministral-3b-2512",
     "google/gemini-2.5-flash-lite",
     "google/gemini-2.0-flash-lite-001",
     "mistralai/mistral-small-3.1-24b-instruct:free",
@@ -70,141 +77,7 @@ def _env_int(name: str, default: int, *, min_value: int, max_value: int) -> int:
     return max(min_value, min(max_value, parsed))
 
 
-class ModernStyle:
-    """Modern color scheme and styling for the GUI."""
-
-    # Colors
-    BG_PRIMARY = "#1e1e2e"
-    BG_SECONDARY = "#252537"
-    BG_TERTIARY = "#313244"
-    ACCENT = "#89b4fa"
-    ACCENT_HOVER = "#b4befe"
-    TEXT_PRIMARY = "#cdd6f4"
-    TEXT_SECONDARY = "#a6adc8"
-    SUCCESS = "#a6e3a1"
-    WARNING = "#f9e2af"
-    ERROR = "#f38ba8"
-    BORDER = "#45475a"
-
-    # Fonts
-    FONT_FAMILY = "Segoe UI"
-    FONT_SIZE_NORMAL = 10
-    FONT_SIZE_LARGE = 12
-    FONT_SIZE_SMALL = 9
-
-
-class RoundedButton(tk.Canvas):
-    """Custom rounded button widget."""
-
-    def __init__(
-        self,
-        parent,
-        text,
-        command=None,
-        width=100,
-        height=32,
-        bg_color=ModernStyle.ACCENT,
-        fg_color=ModernStyle.BG_PRIMARY,
-        hover_color=ModernStyle.ACCENT_HOVER,
-        **kwargs,
-    ):
-        super().__init__(
-            parent,
-            width=width,
-            height=height,
-            bg=parent["bg"],
-            highlightthickness=0,
-            **kwargs,
-        )
-
-        self.command = command
-        self.bg_color = bg_color
-        self.fg_color = fg_color
-        self.hover_color = hover_color
-        self.current_color = bg_color
-
-        # Draw rounded rectangle
-        self.radius = 8
-        self._draw_button(text)
-
-        # Bind events
-        self.bind("<Enter>", self._on_enter)
-        self.bind("<Leave>", self._on_leave)
-        self.bind("<Button-1>", self._on_click)
-
-    def _draw_button(self, text):
-        """Draw the rounded button."""
-        self.delete("all")
-        width = self.winfo_reqwidth()
-        height = self.winfo_reqheight()
-
-        # Create rounded rectangle
-        self.create_rounded_rect(
-            2,
-            2,
-            width - 2,
-            height - 2,
-            self.radius,
-            fill=self.current_color,
-            outline="",
-            tags="rect",
-        )
-
-        # Add text
-        self.create_text(
-            width // 2,
-            height // 2,
-            text=text,
-            fill=self.fg_color,
-            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL, "bold"),
-            tags="text",
-        )
-
-    def create_rounded_rect(self, x1, y1, x2, y2, radius, **kwargs):
-        """Create a rounded rectangle."""
-        points = [
-            x1 + radius,
-            y1,
-            x2 - radius,
-            y1,
-            x2,
-            y1,
-            x2,
-            y1 + radius,
-            x2,
-            y2 - radius,
-            x2,
-            y2,
-            x2 - radius,
-            y2,
-            x1 + radius,
-            y2,
-            x1,
-            y2,
-            x1,
-            y2 - radius,
-            x1,
-            y1 + radius,
-            x1,
-            y1,
-        ]
-        return self.create_polygon(points, smooth=True, **kwargs)
-
-    def _on_enter(self, event):
-        """Mouse enter event."""
-        self.current_color = self.hover_color
-        self.itemconfig("rect", fill=self.current_color)
-
-    def _on_leave(self, event):
-        """Mouse leave event."""
-        self.current_color = self.bg_color
-        self.itemconfig("rect", fill=self.current_color)
-
-    def _on_click(self, event):
-        """Mouse click event."""
-        if self.command:
-            self.command()
-
+from talkbot.ui.components import ModernStyle, RoundedButton
 
 class TalkBotGUI:
     """GUI for the TalkBot application with modern styling."""
@@ -213,7 +86,14 @@ class TalkBotGUI:
         """Initialize the GUI."""
         self.api_key = api_key or os.getenv("OPENROUTER_API_KEY")
         self.provider = os.getenv("TALKBOT_LLM_PROVIDER", "local")
-        self.model = model or os.getenv("TALKBOT_DEFAULT_MODEL", "google/gemini-2.5-flash-lite")
+        default_model = (os.getenv("TALKBOT_DEFAULT_MODEL") or "").strip()
+        if not default_model:
+            default_model = (
+                "mistralai/ministral-3b-2512"
+                if self.provider == "openrouter"
+                else "qwen/qwen3-1.7b"
+            )
+        self.model = model or default_model
         self.local_model_path = _default_local_model_path()
         self.llamacpp_bin = _default_llamacpp_bin()
         self.local_server_url = os.getenv(
@@ -892,118 +772,18 @@ class TalkBotGUI:
         notebook = ttk.Notebook(main_container, style="Modern.TNotebook")
         notebook.grid(row=2, column=0, sticky="nsew", pady=(0, 15))
 
-        tab_chat = tk.Frame(notebook, bg=ModernStyle.BG_SECONDARY)
-        tab_timers = tk.Frame(notebook, bg=ModernStyle.BG_SECONDARY)
-        tab_lists = tk.Frame(notebook, bg=ModernStyle.BG_SECONDARY)
-        tab_prompt = tk.Frame(notebook, bg=ModernStyle.BG_SECONDARY)
+        self.chat_history, tab_chat = create_chat_tab(notebook)
+        self.timers_list, tab_timers = create_timers_tab(notebook)
+        self.lists_box, tab_lists = create_lists_tab(notebook)
+        self.prompt_text, tab_prompt = create_prompt_tab(notebook)
+        
         notebook.add(tab_chat, text="Conversation")
         notebook.add(tab_timers, text="Timers")
         notebook.add(tab_lists, text="Lists")
         notebook.add(tab_prompt, text="Prompt")
 
-        self.chat_history = tk.Text(
-            tab_chat,
-            wrap=tk.WORD,
-            bg=ModernStyle.BG_TERTIARY,
-            fg=ModernStyle.TEXT_PRIMARY,
-            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
-            padx=10,
-            pady=10,
-            state=tk.DISABLED,
-            relief=tk.FLAT,
-            bd=0,
-        )
-        self.chat_history.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-
-        # Configure text tags for styling
-        self.chat_history.tag_configure(
-            "user",
-            foreground=ModernStyle.ACCENT,
-            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL, "bold"),
-        )
-        self.chat_history.tag_configure(
-            "ai",
-            foreground=ModernStyle.SUCCESS,
-            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL, "bold"),
-        )
-        self.chat_history.tag_configure("text", foreground=ModernStyle.TEXT_PRIMARY)
-
-        # Timers tab
-        tk.Label(
-            tab_timers,
-            text="Active timers and reminders update every second.",
-            bg=ModernStyle.BG_SECONDARY,
-            fg=ModernStyle.TEXT_SECONDARY,
-            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
-            anchor=tk.W,
-        ).pack(fill=tk.X, padx=8, pady=(8, 4))
-
-        self.timers_list = tk.Listbox(
-            tab_timers,
-            bg=ModernStyle.BG_TERTIARY,
-            fg=ModernStyle.TEXT_PRIMARY,
-            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
-            selectmode=tk.SINGLE,
-            relief=tk.FLAT,
-            bd=0,
-            highlightthickness=0,
-            activestyle="none",
-        )
-        self.timers_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         self._poll_timers()
-
-        # Lists tab
-        tk.Label(
-            tab_lists,
-            text="Stored lists update every 2 seconds.",
-            bg=ModernStyle.BG_SECONDARY,
-            fg=ModernStyle.TEXT_SECONDARY,
-            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
-            anchor=tk.W,
-        ).pack(fill=tk.X, padx=8, pady=(8, 4))
-
-        self.lists_box = tk.Listbox(
-            tab_lists,
-            bg=ModernStyle.BG_TERTIARY,
-            fg=ModernStyle.TEXT_PRIMARY,
-            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
-            selectmode=tk.SINGLE,
-            relief=tk.FLAT,
-            bd=0,
-            highlightthickness=0,
-            activestyle="none",
-        )
-        self.lists_box.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         self._poll_lists()
-
-        prompt_help = tk.Label(
-            tab_prompt,
-            text="System prompt used for text and voice conversations.",
-            bg=ModernStyle.BG_SECONDARY,
-            fg=ModernStyle.TEXT_SECONDARY,
-            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
-            anchor=tk.W,
-        )
-        prompt_help.pack(fill=tk.X, padx=8, pady=(8, 4))
-
-        self.prompt_text = tk.Text(
-            tab_prompt,
-            wrap=tk.WORD,
-            bg=ModernStyle.BG_TERTIARY,
-            fg=ModernStyle.TEXT_PRIMARY,
-            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
-            padx=10,
-            pady=10,
-            relief=tk.FLAT,
-            bd=0,
-            height=14,
-        )
-        self.prompt_text.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
-
-        # Pre-populate from env var if set
-        env_prompt = os.getenv("TALKBOT_AGENT_PROMPT", "").strip()
-        if env_prompt:
-            self.prompt_text.insert("1.0", env_prompt)
 
         # Input area
         input_frame = tk.Frame(main_container, bg=ModernStyle.BG_PRIMARY)
