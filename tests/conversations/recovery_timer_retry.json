@@ -1,0 +1,38 @@
+{
+  "id": "recovery_timer_retry",
+  "name": "Recovery: Timer Retry",
+  "description": "Model should recover after an invalid timer request by retrying with valid arguments.",
+  "tags": ["timers", "tools", "recovery", "robustness"],
+  "reset_state": true,
+  "turns": [
+    {
+      "user": "Set a timer for 0 seconds.",
+      "expect": {
+        "tool_calls": [
+          {
+            "name": "set_timer",
+            "args_contains": {
+              "seconds": 0
+            }
+          }
+        ],
+        "min_tool_calls": 1,
+        "response_regex": "(?i)(error|timer\\s*#|successfully set)"
+      }
+    },
+    {
+      "user": "Retry that timer with 6 seconds.",
+      "expect": {
+        "tool_calls": [
+          {
+            "name": "set_timer",
+            "args_contains": {
+              "seconds": 6
+            }
+          }
+        ],
+        "response_regex": "(?i)(timer\\s*#|successfully set|will fire in 6)"
+      }
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "id": "list_multistep_packing",
+  "name": "Multistep: Packing List Workflow",
+  "description": "Create a list, add multiple items, then retrieve it.",
+  "tags": ["lists", "tools", "multistep", "core"],
+  "reset_state": true,
+  "turns": [
+    {
+      "user": "Create a packing list.",
+      "expect": {
+        "tool_calls": [
+          {
+            "name_any": ["create_list", "get_list"]
+          }
+        ]
+      }
+    },
+    {
+      "user": "Add socks and charger to the packing list.",
+      "expect": {
+        "tool_calls": [
+          {
+            "name_any": ["add_items_to_list", "add_to_list"]
+          }
+        ],
+        "min_tool_calls": 1
+      }
+    },
+    {
+      "user": "Show me the packing list.",
+      "expect": {
+        "tool_calls": [
+          {
+            "name": "get_list"
+          }
+        ],
+        "response_contains": ["socks", "charger"]
+      }
+    }
+  ]
+}

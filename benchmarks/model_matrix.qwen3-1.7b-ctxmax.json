@@ -37,7 +37,11 @@
       "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
       "max_tokens": 256,
       "temperature": 0.0,
-      "context_windows": [2048, 4096],
+      "context_windows": [
+        8192,
+        16384,
+        32768
+      ],
       "env": {
         "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "0"
       }
@@ -53,39 +57,11 @@
       "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
       "max_tokens": 256,
       "temperature": 0.0,
-      "context_windows": [2048, 4096],
-      "env": {
-        "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "1"
-      }
-    },
-    {
-      "name": "local-qwen3-8b-llm",
-      "provider": "local",
-      "model": "qwen/qwen3-8b",
-      "local_model_path": "models/qwen3-8b-q4_k_m.gguf",
-      "llamacpp_bin": "llama-cli",
-      "enable_thinking": false,
-      "use_tools": true,
-      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
-      "max_tokens": 256,
-      "temperature": 0.0,
-      "context_windows": [4096, 8192],
-      "env": {
-        "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "0"
-      }
-    },
-    {
-      "name": "local-qwen3-8b-intent",
-      "provider": "local",
-      "model": "qwen/qwen3-8b",
-      "local_model_path": "models/qwen3-8b-q4_k_m.gguf",
-      "llamacpp_bin": "llama-cli",
-      "enable_thinking": false,
-      "use_tools": true,
-      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
-      "max_tokens": 256,
-      "temperature": 0.0,
-      "context_windows": [4096, 8192],
+      "context_windows": [
+        8192,
+        16384,
+        32768
+      ],
       "env": {
         "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "1"
       }

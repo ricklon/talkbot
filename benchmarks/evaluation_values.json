@@ -1,0 +1,53 @@
+{
+  "version": "2026.1",
+  "purpose": "Model-selection values for tool-capable small models.",
+  "primary_goal": {
+    "id": "llm_will_use_tools_contextually",
+    "description": "The model should choose and use tools correctly from prompt guidance alone (without intent routing).",
+    "benchmark_mode": "llm",
+    "priority_metrics": [
+      "task_success_rate",
+      "tool_selection_accuracy",
+      "argument_accuracy",
+      "context_success_rate"
+    ]
+  },
+  "secondary_goal": {
+    "id": "llm_can_use_tools_with_intents",
+    "description": "Intent routing is a fallback to maximize reliability when needed.",
+    "benchmark_mode": "intent",
+    "priority_metrics": [
+      "task_success_rate",
+      "tool_selection_accuracy",
+      "argument_accuracy"
+    ]
+  },
+  "comparison_policy": {
+    "required_ab_test": true,
+    "modes": {
+      "llm": {
+        "direct_tool_routing": 0,
+        "meaning": "Will the model decide to call tools correctly?"
+      },
+      "intent": {
+        "direct_tool_routing": 1,
+        "meaning": "Can the system succeed with deterministic intent routing?"
+      }
+    },
+    "interpretation": {
+      "small_gap_is_good": "If intent success is only slightly better than llm success, prompt-driven behavior is strong.",
+      "large_gap_indicates_prompt_or_tool_planning_issue": "If intent strongly outperforms llm mode, improve prompting/tool-call planning before model ranking."
+    }
+  },
+  "context_values": {
+    "native_context_priority": true,
+    "extended_context_policy": "Treat >n_ctx_train as exploratory unless coherence remains stable.",
+    "dropoff_definition": "Use coherence score (quality-only) for dropoff; keep latency/memory as separate efficiency penalties."
+  },
+  "scorecard_order": [
+    "llm_mode_quality",
+    "llm_mode_context_stability",
+    "intent_mode_ceiling",
+    "efficiency_latency_memory"
+  ]
+}
