@@ -28,3 +28,6 @@ models/*.GGUF
 
 # Generated benchmark artifacts
 benchmark_results/
+
+# Recorded voice benchmark dataset (large generated media)
+benchmarks/voice_dataset/raw/

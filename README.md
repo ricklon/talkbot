@@ -747,6 +747,7 @@ Matrix files can also define benchmark rubric and context-window sweeps:
 Team benchmark values and decision policy are tracked in:
 - `benchmarks/evaluation_values.json`
 - `benchmarks/decision_strategy.md`
+- `benchmarks/voice_recording_guide.md` (how to record spoken benchmark datasets)
 
 That file explicitly defines:
 - Primary goal: prompt-driven tool choice (`llm` mode, no intent routing)
@@ -765,6 +766,17 @@ Included benchmark tracks now cover:
 - `multistep`: chained workflows across multiple turns
 - `context`: retrieval behavior under longer conversational history
 - `robustness`: noisy/edge-case prompts
+
+For spoken-text dataset creation (dates/times/years/STEM), use:
+
+```bash
+uv run -- python scripts/record_voice_benchmark.py \
+  --prompts benchmarks/voice_prompts.template.json \
+  --output-dir benchmarks/voice_dataset/raw \
+  --manifest benchmarks/voice_dataset/manifest.json \
+  --speaker-id speaker_a \
+  --takes 2
+```
 
 Included memory tracks:
 - `memory_persistent_strict`: requires `remember` + `recall` tool calls (capability score)
