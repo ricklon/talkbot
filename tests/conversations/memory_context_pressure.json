@@ -1,0 +1,37 @@
+{
+  "id": "memory_context_pressure",
+  "name": "Context: Long-Context Memory Retrieval",
+  "description": "Remember a value, process a long filler turn, then retrieve it with tool usage under context pressure.",
+  "tags": ["memory", "tools", "context", "multistep"],
+  "reset_state": true,
+  "turns": [
+    {
+      "user": "Remember that the launch codename is atlas.",
+      "expect": {
+        "tool_calls": [
+          {
+            "name": "remember"
+          }
+        ],
+        "response_contains": ["atlas"]
+      }
+    },
+    {
+      "user": "Read this long note: project timeline, ownership, and milestone details repeated for context pressure. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated.",
+      "expect": {
+        "max_tool_calls": 1
+      }
+    },
+    {
+      "user": "After that long note, what launch codename did I ask you to remember?",
+      "expect": {
+        "tool_calls": [
+          {
+            "name_any": ["recall", "recall_all"]
+          }
+        ],
+        "response_contains": ["atlas"]
+      }
+    }
+  ]
+}

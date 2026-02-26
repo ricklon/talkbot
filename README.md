@@ -676,13 +676,92 @@ uv run -- python scripts/benchmark_conversations.py \
 ```
 
 Outputs:
-- `results.json`: per-run traces + metrics (`task_success_rate`, `tool_selection_accuracy`, `argument_accuracy`, tokens, latency, memory)
-- `leaderboard.md`: quality, low-memory, and balanced rankings
+- `results.json`: per-run traces + metrics (`task_success_rate`, tool/arg accuracy, tool error rate, tokens/sec, latency, memory)
+- `leaderboard.md`: rubric-aware quality, low-memory, balanced, efficiency, Pareto, and context-dropoff recommendations
+- One-stop latest mirror (auto-updated): `benchmark_results/results.json` and `benchmark_results/leaderboard.md`
+- Repo-published latest snapshot: `benchmarks/published/latest/results.json` and `benchmarks/published/latest/leaderboard.md`
+- Repo-published run history: `benchmarks/published/runs/<run_name>/...`
+
+`scripts/benchmark_conversations.py` publishes to `benchmarks/published/` by default.
+Use `--no-publish` to skip, or override destination with `--publish-root`.
+
+Manual publish command:
+
+```bash
+uv run -- python scripts/publish_benchmark_results.py \
+  --source-root benchmark_results \
+  --published-root benchmarks/published
+```
+
+For apples-to-apples OpenRouter benchmarking (standard OpenAI tool format only), set:
+
+```bash
+export TALKBOT_OPENROUTER_TOOL_TRANSPORT=native
+export TALKBOT_OPENROUTER_TOOL_PREFLIGHT=1
+```
+
+With this mode, models/routes that do not advertise native `tools` + `tool_choice` will fail fast instead of using prompt-tool fallback.
+
+The leaderboard includes an A/B section:
+- `LLM` mode: prompt-directed tool choice (will it use tools?)
+- `Intent` mode: deterministic routing (can it use tools with enforced intents?)
+- Use paired profiles (same model + same `n_ctx`) with:
+  - `TALKBOT_LOCAL_DIRECT_TOOL_ROUTING=0` for `LLM`
+  - `TALKBOT_LOCAL_DIRECT_TOOL_ROUTING=1` for `Intent`
+
+Matrix files can also define benchmark rubric and context-window sweeps:
+
+```json
+{
+  "benchmark": {
+    "schema_version": "2026.1",
+    "rubric": {
+      "version": "2026.small-models.v1",
+      "weights": {
+        "task_success_rate": 0.35,
+        "tool_selection_accuracy": 0.2,
+        "argument_accuracy": 0.15,
+        "recovery_success_rate": 0.1,
+        "multistep_success_rate": 0.1,
+        "robustness_success_rate": 0.05,
+        "context_success_rate": 0.05
+      }
+    },
+    "context_analysis": {
+      "near_peak_ratio": 0.95,
+      "dropoff_ratio": 0.9
+    }
+  },
+  "profiles": [
+    {
+      "name": "local-qwen3-1.7b",
+      "context_windows": [2048, 4096]
+    }
+  ]
+}
+```
+
+Team benchmark values and decision policy are tracked in:
+- `benchmarks/evaluation_values.json`
+- `benchmarks/decision_strategy.md`
+
+That file explicitly defines:
+- Primary goal: prompt-driven tool choice (`llm` mode, no intent routing)
+- Secondary goal: deterministic fallback ceiling (`intent` mode)
+- How to interpret `llm` vs `intent` gaps
+- Context-dropoff policy (coherence-first, efficiency separate)
 
 Scenario files are JSON scripts in `tests/conversations/` and support per-turn assertions:
 - expected tool names (`name` or `name_any`)
 - argument subset checks (`args_contains`)
 - response checks (`response_contains`, `response_regex`)
+
+Included benchmark tracks now cover:
+- `core`: basic timer/list/memory tool correctness
+- `recovery`: invalid request then retry/fix behavior
+- `multistep`: chained workflows across multiple turns
+- `context`: retrieval behavior under longer conversational history
+- `robustness`: noisy/edge-case prompts
 
 Included memory tracks:
 - `memory_persistent_strict`: requires `remember` + `recall` tool calls (capability score)

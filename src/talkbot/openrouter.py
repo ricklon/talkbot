@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 from typing import Any, Callable, Optional
 
 import httpx
@@ -76,6 +77,9 @@ def _normalize_tool_args_for_call(function_name: str, function_args: Any) -> dic
     return args
 
 
+_MODEL_TOOL_SUPPORT_CACHE: dict[str, bool] = {}
+
+
 class OpenRouterClient:
     """Client for interacting with OpenRouter API with tool support."""
 
@@ -113,6 +117,7 @@ class OpenRouterClient:
         self.tools: dict[str, Callable] = {}
         self.tool_definitions: list[dict] = []
         self.last_usage: dict = {}
+        self._native_tools_supported: Optional[bool] = None
 
     def register_tool(
         self, name: str, func: Callable, description: str, parameters: dict
@@ -170,21 +175,34 @@ class OpenRouterClient:
         Returns:
             The full API response dictionary.
         """
+        return self._request_completion(
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            stream=stream,
+            include_tools=True,
+        )
+
+    def _request_completion(
+        self,
+        *,
+        messages: list[dict],
+        temperature: float,
+        max_tokens: Optional[int],
+        stream: bool,
+        include_tools: bool,
+    ) -> dict:
         payload = {
             "model": self.model,
             "messages": messages,
             "temperature": temperature,
             "stream": stream,
         }
-
         if max_tokens:
             payload["max_tokens"] = max_tokens
-
-        # Add tools if registered
-        if self.tool_definitions:
+        if include_tools and self.tool_definitions:
             payload["tools"] = self.tool_definitions
             payload["tool_choice"] = "auto"
-
         response = self.client.post(
             f"{self.BASE_URL}/chat/completions",
             headers=self._get_headers(),
@@ -194,6 +212,248 @@ class OpenRouterClient:
         data = response.json()
         self.last_usage = data.get("usage") or {}
         return data
+
+    @staticmethod
+    def _tool_transport_mode() -> str:
+        raw = os.getenv("TALKBOT_OPENROUTER_TOOL_TRANSPORT", "auto").strip().lower()
+        if raw in {"prompt", "prompt_xml", "xml"}:
+            return "prompt"
+        if raw in {"native", "openai"}:
+            return "native"
+        return "auto"
+
+    @staticmethod
+    def _tool_prefight_enabled() -> bool:
+        raw = os.getenv("TALKBOT_OPENROUTER_TOOL_PREFLIGHT", "1").strip().lower()
+        return raw in {"1", "true", "yes", "on"}
+
+    def _detect_native_tool_support(self) -> Optional[bool]:
+        model_key = str(self.model or "").strip()
+        if not model_key:
+            return None
+        if model_key in _MODEL_TOOL_SUPPORT_CACHE:
+            return _MODEL_TOOL_SUPPORT_CACHE[model_key]
+        try:
+            response = self.client.get(
+                f"{self.BASE_URL}/models",
+                headers=self._get_headers(),
+            )
+            response.raise_for_status()
+            payload = response.json()
+            models = payload.get("data")
+            if not isinstance(models, list):
+                return None
+            wanted = {
+                model_key.lower(),
+                model_key.split(":")[0].lower(),
+            }
+            for entry in models:
+                if not isinstance(entry, dict):
+                    continue
+                entry_id = str(entry.get("id") or "").lower()
+                canonical = str(entry.get("canonical_slug") or "").lower()
+                if entry_id not in wanted and canonical not in wanted:
+                    continue
+                supported = entry.get("supported_parameters")
+                if not isinstance(supported, list):
+                    return None
+                support_set = {str(item).strip().lower() for item in supported}
+                supports = "tools" in support_set and "tool_choice" in support_set
+                _MODEL_TOOL_SUPPORT_CACHE[model_key] = supports
+                return supports
+        except Exception:
+            return None
+        return None
+
+    def _should_use_prompt_tool_transport(self) -> bool:
+        mode = self._tool_transport_mode()
+        if mode == "prompt":
+            return True
+        if mode == "native":
+            return False
+        if self._native_tools_supported is False:
+            return True
+        if self._tool_prefight_enabled():
+            support = self._detect_native_tool_support()
+            if support is False:
+                self._native_tools_supported = False
+                return True
+            if support is True:
+                self._native_tools_supported = True
+        return False
+
+    @staticmethod
+    def _is_native_tool_unsupported_error(exc: Exception) -> bool:
+        if not isinstance(exc, httpx.HTTPStatusError):
+            return False
+        response = exc.response
+        if response is None:
+            return False
+        if response.status_code not in {400, 404}:
+            return False
+        body = response.text.lower()
+        if "no endpoints found that support tool use" in body:
+            return True
+        if "support tool use" in body and "endpoint" in body:
+            return True
+        if "tool_choice" in body and "unsupported" in body:
+            return True
+        return False
+
+    def _tool_catalog_for_prompt(self) -> str:
+        tools_payload = []
+        for entry in self.tool_definitions:
+            function = entry.get("function") if isinstance(entry, dict) else None
+            if not isinstance(function, dict):
+                continue
+            tools_payload.append(
+                {
+                    "name": function.get("name"),
+                    "description": function.get("description"),
+                    "parameters": function.get("parameters"),
+                }
+            )
+        return json.dumps(tools_payload, ensure_ascii=True)
+
+    def _prompt_tool_instruction(self) -> str:
+        return (
+            "Native tool calling is unavailable for this model route.\n"
+            "Use XML tool tags exactly when a tool is needed:\n"
+            "<tool_call>{\"name\":\"TOOL_NAME\",\"arguments\":{...}}</tool_call>\n"
+            "After receiving a <tool_response> message, answer the user normally.\n"
+            "If no tool is needed, answer normally with no tool tag.\n"
+            f"Available tools: {self._tool_catalog_for_prompt()}"
+        )
+
+    @staticmethod
+    def _extract_prompt_tool_call(content: str) -> Optional[dict[str, Any]]:
+        text = str(content or "")
+        match = re.search(r"<tool_call>\s*(.*?)\s*</tool_call>", text, flags=re.IGNORECASE | re.DOTALL)
+        if not match:
+            return None
+        payload = match.group(1).strip()
+        if payload.startswith("```"):
+            payload = payload.strip("`")
+            payload = payload.replace("json", "", 1).strip()
+        try:
+            data = json.loads(payload)
+        except Exception:
+            return None
+        if not isinstance(data, dict):
+            return None
+        function_name = str(data.get("name") or "").strip()
+        args = data.get("arguments")
+        if not function_name:
+            return None
+        if not isinstance(args, dict):
+            args = {}
+        return {"name": function_name, "arguments": args}
+
+    def _chat_with_prompt_tools(
+        self,
+        messages: list[dict],
+        temperature: float,
+        max_tokens: Optional[int],
+        max_tool_calls: int,
+    ) -> str:
+        current_messages = [{"role": "system", "content": self._prompt_tool_instruction()}]
+        current_messages.extend(messages)
+        tool_calls = 0
+        while tool_calls < max_tool_calls:
+            response = self._request_completion(
+                messages=current_messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                stream=False,
+                include_tools=False,
+            )
+            content = _response_content(response)
+            parsed = self._extract_prompt_tool_call(content)
+            if not parsed:
+                return content
+
+            function_name = parsed["name"]
+            function_args = _normalize_tool_args_for_call(function_name, parsed["arguments"])
+            if function_name in self.tools:
+                try:
+                    result = self.tools[function_name](**function_args)
+                except Exception as exc:
+                    result = f"Error executing {function_name}: {exc}"
+            else:
+                result = f"Error: Tool {function_name} not found"
+
+            tool_calls += 1
+            current_messages.append({"role": "assistant", "content": content})
+            tool_payload = {
+                "name": function_name,
+                "arguments": function_args,
+                "result": str(result),
+            }
+            current_messages.append(
+                {
+                    "role": "user",
+                    "content": f"<tool_response>{json.dumps(tool_payload, ensure_ascii=True)}</tool_response>",
+                }
+            )
+
+        response = self._request_completion(
+            messages=current_messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            stream=False,
+            include_tools=False,
+        )
+        return _response_content(response)
+
+    def _chat_with_native_tools(
+        self,
+        messages: list[dict],
+        temperature: float,
+        max_tokens: Optional[int],
+        max_tool_calls: int,
+    ) -> str:
+        tool_call_count = 0
+        current_messages = messages.copy()
+
+        while tool_call_count < max_tool_calls:
+            response = self.chat_completion(current_messages, temperature, max_tokens)
+            message = _response_message(response)
+            if not message:
+                return _response_content(response)
+
+            tool_calls = message.get("tool_calls")
+            if not tool_calls:
+                return _response_content(response)
+
+            current_messages.append(message)
+            for tool_call in tool_calls:
+                tool_call_count += 1
+                function_name = tool_call["function"]["name"]
+                try:
+                    function_args = json.loads(tool_call["function"]["arguments"])
+                except Exception:
+                    function_args = {}
+                function_args = _normalize_tool_args_for_call(function_name, function_args)
+
+                if function_name in self.tools:
+                    try:
+                        result = self.tools[function_name](**function_args)
+                    except Exception as exc:
+                        result = f"Error executing {function_name}: {str(exc)}"
+                else:
+                    result = f"Error: Tool {function_name} not found"
+
+                current_messages.append(
+                    {
+                        "tool_call_id": tool_call["id"],
+                        "role": "tool",
+                        "name": function_name,
+                        "content": str(result),
+                    }
+                )
+
+        response = self.chat_completion(current_messages, temperature, max_tokens)
+        return _response_content(response)
 
     def chat_with_tools(
         self,
@@ -217,56 +477,30 @@ class OpenRouterClient:
             # No tools registered, do simple completion
             response = self.chat_completion(messages, temperature, max_tokens)
             return _response_content(response)
-
-        tool_call_count = 0
-        current_messages = messages.copy()
-
-        while tool_call_count < max_tool_calls:
-            response = self.chat_completion(current_messages, temperature, max_tokens)
-            message = _response_message(response)
-            if not message:
-                return _response_content(response)
-
-            # Check if the model wants to call tools
-            tool_calls = message.get("tool_calls")
-            if not tool_calls:
-                # No tool calls, return the content
-                return _response_content(response)
-
-            # Add assistant message to conversation
-            current_messages.append(message)
-
-            # Execute tool calls
-            for tool_call in tool_calls:
-                tool_call_count += 1
-                function_name = tool_call["function"]["name"]
-                try:
-                    function_args = json.loads(tool_call["function"]["arguments"])
-                except Exception:
-                    function_args = {}
-                function_args = _normalize_tool_args_for_call(function_name, function_args)
-
-                if function_name in self.tools:
-                    try:
-                        result = self.tools[function_name](**function_args)
-                    except Exception as e:
-                        result = f"Error executing {function_name}: {str(e)}"
-                else:
-                    result = f"Error: Tool {function_name} not found"
-
-                # Add tool response
-                current_messages.append(
-                    {
-                        "tool_call_id": tool_call["id"],
-                        "role": "tool",
-                        "name": function_name,
-                        "content": str(result),
-                    }
+        mode = self._tool_transport_mode()
+        if mode == "native" and self._tool_prefight_enabled():
+            support = self._detect_native_tool_support()
+            if support is False:
+                raise RuntimeError(
+                    "OpenRouter model route does not advertise native tool calling "
+                    "(tools/tool_choice). Set TALKBOT_OPENROUTER_TOOL_TRANSPORT=prompt "
+                    "to allow prompt-tool fallback."
                 )
-
-        # Max tool calls reached, get final response
-        response = self.chat_completion(current_messages, temperature, max_tokens)
-        return _response_content(response)
+        if self._should_use_prompt_tool_transport():
+            return self._chat_with_prompt_tools(messages, temperature, max_tokens, max_tool_calls)
+        try:
+            return self._chat_with_native_tools(messages, temperature, max_tokens, max_tool_calls)
+        except Exception as exc:
+            if self._is_native_tool_unsupported_error(exc):
+                self._native_tools_supported = False
+                if mode == "auto":
+                    return self._chat_with_prompt_tools(
+                        messages,
+                        temperature,
+                        max_tokens,
+                        max_tool_calls,
+                    )
+            raise
 
     def simple_chat(self, message: str, system_prompt: Optional[str] = None) -> str:
         """Send a simple chat message.
