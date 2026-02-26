@@ -676,13 +676,48 @@ uv run -- python scripts/benchmark_conversations.py \
 ```
 
 Outputs:
-- `results.json`: per-run traces + metrics (`task_success_rate`, `tool_selection_accuracy`, `argument_accuracy`, tokens, latency, memory)
-- `leaderboard.md`: quality, low-memory, and balanced rankings
+- `results.json`: per-run traces + metrics (`task_success_rate`, tool/arg accuracy, tool error rate, tokens/sec, latency, memory)
+- `leaderboard.md`: rubric-aware quality, low-memory, balanced, efficiency, and Pareto rankings
+
+Matrix files can also define benchmark rubric and context-window sweeps:
+
+```json
+{
+  "benchmark": {
+    "schema_version": "2026.1",
+    "rubric": {
+      "version": "2026.small-models.v1",
+      "weights": {
+        "task_success_rate": 0.35,
+        "tool_selection_accuracy": 0.2,
+        "argument_accuracy": 0.15,
+        "recovery_success_rate": 0.1,
+        "multistep_success_rate": 0.1,
+        "robustness_success_rate": 0.05,
+        "context_success_rate": 0.05
+      }
+    }
+  },
+  "profiles": [
+    {
+      "name": "local-qwen3-1.7b",
+      "context_windows": [2048, 4096]
+    }
+  ]
+}
+```
 
 Scenario files are JSON scripts in `tests/conversations/` and support per-turn assertions:
 - expected tool names (`name` or `name_any`)
 - argument subset checks (`args_contains`)
 - response checks (`response_contains`, `response_regex`)
+
+Included benchmark tracks now cover:
+- `core`: basic timer/list/memory tool correctness
+- `recovery`: invalid request then retry/fix behavior
+- `multistep`: chained workflows across multiple turns
+- `context`: retrieval behavior under longer conversational history
+- `robustness`: noisy/edge-case prompts
 
 Included memory tracks:
 - `memory_persistent_strict`: requires `remember` + `recall` tool calls (capability score)

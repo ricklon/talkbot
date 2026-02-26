@@ -1,7 +1,28 @@
 {
+  "benchmark": {
+    "schema_version": "2026.1",
+    "rubric": {
+      "version": "2026.small-models.v1",
+      "weights": {
+        "task_success_rate": 0.35,
+        "tool_selection_accuracy": 0.2,
+        "argument_accuracy": 0.15,
+        "recovery_success_rate": 0.1,
+        "multistep_success_rate": 0.1,
+        "robustness_success_rate": 0.05,
+        "context_success_rate": 0.05
+      },
+      "penalties": {
+        "latency_ms_multiplier": 0.002,
+        "memory_mb_multiplier": 0.002,
+        "tool_error_rate_multiplier": 20.0,
+        "model_error_rate_multiplier": 30.0
+      }
+    }
+  },
   "profiles": [
     {
-      "name": "local-qwen3-1.7b-nctx2048",
+      "name": "local-qwen3-1.7b",
       "provider": "local",
       "model": "qwen/qwen3-1.7b",
       "local_model_path": "models/qwen3-1.7b-q4_k_m.gguf",
@@ -11,24 +32,24 @@
       "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. Do not answer memory/list/timer questions from chat memory; use tools.",
       "max_tokens": 256,
       "temperature": 0.0,
+      "context_windows": [2048, 4096],
       "env": {
-        "TALKBOT_LOCAL_N_CTX": "2048",
         "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "0"
       }
     },
     {
-      "name": "local-qwen3-1.7b-nctx4096",
+      "name": "local-qwen3-8b",
       "provider": "local",
-      "model": "qwen/qwen3-1.7b",
-      "local_model_path": "models/qwen3-1.7b-q4_k_m.gguf",
+      "model": "qwen/qwen3-8b",
+      "local_model_path": "models/qwen3-8b-q4_k_m.gguf",
       "llamacpp_bin": "llama-cli",
       "enable_thinking": false,
       "use_tools": true,
       "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. Do not answer memory/list/timer questions from chat memory; use tools.",
       "max_tokens": 256,
       "temperature": 0.0,
+      "context_windows": [4096, 8192],
       "env": {
-        "TALKBOT_LOCAL_N_CTX": "4096",
         "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "0"
       }
     }
