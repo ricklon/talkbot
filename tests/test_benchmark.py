@@ -6,6 +6,7 @@ from talkbot.benchmark import (
     ToolCallTrace,
     _evaluate_turn,
     build_leaderboard_markdown,
+    load_matrix_config,
     load_scenarios,
     run_benchmark,
     write_outputs,
@@ -48,16 +49,33 @@ class FakeBenchClient:
         lower = user_text.lower()
         if "set a timer for 10" in lower:
             return self.tools["set_timer"](seconds=10)
+        if "set a timer for 0" in lower:
+            return self.tools["set_timer"](seconds=0)
+        if "retry that timer with 6" in lower:
+            return self.tools["set_timer"](seconds=6)
         if "list timers" in lower:
             return self.tools["list_timers"]()
         if "cancel timer 1" in lower:
             return self.tools["cancel_timer"](timer_id="1")
+        if "create a packing list" in lower:
+            return self.tools["create_list"](list_name="packing")
+        if "add socks and charger to the packing list" in lower:
+            return self.tools["add_items_to_list"](
+                items=["socks", "charger"],
+                list_name="packing",
+            )
+        if "show me the packing list" in lower:
+            return self.tools["get_list"](list_name="packing")
         if "create a grocery list" in lower:
             return self.tools["create_list"](list_name="grocery")
         if "add milk to the grocery list" in lower:
             return self.tools["add_to_list"](item="milk", list_name="grocery")
         if "what lists do you have" in lower:
             return self.tools["list_all_lists"]()
+        if "remember that the launch codename is atlas" in lower:
+            return self.tools["remember"](key="launch_codename", value="atlas")
+        if "what launch codename did i ask you to remember" in lower:
+            return self.tools["recall"](key="launch_codename")
         if "remember that my favorite color is blue" in lower:
             return self.tools["remember"](key="favorite_color", value="blue")
         if "what is my favorite color" in lower:
@@ -73,6 +91,9 @@ def test_load_scenarios_from_directory():
         "list_basics",
         "memory_persistent_strict",
         "memory_context_flexible",
+        "recovery_timer_retry",
+        "list_multistep_packing",
+        "memory_context_pressure",
     }.issubset(ids)
 
 
@@ -103,6 +124,9 @@ def test_run_benchmark_with_fake_client(tmp_path):
     assert run["aggregate"]["argument_accuracy"] == 1.0
     assert run["aggregate"]["total_tokens"] > 0
     assert run["aggregate"]["max_history_messages"] > 0
+    assert run["aggregate"]["tokens_per_second"] > 0.0
+    assert run["aggregate"]["tool_call_error_rate"] > 0.0
+    assert run["aggregate"]["model_execution_error_rate"] == 0.0
 
 
 def test_write_outputs_and_leaderboard(tmp_path):
@@ -111,6 +135,11 @@ def test_write_outputs_and_leaderboard(tmp_path):
         "finished_at": "2026-01-01T00:00:10+0000",
         "scenario_count": 1,
         "run_count": 1,
+        "rubric": {
+            "version": "test.v1",
+            "weights": {"task_success_rate": 1.0},
+            "penalties": {"latency_ms_multiplier": 0.0},
+        },
         "runs": [
             {
                 "profile": {
@@ -125,7 +154,10 @@ def test_write_outputs_and_leaderboard(tmp_path):
                     "argument_accuracy": 1.0,
                     "avg_turn_latency_ms": 25.0,
                     "memory_peak_mb": 12.0,
+                    "tool_call_error_rate": 0.0,
+                    "tokens_per_second": 4.0,
                     "total_tokens": 42,
+                    "tag_success": {"recovery": 1.0},
                 },
             }
         ],
@@ -134,12 +166,47 @@ def test_write_outputs_and_leaderboard(tmp_path):
     assert "Quality Rank" in md
     assert "Low-Memory Rank" in md
     assert "Balanced Rank" in md
+    assert "Pareto Frontier" in md
+    assert "Rubric" in md
 
     paths = write_outputs(report, tmp_path)
     assert Path(paths["results"]).exists()
     assert Path(paths["leaderboard"]).exists()
     result_payload = json.loads(Path(paths["results"]).read_text())
     assert result_payload["run_count"] == 1
+
+
+def test_load_matrix_config_expands_context_windows(tmp_path):
+    matrix_path = tmp_path / "matrix.json"
+    matrix_path.write_text(
+        json.dumps(
+            {
+                "benchmark": {
+                    "schema_version": "2026.1",
+                    "rubric": {
+                        "version": "custom",
+                        "weights": {"task_success_rate": 0.7},
+                    },
+                },
+                "profiles": [
+                    {
+                        "name": "demo",
+                        "provider": "local",
+                        "model": "fake/model",
+                        "context_windows": [2048, 4096],
+                        "env": {"TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "0"},
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    matrix = load_matrix_config(matrix_path)
+    names = [profile.name for profile in matrix["profiles"]]
+    assert names == ["demo-ctx2048", "demo-ctx4096"]
+    assert matrix["profiles"][0].env["TALKBOT_LOCAL_N_CTX"] == "2048"
+    assert matrix["rubric"]["version"] == "custom"
+    assert matrix["rubric"]["weights"]["task_success_rate"] == 0.7
 
 
 def test_profile_system_prompt_is_prepended(tmp_path):

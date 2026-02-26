@@ -11,7 +11,7 @@ from pathlib import Path
 
 from talkbot.benchmark import (
     BenchmarkProfile,
-    load_profiles_from_matrix,
+    load_matrix_config,
     load_scenarios,
     run_benchmark,
     write_outputs,
@@ -132,8 +132,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
     scenarios = load_scenarios(args.scenarios)
+    rubric: dict | None = None
     if args.matrix:
-        profiles = load_profiles_from_matrix(args.matrix)
+        matrix_config = load_matrix_config(args.matrix)
+        profiles = matrix_config["profiles"]
+        rubric = matrix_config.get("rubric")
     else:
         profiles = [_default_profile_from_args(args)]
 
@@ -142,6 +145,7 @@ def main(argv: list[str] | None = None) -> int:
         profiles=profiles,
         scenarios=scenarios,
         output_dir=Path(args.output),
+        rubric=rubric,
     )
     paths = write_outputs(report, Path(args.output))
 

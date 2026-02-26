@@ -113,6 +113,15 @@ class RunAggregate:
     python_peak_mb: float
     process_rss_delta_mb: float
     memory_peak_mb: float
+    avg_tool_latency_ms: float
+    p95_tool_latency_ms: float
+    tool_call_error_count: int
+    tool_call_error_rate: float
+    model_execution_error_count: int
+    model_execution_error_rate: float
+    first_turn_latency_ms: float
+    tokens_per_second: float
+    scenario_success_per_second: float
     tag_success: dict[str, float]
 
 
@@ -266,6 +275,65 @@ _TOOL_ARG_ALIASES: dict[str, dict[str, str]] = {
 }
 
 
+DEFAULT_RUBRIC: dict[str, Any] = {
+    "version": "2026.1",
+    "weights": {
+        "task_success_rate": 0.35,
+        "tool_selection_accuracy": 0.2,
+        "argument_accuracy": 0.15,
+        "recovery_success_rate": 0.1,
+        "multistep_success_rate": 0.1,
+        "robustness_success_rate": 0.05,
+        "context_success_rate": 0.05,
+    },
+    "penalties": {
+        "latency_ms_multiplier": 0.002,
+        "memory_mb_multiplier": 0.002,
+        "tool_error_rate_multiplier": 20.0,
+        "model_error_rate_multiplier": 30.0,
+    },
+}
+
+
+def _coerce_float(value: Any, default: float) -> float:
+    try:
+        return float(value)
+    except Exception:
+        return default
+
+
+def _normalize_rubric(raw: Any) -> dict[str, Any]:
+    normalized = {
+        "version": str(DEFAULT_RUBRIC["version"]),
+        "weights": dict(DEFAULT_RUBRIC["weights"]),
+        "penalties": dict(DEFAULT_RUBRIC["penalties"]),
+    }
+    if not isinstance(raw, dict):
+        return normalized
+    if raw.get("version"):
+        normalized["version"] = str(raw["version"]).strip() or normalized["version"]
+
+    weights = raw.get("weights")
+    if isinstance(weights, dict):
+        for key, value in weights.items():
+            if key not in normalized["weights"]:
+                continue
+            number = _coerce_float(value, normalized["weights"][key])
+            if number >= 0.0:
+                normalized["weights"][key] = number
+
+    penalties = raw.get("penalties")
+    if isinstance(penalties, dict):
+        for key, value in penalties.items():
+            if key not in normalized["penalties"]:
+                continue
+            number = _coerce_float(value, normalized["penalties"][key])
+            if number >= 0.0:
+                normalized["penalties"][key] = number
+
+    return normalized
+
+
 def _normalize_tool_args(tool_name: str, args: dict[str, Any]) -> dict[str, Any]:
     mapping = _TOOL_ARG_ALIASES.get(tool_name, {})
     if not mapping:
@@ -328,17 +396,75 @@ def _normalize_scenario(payload: dict[str, Any], source: Path) -> dict[str, Any]
     }
 
 
-def load_profiles_from_matrix(path: str | Path) -> list[BenchmarkProfile]:
+def _expand_profile_entry(entry: dict[str, Any]) -> list[BenchmarkProfile]:
+    base = dict(entry)
+    context_windows = base.pop("context_windows", None)
+    n_ctx = base.pop("n_ctx", None)
+
+    env = dict(base.get("env") or {})
+    base["env"] = env
+    if n_ctx is not None:
+        env["TALKBOT_LOCAL_N_CTX"] = str(n_ctx)
+
+    if not isinstance(context_windows, list) or not context_windows:
+        return [BenchmarkProfile(**base)]
+
+    profiles: list[BenchmarkProfile] = []
+    for ctx in context_windows:
+        try:
+            ctx_int = int(ctx)
+        except Exception:
+            continue
+        clone = dict(base)
+        clone_env = dict(env)
+        clone_env["TALKBOT_LOCAL_N_CTX"] = str(ctx_int)
+        clone["env"] = clone_env
+        base_name = str(clone.get("name") or "profile")
+        clone["name"] = f"{base_name}-ctx{ctx_int}"
+        profiles.append(BenchmarkProfile(**clone))
+    if not profiles:
+        raise ValueError(
+            f"Profile '{base.get('name', 'unknown')}' has no valid context_windows values."
+        )
+    return profiles
+
+
+def load_matrix_config(path: str | Path) -> dict[str, Any]:
     payload = _load_json(Path(path))
     raw_profiles: Any
+    rubric_raw: Any = None
+    matrix_version = "2026.1"
     if isinstance(payload, list):
         raw_profiles = payload
-    else:
+    elif isinstance(payload, dict):
         raw_profiles = payload.get("profiles") or payload.get("runs") or []
+        benchmark_cfg = payload.get("benchmark")
+        if isinstance(benchmark_cfg, dict):
+            rubric_raw = benchmark_cfg.get("rubric")
+            matrix_version = str(benchmark_cfg.get("schema_version") or matrix_version)
+        if payload.get("rubric") and rubric_raw is None:
+            rubric_raw = payload.get("rubric")
+    else:
+        raw_profiles = []
+
     if not isinstance(raw_profiles, list) or not raw_profiles:
         raise ValueError("Matrix must define a non-empty 'profiles' list.")
-    profiles = [BenchmarkProfile(**dict(entry)) for entry in raw_profiles]
-    return profiles
+
+    profiles: list[BenchmarkProfile] = []
+    for entry in raw_profiles:
+        if not isinstance(entry, dict):
+            raise ValueError("Each matrix profile entry must be an object.")
+        profiles.extend(_expand_profile_entry(entry))
+
+    return {
+        "schema_version": matrix_version,
+        "profiles": profiles,
+        "rubric": _normalize_rubric(rubric_raw),
+    }
+
+
+def load_profiles_from_matrix(path: str | Path) -> list[BenchmarkProfile]:
+    return list(load_matrix_config(path)["profiles"])
 
 
 @contextmanager
@@ -508,6 +634,7 @@ def run_benchmark(
     profiles: list[BenchmarkProfile],
     scenarios: list[dict[str, Any]],
     output_dir: str | Path,
+    rubric: dict[str, Any] | None = None,
     client_factory: Callable[[BenchmarkProfile], Any] | None = None,
 ) -> dict[str, Any]:
     """Run all profiles against all scenarios and return a report dictionary."""
@@ -515,6 +642,7 @@ def run_benchmark(
     out_dir.mkdir(parents=True, exist_ok=True)
     factory = client_factory or _default_client_factory
     started_at = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+    rubric_config = _normalize_rubric(rubric)
 
     run_results: list[RunResult] = []
     for profile in profiles:
@@ -681,6 +809,7 @@ def run_benchmark(
         if status == "ok":
             aggregate = _build_aggregate(
                 scenario_results=scenario_results,
+                tool_traces=recorder.calls,
                 cpu_time_s=cpu_duration,
                 python_peak_mb=round(tracemalloc_peak / (1024.0 * 1024.0), 3),
                 process_rss_delta_mb=max(0.0, round(rss_ended - rss_started, 3)),
@@ -704,6 +833,7 @@ def run_benchmark(
         "finished_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "scenario_count": len(scenarios),
         "run_count": len(run_results),
+        "rubric": rubric_config,
         "runs": [_run_to_dict(run) for run in run_results],
     }
     return report
@@ -712,6 +842,7 @@ def run_benchmark(
 def _build_aggregate(
     *,
     scenario_results: list[ScenarioResult],
+    tool_traces: list[ToolCallTrace],
     cpu_time_s: float,
     python_peak_mb: float,
     process_rss_delta_mb: float,
@@ -738,6 +869,8 @@ def _build_aggregate(
     total_tokens = 0
     max_history_messages = 0
     max_history_chars = 0
+    model_execution_error_count = 0
+    first_turn_latencies: list[float] = []
     for turn in all_turns:
         p, c, t = _token_usage(turn.usage)
         prompt_tokens += p
@@ -745,6 +878,23 @@ def _build_aggregate(
         total_tokens += t
         max_history_messages = max(max_history_messages, turn.history_messages)
         max_history_chars = max(max_history_chars, turn.history_chars)
+        if turn.index == 0:
+            first_turn_latencies.append(turn.latency_ms)
+        if any("Model execution error:" in assertion for assertion in turn.assertions):
+            model_execution_error_count += 1
+
+    tool_latencies = [trace.latency_ms for trace in tool_traces]
+    if len(tool_latencies) >= 2:
+        p95_tool_latency = statistics.quantiles(tool_latencies, n=20)[18]
+    elif tool_latencies:
+        p95_tool_latency = tool_latencies[0]
+    else:
+        p95_tool_latency = 0.0
+    tool_call_error_count = sum(
+        1
+        for trace in tool_traces
+        if trace.error or str(trace.result).strip().lower().startswith("error:")
+    )
 
     tag_totals: dict[str, int] = {}
     tag_passed: dict[str, int] = {}
@@ -759,6 +909,15 @@ def _build_aggregate(
     }
 
     memory_peak_mb = round(max(python_peak_mb, process_rss_delta_mb), 3)
+    total_turn_latency_s = sum(latencies) / 1000.0 if latencies else 0.0
+    scenario_success_per_second = (
+        round(passed_scenarios / total_turn_latency_s, 4)
+        if total_turn_latency_s > 0
+        else 0.0
+    )
+    tokens_per_second = (
+        round(total_tokens / total_turn_latency_s, 3) if total_turn_latency_s > 0 else 0.0
+    )
     return RunAggregate(
         scenario_count=scenario_count,
         scenario_passed=passed_scenarios,
@@ -785,6 +944,24 @@ def _build_aggregate(
         python_peak_mb=python_peak_mb,
         process_rss_delta_mb=process_rss_delta_mb,
         memory_peak_mb=memory_peak_mb,
+        avg_tool_latency_ms=(
+            round(statistics.fmean(tool_latencies), 3) if tool_latencies else 0.0
+        ),
+        p95_tool_latency_ms=round(float(p95_tool_latency), 3),
+        tool_call_error_count=tool_call_error_count,
+        tool_call_error_rate=_percent(tool_call_error_count, max(1, len(tool_traces))),
+        model_execution_error_count=model_execution_error_count,
+        model_execution_error_rate=_percent(
+            model_execution_error_count,
+            max(1, len(all_turns)),
+        ),
+        first_turn_latency_ms=(
+            round(statistics.fmean(first_turn_latencies), 3)
+            if first_turn_latencies
+            else 0.0
+        ),
+        tokens_per_second=tokens_per_second,
+        scenario_success_per_second=scenario_success_per_second,
         tag_success=tag_success,
     )
 
@@ -813,18 +990,94 @@ def write_outputs(report: dict[str, Any], output_dir: str | Path) -> dict[str, s
     return {"results": str(results_path), "leaderboard": str(leaderboard_path)}
 
 
-def _balanced_score(aggregate: dict[str, Any]) -> float:
-    success = float(aggregate.get("task_success_rate", 0.0))
-    tool = float(aggregate.get("tool_selection_accuracy", 0.0))
-    args = float(aggregate.get("argument_accuracy", 0.0))
-    latency = float(aggregate.get("avg_turn_latency_ms", 0.0))
-    memory = float(aggregate.get("memory_peak_mb", 0.0))
-    return round(
-        (success * 60.0) + (tool * 25.0) + (args * 15.0)
-        - min(25.0, latency / 1000.0)
-        - min(25.0, memory / 512.0),
-        3,
+def _tag_metric(aggregate: dict[str, Any], tag: str) -> float:
+    tags = aggregate.get("tag_success") or {}
+    if isinstance(tags, dict):
+        return _coerce_float(tags.get(tag), 0.0)
+    return 0.0
+
+
+def _rubric_metric(aggregate: dict[str, Any], metric: str) -> float:
+    if metric in aggregate:
+        return _coerce_float(aggregate.get(metric), 0.0)
+    tag_map = {
+        "recovery_success_rate": "recovery",
+        "multistep_success_rate": "multistep",
+        "robustness_success_rate": "robustness",
+        "context_success_rate": "context",
+    }
+    if metric in tag_map:
+        return _tag_metric(aggregate, tag_map[metric])
+    return 0.0
+
+
+def _rubric_score(aggregate: dict[str, Any], rubric: dict[str, Any]) -> float:
+    weights = rubric.get("weights") if isinstance(rubric, dict) else {}
+    penalties = rubric.get("penalties") if isinstance(rubric, dict) else {}
+    if not isinstance(weights, dict):
+        weights = {}
+    if not isinstance(penalties, dict):
+        penalties = {}
+
+    weighted_total = 0.0
+    weight_sum = 0.0
+    for metric, raw_weight in weights.items():
+        weight = _coerce_float(raw_weight, 0.0)
+        if weight <= 0.0:
+            continue
+        value = _rubric_metric(aggregate, metric)
+        weighted_total += value * weight
+        weight_sum += weight
+
+    quality_score = (weighted_total / weight_sum) * 100.0 if weight_sum > 0 else 0.0
+    penalty = (
+        _coerce_float(aggregate.get("avg_turn_latency_ms"), 0.0)
+        * _coerce_float(penalties.get("latency_ms_multiplier"), 0.0)
+        + _coerce_float(aggregate.get("memory_peak_mb"), 0.0)
+        * _coerce_float(penalties.get("memory_mb_multiplier"), 0.0)
+        + _coerce_float(aggregate.get("tool_call_error_rate"), 0.0)
+        * _coerce_float(penalties.get("tool_error_rate_multiplier"), 0.0)
+        + _coerce_float(aggregate.get("model_execution_error_rate"), 0.0)
+        * _coerce_float(penalties.get("model_error_rate_multiplier"), 0.0)
     )
+    return round(quality_score - penalty, 3)
+
+
+def _dominates(
+    left: dict[str, Any],
+    right: dict[str, Any],
+    rubric: dict[str, Any],
+) -> bool:
+    left_agg = left["aggregate"]
+    right_agg = right["aggregate"]
+    left_score = _rubric_score(left_agg, rubric)
+    right_score = _rubric_score(right_agg, rubric)
+
+    left_dims = (
+        _coerce_float(left_agg.get("task_success_rate"), 0.0),
+        _coerce_float(left_agg.get("tool_selection_accuracy"), 0.0),
+        _coerce_float(left_agg.get("argument_accuracy"), 0.0),
+        left_score,
+        -_coerce_float(left_agg.get("avg_turn_latency_ms"), 0.0),
+        -_coerce_float(left_agg.get("memory_peak_mb"), 0.0),
+        -_coerce_float(left_agg.get("tool_call_error_rate"), 0.0),
+    )
+    right_dims = (
+        _coerce_float(right_agg.get("task_success_rate"), 0.0),
+        _coerce_float(right_agg.get("tool_selection_accuracy"), 0.0),
+        _coerce_float(right_agg.get("argument_accuracy"), 0.0),
+        right_score,
+        -_coerce_float(right_agg.get("avg_turn_latency_ms"), 0.0),
+        -_coerce_float(right_agg.get("memory_peak_mb"), 0.0),
+        -_coerce_float(right_agg.get("tool_call_error_rate"), 0.0),
+    )
+    at_least_one_better = False
+    for left_value, right_value in zip(left_dims, right_dims):
+        if left_value < right_value:
+            return False
+        if left_value > right_value:
+            at_least_one_better = True
+    return at_least_one_better
 
 
 def build_leaderboard_markdown(report: dict[str, Any]) -> str:
@@ -832,6 +1085,7 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
     runs = [run for run in report.get("runs", []) if run.get("status") == "ok"]
     if not runs:
         return "# Benchmark Leaderboard\n\nNo successful runs."
+    rubric = _normalize_rubric(report.get("rubric"))
 
     quality_rank = sorted(
         runs,
@@ -854,19 +1108,44 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
     )
     balanced_rank = sorted(
         runs,
-        key=lambda run: _balanced_score(run["aggregate"]),
+        key=lambda run: _rubric_score(run["aggregate"], rubric),
+        reverse=True,
+    )
+    efficiency_rank = sorted(
+        runs,
+        key=lambda run: (
+            run["aggregate"]["task_success_rate"],
+            run["aggregate"].get("tokens_per_second", 0.0),
+            -run["aggregate"]["avg_turn_latency_ms"],
+            -run["aggregate"]["memory_peak_mb"],
+        ),
+        reverse=True,
+    )
+    pareto = [
+        run
+        for run in runs
+        if not any(_dominates(other, run, rubric) for other in runs if other is not run)
+    ]
+    pareto = sorted(
+        pareto,
+        key=lambda run: _rubric_score(run["aggregate"], rubric),
         reverse=True,
     )
 
     def row(run: dict[str, Any], include_score: bool = False) -> str:
         agg = run["aggregate"]
-        score = _balanced_score(agg)
+        score = _rubric_score(agg, rubric)
+        recovery = _tag_metric(agg, "recovery")
         base = (
             f"| {run['profile']['name']} | {run['profile']['provider']} | "
-            f"{run['profile']['model']} | {agg['task_success_rate']:.2%} | "
-            f"{agg['tool_selection_accuracy']:.2%} | {agg['argument_accuracy']:.2%} | "
-            f"{agg['avg_turn_latency_ms']:.1f} | {agg['memory_peak_mb']:.1f} | "
-            f"{agg['total_tokens']} |"
+            f"{run['profile']['model']} | {_coerce_float(agg.get('task_success_rate'), 0.0):.2%} | "
+            f"{_coerce_float(agg.get('tool_selection_accuracy'), 0.0):.2%} | "
+            f"{_coerce_float(agg.get('argument_accuracy'), 0.0):.2%} | "
+            f"{recovery:.2%} | {_coerce_float(agg.get('avg_turn_latency_ms'), 0.0):.1f} | "
+            f"{_coerce_float(agg.get('memory_peak_mb'), 0.0):.1f} | "
+            f"{_coerce_float(agg.get('tool_call_error_rate'), 0.0):.2%} | "
+            f"{_coerce_float(agg.get('tokens_per_second'), 0.0):.1f} | "
+            f"{int(_coerce_float(agg.get('total_tokens'), 0.0))} |"
         )
         if include_score:
             base = base + f" {score:.3f} |"
@@ -878,12 +1157,38 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
         f"- Generated: {report.get('finished_at', '')}",
         f"- Runs: {report.get('run_count', 0)}",
         f"- Scenarios: {report.get('scenario_count', 0)}",
+        f"- Rubric version: {rubric.get('version', '')}",
         "",
-        "## Quality Rank",
+        "## Rubric",
         "",
-        "| Run | Provider | Model | Success | Tool Sel | Arg Acc | Avg ms | Mem MB | Tokens |",
-        "|---|---|---|---:|---:|---:|---:|---:|---:|",
+        "| Metric | Weight |",
+        "|---|---:|",
     ]
+    lines.extend(
+        f"| {metric} | {float(weight):.3f} |"
+        for metric, weight in sorted((rubric.get("weights") or {}).items())
+    )
+    lines.extend(
+        [
+            "",
+            "| Penalty | Multiplier |",
+            "|---|---:|",
+        ]
+    )
+    lines.extend(
+        f"| {metric} | {float(weight):.3f} |"
+        for metric, weight in sorted((rubric.get("penalties") or {}).items())
+    )
+
+    lines.extend(
+        [
+            "",
+            "## Quality Rank",
+            "",
+            "| Run | Provider | Model | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens |",
+            "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+        ]
+    )
     lines.extend(row(run) for run in quality_rank)
 
     lines.extend(
@@ -891,8 +1196,8 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             "",
             "## Low-Memory Rank",
             "",
-            "| Run | Provider | Model | Success | Tool Sel | Arg Acc | Avg ms | Mem MB | Tokens |",
-            "|---|---|---|---:|---:|---:|---:|---:|---:|",
+            "| Run | Provider | Model | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens |",
+            "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     lines.extend(row(run) for run in low_mem_rank)
@@ -902,14 +1207,37 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             "",
             "## Balanced Rank",
             "",
-            "| Run | Provider | Model | Success | Tool Sel | Arg Acc | Avg ms | Mem MB | Tokens | Score |",
-            "|---|---|---|---:|---:|---:|---:|---:|---:|---:|",
+            "| Run | Provider | Model | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens | Score |",
+            "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     lines.extend(row(run, include_score=True) for run in balanced_rank)
 
+    lines.extend(
+        [
+            "",
+            "## Efficiency Rank",
+            "",
+            "| Run | Provider | Model | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens |",
+            "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+        ]
+    )
+    lines.extend(row(run) for run in efficiency_rank)
+
+    lines.extend(
+        [
+            "",
+            "## Pareto Frontier (Quality/Latency/Memory)",
+            "",
+            "| Run | Provider | Model | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens | Score |",
+            "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+        ]
+    )
+    lines.extend(row(run, include_score=True) for run in pareto)
+
     best_low_mem = low_mem_rank[0]
     best_quality = quality_rank[0]
+    best_efficiency = efficiency_rank[0]
     lines.extend(
         [
             "",
@@ -919,6 +1247,8 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             f"({best_quality['profile']['model']})",
             f"- Best low-memory option: `{best_low_mem['profile']['name']}` "
             f"({best_low_mem['aggregate']['memory_peak_mb']:.1f} MB peak)",
+            f"- Best throughput option: `{best_efficiency['profile']['name']}` "
+            f"({best_efficiency['aggregate']['tokens_per_second']:.1f} tokens/sec)",
         ]
     )
     return "\n".join(lines) + "\n"
