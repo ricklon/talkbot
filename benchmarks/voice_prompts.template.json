@@ -1,0 +1,76 @@
+[
+  {
+    "id": "date_iso",
+    "category": "date",
+    "text": "The due date is 2026-02-26.",
+    "notes": "Speak naturally; do not over-enunciate symbols.",
+    "expected_variants": ["The due date is February twenty sixth twenty twenty six."]
+  },
+  {
+    "id": "date_us_short",
+    "category": "date",
+    "text": "Meeting is on 03/07/2026.",
+    "expected_variants": ["Meeting is on March seventh twenty twenty six."]
+  },
+  {
+    "id": "time_12h",
+    "category": "time",
+    "text": "The train leaves at 03:05 PM.",
+    "expected_variants": ["The train leaves at three oh five PM."]
+  },
+  {
+    "id": "time_24h",
+    "category": "time",
+    "text": "Maintenance starts at 15:45.",
+    "expected_variants": ["Maintenance starts at fifteen forty five."]
+  },
+  {
+    "id": "year_1905",
+    "category": "year",
+    "text": "The building was completed in 1905.",
+    "expected_variants": ["The building was completed in nineteen oh five."]
+  },
+  {
+    "id": "year_2001",
+    "category": "year",
+    "text": "The mission launched in 2001.",
+    "expected_variants": ["The mission launched in two thousand one."]
+  },
+  {
+    "id": "stem_scientific_notation",
+    "category": "stem",
+    "text": "The concentration is 3.2e-5 molar.",
+    "expected_variants": ["The concentration is three point two times ten to the minus five molar."]
+  },
+  {
+    "id": "stem_units",
+    "category": "stem",
+    "text": "Acceleration is 9.81 m/s^2.",
+    "expected_variants": ["Acceleration is nine point eight one meters per second squared."]
+  },
+  {
+    "id": "stem_expression",
+    "category": "stem",
+    "text": "Solve x squared plus y squared equals z squared.",
+    "expected_variants": ["Solve x two plus y two equals z two."]
+  },
+  {
+    "id": "currency_and_percent",
+    "category": "numeric",
+    "text": "Revenue grew by 12.5% to $4.2 million.",
+    "expected_variants": ["Revenue grew by twelve point five percent to four point two million dollars."]
+  },
+  {
+    "id": "timezone",
+    "category": "time",
+    "text": "Deadline is 17:30 UTC.",
+    "expected_variants": ["Deadline is seventeen thirty UTC."]
+  },
+  {
+    "id": "chemical_formula",
+    "category": "stem",
+    "text": "The sample contains H2SO4.",
+    "expected_variants": ["The sample contains H two S O four."]
+  }
+]
+

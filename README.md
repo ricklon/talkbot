@@ -677,10 +677,13 @@ uv run -- python scripts/benchmark_conversations.py \
 
 Outputs:
 - `results.json`: per-run traces + metrics (`task_success_rate`, tool/arg accuracy, tool error rate, tokens/sec, latency, memory)
-- `leaderboard.md`: rubric-aware quality, low-memory, balanced, efficiency, Pareto, and context-dropoff recommendations
+- `leaderboard.md`: ranking board that tracks best-performing models across local and remote runs (quality, remote rank, latency snapshot, efficiency, and context-dropoff recommendations)
 - One-stop latest mirror (auto-updated): `benchmark_results/results.json` and `benchmark_results/leaderboard.md`
 - Repo-published latest snapshot: `benchmarks/published/latest/results.json` and `benchmarks/published/latest/leaderboard.md`
 - Repo-published run history: `benchmarks/published/runs/<run_name>/...`
+
+If you only check one file for "what model should we use right now?", use:
+- `benchmarks/published/latest/leaderboard.md`
 
 `scripts/benchmark_conversations.py` publishes to `benchmarks/published/` by default.
 Use `--no-publish` to skip, or override destination with `--publish-root`.
@@ -744,6 +747,7 @@ Matrix files can also define benchmark rubric and context-window sweeps:
 Team benchmark values and decision policy are tracked in:
 - `benchmarks/evaluation_values.json`
 - `benchmarks/decision_strategy.md`
+- `benchmarks/voice_recording_guide.md` (how to record spoken benchmark datasets)
 
 That file explicitly defines:
 - Primary goal: prompt-driven tool choice (`llm` mode, no intent routing)
@@ -762,6 +766,17 @@ Included benchmark tracks now cover:
 - `multistep`: chained workflows across multiple turns
 - `context`: retrieval behavior under longer conversational history
 - `robustness`: noisy/edge-case prompts
+
+For spoken-text dataset creation (dates/times/years/STEM), use:
+
+```bash
+uv run -- python scripts/record_voice_benchmark.py \
+  --prompts benchmarks/voice_prompts.template.json \
+  --output-dir benchmarks/voice_dataset/raw \
+  --manifest benchmarks/voice_dataset/manifest.json \
+  --speaker-id speaker_a \
+  --takes 2
+```
 
 Included memory tracks:
 - `memory_persistent_strict`: requires `remember` + `recall` tool calls (capability score)
