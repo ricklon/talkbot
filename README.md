@@ -677,10 +677,13 @@ uv run -- python scripts/benchmark_conversations.py \
 
 Outputs:
 - `results.json`: per-run traces + metrics (`task_success_rate`, tool/arg accuracy, tool error rate, tokens/sec, latency, memory)
-- `leaderboard.md`: rubric-aware quality, low-memory, balanced, efficiency, Pareto, and context-dropoff recommendations
+- `leaderboard.md`: ranking board that tracks best-performing models across local and remote runs (quality, remote rank, latency snapshot, efficiency, and context-dropoff recommendations)
 - One-stop latest mirror (auto-updated): `benchmark_results/results.json` and `benchmark_results/leaderboard.md`
 - Repo-published latest snapshot: `benchmarks/published/latest/results.json` and `benchmarks/published/latest/leaderboard.md`
 - Repo-published run history: `benchmarks/published/runs/<run_name>/...`
+
+If you only check one file for "what model should we use right now?", use:
+- `benchmarks/published/latest/leaderboard.md`
 
 `scripts/benchmark_conversations.py` publishes to `benchmarks/published/` by default.
 Use `--no-publish` to skip, or override destination with `--publish-root`.
