@@ -99,6 +99,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
         help="Print available audio devices and exit",
     )
+    parser.add_argument(
+        "--only",
+        default=None,
+        help="Comma-separated prompt IDs to record (e.g. date_iso,time_24h). "
+             "Removes existing manifest entries for those prompts before recording.",
+    )
     return parser.parse_args(argv)
 
 
@@ -216,6 +222,29 @@ def main(argv: list[str] | None = None) -> int:
 
     output_dir.mkdir(parents=True, exist_ok=True)
     manifest = _load_manifest(manifest_path)
+
+    # Filter prompts if --only specified, and purge old entries from manifest
+    only_ids: set[str] | None = None
+    if args.only:
+        only_ids = {_safe_id(s.strip()) for s in args.only.split(",") if s.strip()}
+        prompts = [p for p in prompts if p.prompt_id in only_ids]
+        if not prompts:
+            print(f"No prompts matched --only ids: {only_ids}", file=sys.stderr)
+            return 1
+        # Remove existing manifest entries for these prompts
+        before = len(manifest.get("entries", []))
+        kept = []
+        for e in manifest.get("entries", []):
+            if e.get("prompt_id") in only_ids:
+                p = Path(e.get("audio_path", ""))
+                if p.exists():
+                    p.unlink()
+            else:
+                kept.append(e)
+        manifest["entries"] = kept
+        purged = before - len(kept)
+        if purged:
+            print(f"Purged {purged} existing entries for: {', '.join(sorted(only_ids))}")
 
     session_id = args.session_id or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     device = _choose_input_device(args.device)
