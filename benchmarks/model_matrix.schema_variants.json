@@ -1,0 +1,105 @@
+{
+  "_comment": "Schema variant A/B experiment (2026-02-27). Tests three description strategies — minimal, standard (enriched), examples — against two model families: qwen3-1.7b-llm (local, immune to schema in prior runs?) and ministral-3b (remote, highly responsive to descriptions). Uses core-13 tool set to keep context fair across all runs.",
+  "benchmark": {
+    "schema_version": "2026.1",
+    "values_file": "benchmarks/evaluation_values.json",
+    "rubric": {
+      "version": "2026.full-suite.v1",
+      "weights": {
+        "task_success_rate": 0.35,
+        "tool_selection_accuracy": 0.2,
+        "argument_accuracy": 0.15,
+        "recovery_success_rate": 0.1,
+        "multistep_success_rate": 0.1,
+        "robustness_success_rate": 0.05,
+        "context_success_rate": 0.05
+      },
+      "penalties": {
+        "latency_ms_multiplier": 0.002,
+        "memory_mb_multiplier": 0.002,
+        "tool_error_rate_multiplier": 20.0,
+        "model_error_rate_multiplier": 30.0
+      }
+    }
+  },
+  "profiles": [
+    {
+      "name": "qwen3-1.7b-schema-minimal",
+      "provider": "local",
+      "model": "qwen/qwen3-1.7b",
+      "local_model_path": "models/qwen3-1.7b-q4_k_m.gguf",
+      "llamacpp_bin": "llama-cli",
+      "enable_thinking": false,
+      "use_tools": true,
+      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+      "max_tokens": 256,
+      "temperature": 0.0,
+      "context_windows": [2048],
+      "tool_schema_variant": "minimal",
+      "tool_filter": ["get_current_time","get_current_date","calculator","set_timer","cancel_timer","list_timers","create_list","add_to_list","get_list","list_all_lists","remember","recall","recall_all"],
+      "env": {"TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "0"}
+    },
+    {
+      "name": "qwen3-1.7b-schema-standard",
+      "provider": "local",
+      "model": "qwen/qwen3-1.7b",
+      "local_model_path": "models/qwen3-1.7b-q4_k_m.gguf",
+      "llamacpp_bin": "llama-cli",
+      "enable_thinking": false,
+      "use_tools": true,
+      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+      "max_tokens": 256,
+      "temperature": 0.0,
+      "context_windows": [2048],
+      "tool_schema_variant": "standard",
+      "tool_filter": ["get_current_time","get_current_date","calculator","set_timer","cancel_timer","list_timers","create_list","add_to_list","get_list","list_all_lists","remember","recall","recall_all"],
+      "env": {"TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "0"}
+    },
+    {
+      "name": "qwen3-1.7b-schema-examples",
+      "provider": "local",
+      "model": "qwen/qwen3-1.7b",
+      "local_model_path": "models/qwen3-1.7b-q4_k_m.gguf",
+      "llamacpp_bin": "llama-cli",
+      "enable_thinking": false,
+      "use_tools": true,
+      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+      "max_tokens": 256,
+      "temperature": 0.0,
+      "context_windows": [2048],
+      "tool_schema_variant": "examples",
+      "tool_filter": ["get_current_time","get_current_date","calculator","set_timer","cancel_timer","list_timers","create_list","add_to_list","get_list","list_all_lists","remember","recall","recall_all"],
+      "env": {"TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "0"}
+    },
+    {
+      "name": "ministral-3b-schema-minimal",
+      "provider": "openrouter",
+      "model": "mistralai/ministral-3b-2512",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0,
+      "tool_schema_variant": "minimal",
+      "tool_filter": ["get_current_time","get_current_date","calculator","set_timer","cancel_timer","list_timers","create_list","add_to_list","get_list","list_all_lists","remember","recall","recall_all"]
+    },
+    {
+      "name": "ministral-3b-schema-standard",
+      "provider": "openrouter",
+      "model": "mistralai/ministral-3b-2512",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0,
+      "tool_schema_variant": "standard",
+      "tool_filter": ["get_current_time","get_current_date","calculator","set_timer","cancel_timer","list_timers","create_list","add_to_list","get_list","list_all_lists","remember","recall","recall_all"]
+    },
+    {
+      "name": "ministral-3b-schema-examples",
+      "provider": "openrouter",
+      "model": "mistralai/ministral-3b-2512",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0,
+      "tool_schema_variant": "examples",
+      "tool_filter": ["get_current_time","get_current_date","calculator","set_timer","cancel_timer","list_timers","create_list","add_to_list","get_list","list_all_lists","remember","recall","recall_all"]
+    }
+  ]
+}

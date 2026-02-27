@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from talkbot.llm import create_llm_client, supports_tools
-from talkbot.tools import TOOL_DEFINITIONS, TOOLS, reset_runtime_state
+from talkbot.tools import TOOL_DEFINITIONS, TOOLS, get_tool_definitions_for_variant, reset_runtime_state
 
 try:
     import resource
@@ -53,6 +53,8 @@ class BenchmarkProfile:
     max_tokens: int = 512
     temperature: float = 0.0
     env: dict[str, str] = field(default_factory=dict)
+    tool_filter: list[str] | None = None  # None = all tools; list = only these tool names
+    tool_schema_variant: str = "standard"  # "standard" | "minimal" | "examples"
 
 
 @dataclass
@@ -423,7 +425,7 @@ def _normalize_scenario(payload: dict[str, Any], source: Path) -> dict[str, Any]
 
 
 def _expand_profile_entry(entry: dict[str, Any]) -> list[BenchmarkProfile]:
-    base = dict(entry)
+    base = {k: v for k, v in entry.items() if not k.startswith("_")}
     context_windows = base.pop("context_windows", None)
     n_ctx = base.pop("n_ctx", None)
 
@@ -534,14 +536,20 @@ def _current_rss_mb() -> float:
     return round(rss / (1024.0 * 1024.0), 3)
 
 
-def _register_traced_tools(client: Any, recorder: ToolRecorder) -> None:
+def _register_traced_tools(
+    client: Any,
+    recorder: ToolRecorder,
+    tool_filter: list[str] | None = None,
+    tool_schema_variant: str = "standard",
+) -> None:
     if hasattr(client, "clear_tools"):
         try:
             client.clear_tools()
         except Exception:
             pass
+    definitions = get_tool_definitions_for_variant(tool_schema_variant, tool_filter)
     for name, func in TOOLS.items():
-        definition = TOOL_DEFINITIONS.get(name)
+        definition = definitions.get(name)
         if not definition:
             continue
         client.register_tool(
@@ -895,7 +903,11 @@ def run_benchmark(
                 with factory(profile) as client:
                     rss_peak = max(rss_peak, _current_rss_mb())
                     if profile.use_tools and supports_tools(client):
-                        _register_traced_tools(client, recorder)
+                        _register_traced_tools(
+                            client, recorder,
+                            tool_filter=profile.tool_filter,
+                            tool_schema_variant=profile.tool_schema_variant,
+                        )
                     elif profile.use_tools:
                         raise RuntimeError("Client does not support tool registration.")
 
