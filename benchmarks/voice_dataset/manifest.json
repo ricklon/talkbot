@@ -1,0 +1,413 @@
+{
+  "schema_version": "2026.voice.v1",
+  "entries": [
+    {
+      "id": "time_12h__take01",
+      "prompt_id": "time_12h",
+      "text": "The train leaves at 03:05 PM.",
+      "category": "time",
+      "notes": "",
+      "expected_variants": [
+        "The train leaves at three oh five PM."
+      ],
+      "speaker_id": "ricklon",
+      "session_id": "20260227T224021Z",
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T224021Z__ricklon__time_12h__take01.wav",
+      "sample_rate_hz": 16000,
+      "channels": 1,
+      "duration_s": 3.9,
+      "recorded_at": "2026-02-27T22:42:27Z"
+    },
+    {
+      "id": "time_12h__take02",
+      "prompt_id": "time_12h",
+      "text": "The train leaves at 03:05 PM.",
+      "category": "time",
+      "notes": "",
+      "expected_variants": [
+        "The train leaves at three oh five PM."
+      ],
+      "speaker_id": "ricklon",
+      "session_id": "20260227T224021Z",
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T224021Z__ricklon__time_12h__take02.wav",
+      "sample_rate_hz": 16000,
+      "channels": 1,
+      "duration_s": 2.522,
+      "recorded_at": "2026-02-27T22:42:37Z"
+    },
+    {
+      "id": "time_24h__take02",
+      "prompt_id": "time_24h",
+      "text": "Maintenance starts at 15:45.",
+      "category": "time",
+      "notes": "",
+      "expected_variants": [
+        "Maintenance starts at fifteen forty five."
+      ],
+      "speaker_id": "ricklon",
+      "session_id": "20260227T225033Z",
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T225033Z__ricklon__time_24h__take02.wav",
+      "sample_rate_hz": 16000,
+      "channels": 1,
+      "duration_s": 2.756,
+      "recorded_at": "2026-02-27T22:51:11Z"
+    },
+    {
+      "id": "year_1905__take01",
+      "prompt_id": "year_1905",
+      "text": "The building was completed in 1905.",
+      "category": "year",
+      "notes": "",
+      "expected_variants": [
+        "The building was completed in nineteen oh five."
+      ],
+      "speaker_id": "ricklon",
+      "session_id": "20260227T225033Z",
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T225033Z__ricklon__year_1905__take01.wav",
+      "sample_rate_hz": 16000,
+      "channels": 1,
+      "duration_s": 3.744,
+      "recorded_at": "2026-02-27T22:51:19Z"
+    },
+    {
+      "id": "year_2001__take01",
+      "prompt_id": "year_2001",
+      "text": "The mission launched in 2001.",
+      "category": "year",
+      "notes": "",
+      "expected_variants": [
+        "The mission launched in two thousand one."
+      ],
+      "speaker_id": "ricklon",
+      "session_id": "20260227T224021Z",
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T224021Z__ricklon__year_2001__take01.wav",
+      "sample_rate_hz": 16000,
+      "channels": 1,
+      "duration_s": 2.444,
+      "recorded_at": "2026-02-27T22:43:11Z"
+    },
+    {
+      "id": "year_2001__take02",
+      "prompt_id": "year_2001",
+      "text": "The mission launched in 2001.",
+      "category": "year",
+      "notes": "",
+      "expected_variants": [
+        "The mission launched in two thousand one."
+      ],
+      "speaker_id": "ricklon",
+      "session_id": "20260227T224021Z",
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T224021Z__ricklon__year_2001__take02.wav",
+      "sample_rate_hz": 16000,
+      "channels": 1,
+      "duration_s": 2.938,
+      "recorded_at": "2026-02-27T22:43:16Z"
+    },
+    {
+      "id": "stem_units__take01",
+      "prompt_id": "stem_units",
+      "text": "Acceleration is 9.81 m/s^2.",
+      "category": "stem",
+      "notes": "",
+      "expected_variants": [
+        "Acceleration is nine point eight one meters per second squared."
+      ],
+      "speaker_id": "ricklon",
+      "session_id": "20260227T224021Z",
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T224021Z__ricklon__stem_units__take01.wav",
+      "sample_rate_hz": 16000,
+      "channels": 1,
+      "duration_s": 4.108,
+      "recorded_at": "2026-02-27T22:45:33Z"
+    },
+    {
+      "id": "stem_units__take02",
+      "prompt_id": "stem_units",
+      "text": "Acceleration is 9.81 m/s^2.",
+      "category": "stem",
+      "notes": "",
+      "expected_variants": [
+        "Acceleration is nine point eight one meters per second squared."
+      ],
+      "speaker_id": "ricklon",
+      "session_id": "20260227T224021Z",
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T224021Z__ricklon__stem_units__take02.wav",
+      "sample_rate_hz": 16000,
+      "channels": 1,
+      "duration_s": 5.59,
+      "recorded_at": "2026-02-27T22:45:40Z"
+    },
+    {
+      "id": "timezone__take01",
+      "prompt_id": "timezone",
+      "text": "Deadline is 17:30 UTC.",
+      "category": "time",
+      "notes": "",
+      "expected_variants": [
+        "Deadline is seventeen thirty UTC."
+      ],
+      "speaker_id": "ricklon",
+      "session_id": "20260227T224021Z",
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T224021Z__ricklon__timezone__take01.wav",
+      "sample_rate_hz": 16000,
+      "channels": 1,
+      "duration_s": 2.808,
+      "recorded_at": "2026-02-27T22:46:36Z"
+    },
+    {
+      "id": "timezone__take02",
+      "prompt_id": "timezone",
+      "text": "Deadline is 17:30 UTC.",
+      "category": "time",
+      "notes": "",
+      "expected_variants": [
+        "Deadline is seventeen thirty UTC."
+      ],
+      "speaker_id": "ricklon",
+      "session_id": "20260227T224021Z",
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T224021Z__ricklon__timezone__take02.wav",
+      "sample_rate_hz": 16000,
+      "channels": 1,
+      "duration_s": 2.704,
+      "recorded_at": "2026-02-27T22:46:41Z"
+    },
+    {
+      "id": "chemical_formula__take01",
+      "prompt_id": "chemical_formula",
+      "text": "The sample contains H2SO4.",
+      "category": "stem",
+      "notes": "",
+      "expected_variants": [
+        "The sample contains H two S O four."
+      ],
+      "speaker_id": "ricklon",
+      "session_id": "20260227T224021Z",
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T224021Z__ricklon__chemical_formula__take01.wav",
+      "sample_rate_hz": 16000,
+      "channels": 1,
+      "duration_s": 2.132,
+      "recorded_at": "2026-02-27T22:46:51Z"
+    },
+    {
+      "id": "chemical_formula__take02",
+      "prompt_id": "chemical_formula",
+      "text": "The sample contains H2SO4.",
+      "category": "stem",
+      "notes": "",
+      "expected_variants": [
+        "The sample contains H two S O four."
+      ],
+      "speaker_id": "ricklon",
+      "session_id": "20260227T224021Z",
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T224021Z__ricklon__chemical_formula__take02.wav",
+      "sample_rate_hz": 16000,
+      "channels": 1,
+      "duration_s": 2.444,
+      "recorded_at": "2026-02-27T22:47:00Z"
+    },
+    {
+      "id": "date_iso__take01",
+      "prompt_id": "date_iso",
+      "text": "The due date is 2026-02-26.",
+      "category": "date",
+      "notes": "Speak naturally; do not over-enunciate symbols.",
+      "expected_variants": [
+        "The due date is February twenty sixth twenty twenty six."
+      ],
+      "speaker_id": "ricklon",
+      "session_id": "20260227T225033Z",
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T225033Z__ricklon__date_iso__take01.wav",
+      "sample_rate_hz": 16000,
+      "channels": 1,
+      "duration_s": 4.81,
+      "recorded_at": "2026-02-27T22:50:45Z"
+    },
+    {
+      "id": "date_iso__take02",
+      "prompt_id": "date_iso",
+      "text": "The due date is 2026-02-26.",
+      "category": "date",
+      "notes": "Speak naturally; do not over-enunciate symbols.",
+      "expected_variants": [
+        "The due date is February twenty sixth twenty twenty six."
+      ],
+      "speaker_id": "ricklon",
+      "session_id": "20260227T225033Z",
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T225033Z__ricklon__date_iso__take02.wav",
+      "sample_rate_hz": 16000,
+      "channels": 1,
+      "duration_s": 3.978,
+      "recorded_at": "2026-02-27T22:50:52Z"
+    },
+    {
+      "id": "time_24h__take01",
+      "prompt_id": "time_24h",
+      "text": "Maintenance starts at 15:45.",
+      "category": "time",
+      "notes": "",
+      "expected_variants": [
+        "Maintenance starts at fifteen forty five."
+      ],
+      "speaker_id": "ricklon",
+      "session_id": "20260227T225033Z",
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T225033Z__ricklon__time_24h__take01.wav",
+      "sample_rate_hz": 16000,
+      "channels": 1,
+      "duration_s": 3.978,
+      "recorded_at": "2026-02-27T22:51:06Z"
+    },
+    {
+      "id": "year_1905__take02",
+      "prompt_id": "year_1905",
+      "text": "The building was completed in 1905.",
+      "category": "year",
+      "notes": "",
+      "expected_variants": [
+        "The building was completed in nineteen oh five."
+      ],
+      "speaker_id": "ricklon",
+      "session_id": "20260227T225033Z",
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T225033Z__ricklon__year_1905__take02.wav",
+      "sample_rate_hz": 16000,
+      "channels": 1,
+      "duration_s": 3.484,
+      "recorded_at": "2026-02-27T22:51:24Z"
+    },
+    {
+      "id": "date_us_short__take01",
+      "prompt_id": "date_us_short",
+      "text": "Meeting is on 03/07/2026.",
+      "category": "date",
+      "notes": "",
+      "expected_variants": [
+        "Meeting is on March seventh twenty twenty six."
+      ],
+      "speaker_id": "ricklon",
+      "session_id": "20260227T230151Z",
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T230151Z__ricklon__date_us_short__take01.wav",
+      "sample_rate_hz": 16000,
+      "channels": 1,
+      "duration_s": 4.082,
+      "recorded_at": "2026-02-27T23:02:01Z"
+    },
+    {
+      "id": "date_us_short__take02",
+      "prompt_id": "date_us_short",
+      "text": "Meeting is on 03/07/2026.",
+      "category": "date",
+      "notes": "",
+      "expected_variants": [
+        "Meeting is on March seventh twenty twenty six."
+      ],
+      "speaker_id": "ricklon",
+      "session_id": "20260227T230151Z",
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T230151Z__ricklon__date_us_short__take02.wav",
+      "sample_rate_hz": 16000,
+      "channels": 1,
+      "duration_s": 2.886,
+      "recorded_at": "2026-02-27T23:02:07Z"
+    },
+    {
+      "id": "currency_and_percent__take01",
+      "prompt_id": "currency_and_percent",
+      "text": "Revenue grew by 12.5% to $4.2 million.",
+      "category": "numeric",
+      "notes": "",
+      "expected_variants": [
+        "Revenue grew by twelve point five percent to four point two million dollars."
+      ],
+      "speaker_id": "ricklon",
+      "session_id": "20260227T230151Z",
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T230151Z__ricklon__currency_and_percent__take01.wav",
+      "sample_rate_hz": 16000,
+      "channels": 1,
+      "duration_s": 7.02,
+      "recorded_at": "2026-02-27T23:02:40Z"
+    },
+    {
+      "id": "currency_and_percent__take02",
+      "prompt_id": "currency_and_percent",
+      "text": "Revenue grew by 12.5% to $4.2 million.",
+      "category": "numeric",
+      "notes": "",
+      "expected_variants": [
+        "Revenue grew by twelve point five percent to four point two million dollars."
+      ],
+      "speaker_id": "ricklon",
+      "session_id": "20260227T230151Z",
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T230151Z__ricklon__currency_and_percent__take02.wav",
+      "sample_rate_hz": 16000,
+      "channels": 1,
+      "duration_s": 5.772,
+      "recorded_at": "2026-02-27T23:02:52Z"
+    },
+    {
+      "id": "stem_scientific_notation__take01",
+      "prompt_id": "stem_scientific_notation",
+      "text": "The concentration is 3.2e-5 molar.",
+      "category": "stem",
+      "notes": "",
+      "expected_variants": [
+        "The concentration is three point two times ten to the minus five molar."
+      ],
+      "speaker_id": "ricklon",
+      "session_id": "20260227T230355Z",
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T230355Z__ricklon__stem_scientific_notation__take01.wav",
+      "sample_rate_hz": 16000,
+      "channels": 1,
+      "duration_s": 4.992,
+      "recorded_at": "2026-02-27T23:04:02Z"
+    },
+    {
+      "id": "stem_scientific_notation__take02",
+      "prompt_id": "stem_scientific_notation",
+      "text": "The concentration is 3.2e-5 molar.",
+      "category": "stem",
+      "notes": "",
+      "expected_variants": [
+        "The concentration is three point two times ten to the minus five molar."
+      ],
+      "speaker_id": "ricklon",
+      "session_id": "20260227T230355Z",
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T230355Z__ricklon__stem_scientific_notation__take02.wav",
+      "sample_rate_hz": 16000,
+      "channels": 1,
+      "duration_s": 5.122,
+      "recorded_at": "2026-02-27T23:04:09Z"
+    },
+    {
+      "id": "stem_expression__take01",
+      "prompt_id": "stem_expression",
+      "text": "Solve x squared plus y squared equals z squared.",
+      "category": "stem",
+      "notes": "",
+      "expected_variants": [
+        "Solve x two plus y two equals z two."
+      ],
+      "speaker_id": "ricklon",
+      "session_id": "20260227T230501Z",
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T230501Z__ricklon__stem_expression__take01.wav",
+      "sample_rate_hz": 16000,
+      "channels": 1,
+      "duration_s": 4.082,
+      "recorded_at": "2026-02-27T23:05:08Z"
+    },
+    {
+      "id": "stem_expression__take02",
+      "prompt_id": "stem_expression",
+      "text": "Solve x squared plus y squared equals z squared.",
+      "category": "stem",
+      "notes": "",
+      "expected_variants": [
+        "Solve x two plus y two equals z two."
+      ],
+      "speaker_id": "ricklon",
+      "session_id": "20260227T230501Z",
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T230501Z__ricklon__stem_expression__take02.wav",
+      "sample_rate_hz": 16000,
+      "channels": 1,
+      "duration_s": 3.77,
+      "recorded_at": "2026-02-27T23:05:14Z"
+    }
+  ]
+}
