@@ -156,6 +156,17 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         default=None,
         help="Optional free-form notes stored in report metadata.",
     )
+    parser.add_argument(
+        "--network-type",
+        default=None,
+        help="Override auto-detected network type (e.g. 'wifi', 'ethernet', 'fiber', 'cellular'). "
+        "Stored in report metadata for latency context. Auto-detected when omitted.",
+    )
+    parser.add_argument(
+        "--no-probe-endpoints",
+        action="store_true",
+        help="Skip TTFB latency probes to remote endpoints before benchmarking.",
+    )
 
     parser.add_argument("--name", default=None, help="Run name for single-profile mode")
     parser.add_argument(
@@ -209,7 +220,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
     resolved_run_name = _resolve_run_name(args)
-    runner_info = detect_runner_info(label=args.runner_label, notes=args.runner_notes)
+    runner_info = detect_runner_info(
+        label=args.runner_label,
+        notes=args.runner_notes,
+        network_type=args.network_type,
+        probe_endpoints=[] if args.no_probe_endpoints else None,
+    )
     scenarios = load_scenarios(args.scenarios)
     rubric: dict | None = None
     context_analysis: dict | None = None

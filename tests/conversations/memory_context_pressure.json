@@ -13,7 +13,7 @@
             "name": "remember"
           }
         ],
-        "response_contains": ["atlas"]
+        "response_regex": "(?i)atlas"
       }
     },
     {
@@ -30,7 +30,7 @@
             "name_any": ["recall", "recall_all"]
           }
         ],
-        "response_contains": ["atlas"]
+        "response_regex": "(?i)atlas"
       }
     }
   ]
