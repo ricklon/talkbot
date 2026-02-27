@@ -36,6 +36,33 @@ OPENROUTER_MODELS = [
     "anthropic/claude-3.5-sonnet",       # #3 balanced score — best tool selection accuracy
 ]
 
+# Curated Ollama models with validated tool-calling status (tested 2026-02-27).
+# Ordered: tool-capable first (best default), then chat-only with tools disabled.
+LOCAL_SERVER_MODELS = [
+    "llama3.2:3b",        # 2GB — native tool_calls, validated ✓
+    "mistral-nemo:latest", # 7GB — best multi-tool reliability, validated ✓
+    "ministral-3b:latest", # 2GB — fast chat, no tool support in Ollama
+]
+
+# Substring → tool support. True=supported, False=not supported, absent=unknown (default ON).
+LOCAL_SERVER_TOOL_SUPPORT: dict[str, bool] = {
+    "llama3.2": True,
+    "llama-3.2": True,
+    "mistral-nemo": True,
+    "ministral-3b": False,   # Ollama: "does not support tools"
+    "gemma3": False,
+    "gemma:": False,
+}
+
+
+def _model_tool_support(model: str) -> bool | None:
+    """Return True/False if model tool support is known, None if unknown."""
+    m = model.lower()
+    for substring, supported in LOCAL_SERVER_TOOL_SUPPORT.items():
+        if substring in m:
+            return supported
+    return None
+
 
 def _default_local_model_path() -> str:
     configured = os.getenv("TALKBOT_LOCAL_MODEL_PATH", "").strip()
@@ -298,6 +325,7 @@ class TalkBotGUI:
             style="Modern.TCombobox",
         )
         self.model_combo.pack(side=tk.LEFT, padx=(10, 20))
+        self.model_combo.bind("<<ComboboxSelected>>", self._on_model_changed)
 
         self.thinking_var = tk.BooleanVar(value=self.enable_thinking)
         self.thinking_btn = tk.Button(
@@ -999,7 +1027,13 @@ class TalkBotGUI:
         )
 
     def _tools_label(self) -> str:
-        return "🔧 Tools: ON" if self.tools_var.get() else "🔧 Tools: OFF"
+        if self.tools_var.get():
+            return "🔧 Tools: ON"
+        model = self.model_var.get()
+        supported = _model_tool_support(model)
+        if supported is False:
+            return "🔧 Tools: OFF (unsupported)"
+        return "🔧 Tools: OFF"
 
     def _tools_bg(self) -> str:
         return ModernStyle.ACCENT if self.tools_var.get() else ModernStyle.BG_TERTIARY
@@ -1008,12 +1042,36 @@ class TalkBotGUI:
         return ModernStyle.BG_PRIMARY if self.tools_var.get() else ModernStyle.TEXT_SECONDARY
 
     def _toggle_tools(self) -> None:
+        model = self.model_var.get()
+        supported = _model_tool_support(model)
+        if supported is False and not self.tools_var.get():
+            # Don't allow enabling tools for known-unsupported models
+            self.status_var.set(f"{model} does not support tool calling in Ollama")
+            return
         self.tools_var.set(not self.tools_var.get())
         self.tools_btn.config(
             text=self._tools_label(), bg=self._tools_bg(), fg=self._tools_fg()
         )
-        if self.tools_var.get() and self.provider_var.get() == "local_server":
-            self.status_var.set("WARNING: Local Server tool calling scored 0% in benchmarks — results may vary")
+
+    def _on_model_changed(self, event=None) -> None:
+        """Called when the model combobox selection changes."""
+        if self.provider_var.get() == "local_server":
+            self._apply_tool_support_for_model(self.model_var.get())
+
+    def _apply_tool_support_for_model(self, model: str) -> None:
+        """Auto-set tools toggle and status based on known tool support for model."""
+        supported = _model_tool_support(model)
+        if supported is False:
+            self.tools_var.set(False)
+            self.tools_btn.config(
+                text=self._tools_label(), bg=self._tools_bg(), fg=self._tools_fg(),
+                cursor="arrow",
+            )
+            self.status_var.set(f"Provider: Local Server | {model}: no tool support")
+        else:
+            self.tools_btn.config(cursor="hand2")
+            label = "validated ✓" if supported is True else "tool support unknown"
+            self.status_var.set(f"Provider: Local Server | {model}: {label}")
 
     def _poll_timers(self) -> None:
         """Update the Timers tab with current active timers every second."""
@@ -1169,15 +1227,18 @@ class TalkBotGUI:
             self.status_var.set("Provider: OpenRouter")
         elif provider == "local_server":
             default_server_model = (os.getenv("TALKBOT_LOCAL_SERVER_MODEL") or "").strip()
-            if default_server_model:
-                self.model_var.set(default_server_model)
-                self.model_combo["values"] = [default_server_model]
-            else:
-                self.model_combo["values"] = []
+            seed_models = LOCAL_SERVER_MODELS[:]
+            if default_server_model and default_server_model not in seed_models:
+                seed_models.insert(0, default_server_model)
+            self.model_combo["values"] = seed_models
+            current = self.model_var.get()
+            if not current or current not in seed_models:
+                first = default_server_model or seed_models[0]
+                self.model_var.set(first)
             self.model_combo.config(state="normal")
             self.local_row.pack_forget()
-            tools_warn = " — WARNING: tool calling not validated" if self.tools_var.get() else ""
-            self.status_var.set(f"Provider: Local Server — fetching models...{tools_warn}")
+            self.status_var.set("Provider: Local Server — fetching models...")
+            self._apply_tool_support_for_model(self.model_var.get())
             threading.Thread(target=self._fetch_local_server_models, daemon=True).start()
         else:  # local
             local_models = self._find_local_models()
@@ -1211,8 +1272,8 @@ class TalkBotGUI:
         if current not in models:
             preferred = (os.getenv("TALKBOT_LOCAL_SERVER_MODEL") or "").strip()
             self.model_var.set(preferred if preferred in models else models[0])
-        tools_warn = " — WARNING: tool calling not validated" if self.tools_var.get() else ""
-        self.status_var.set(f"Provider: Local Server ({len(models)} models){tools_warn}")
+        self.status_var.set(f"Provider: Local Server ({len(models)} models)")
+        self._apply_tool_support_for_model(self.model_var.get())
 
     def _get_system_prompt(self) -> str | None:
         text = self.prompt_text.get("1.0", tk.END).strip()
