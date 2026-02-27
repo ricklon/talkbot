@@ -26,6 +26,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         default=None,
         help="Optional explicit run name under published/runs/<run-name>",
     )
+    parser.add_argument(
+        "--no-update-latest",
+        action="store_true",
+        help="Archive run under runs/ without overwriting published/latest/",
+    )
     return parser.parse_args(argv)
 
 
@@ -35,6 +40,7 @@ def main(argv: list[str] | None = None) -> int:
         source_root=args.source_root,
         published_root=args.published_root,
         run_name=args.run_name,
+        update_latest=not args.no_update_latest,
     )
     print(f"Published root: {paths['published_root']}")
     print(f"Latest leaderboard: {paths['latest_leaderboard']}")

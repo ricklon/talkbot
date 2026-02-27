@@ -5,6 +5,8 @@ import os
 import shutil
 import threading
 import tkinter as tk
+
+import httpx
 from pathlib import Path
 from tkinter import ttk, messagebox
 
@@ -86,13 +88,12 @@ class TalkBotGUI:
         """Initialize the GUI."""
         self.api_key = api_key or os.getenv("OPENROUTER_API_KEY")
         self.provider = os.getenv("TALKBOT_LLM_PROVIDER", "local")
-        default_model = (os.getenv("TALKBOT_DEFAULT_MODEL") or "").strip()
-        if not default_model:
-            default_model = (
-                "mistralai/ministral-3b-2512"
-                if self.provider == "openrouter"
-                else "qwen/qwen3-1.7b"
-            )
+        if self.provider == "local_server":
+            default_model = (os.getenv("TALKBOT_LOCAL_SERVER_MODEL") or "").strip()
+        elif self.provider == "openrouter":
+            default_model = (os.getenv("TALKBOT_DEFAULT_MODEL") or "mistralai/ministral-3b-2512").strip()
+        else:
+            default_model = ""
         self.model = model or default_model
         self.local_model_path = _default_local_model_path()
         self.llamacpp_bin = _default_llamacpp_bin()
@@ -1168,10 +1169,16 @@ class TalkBotGUI:
             self.local_row.pack_forget()
             self.status_var.set("Provider: OpenRouter")
         elif provider == "local_server":
-            self.model_combo["values"] = []
+            default_server_model = (os.getenv("TALKBOT_LOCAL_SERVER_MODEL") or "").strip()
+            if default_server_model:
+                self.model_var.set(default_server_model)
+                self.model_combo["values"] = [default_server_model]
+            else:
+                self.model_combo["values"] = []
             self.model_combo.config(state="normal")
             self.local_row.pack_forget()
-            self.status_var.set("Provider: Local Server (OpenAI API)")
+            self.status_var.set("Provider: Local Server — fetching models...")
+            threading.Thread(target=self._fetch_local_server_models, daemon=True).start()
         else:  # local
             local_models = self._find_local_models()
             self.model_combo["values"] = local_models
@@ -1180,6 +1187,31 @@ class TalkBotGUI:
                 self.model_var.set(local_models[0])
             self.local_row.pack(fill=tk.X, pady=(0, 8), before=self._slider_row_ref)
             self.status_var.set("Provider: Local (non-server)")
+
+    def _fetch_local_server_models(self) -> None:
+        """Fetch model list from an OpenAI-compatible local server (e.g. Ollama)."""
+        try:
+            base = (self.local_server_url or "http://localhost:11434/v1").rstrip("/")
+            r = httpx.get(f"{base}/models", timeout=3.0)
+            r.raise_for_status()
+            data = r.json()
+            models = [m["id"] for m in data.get("data", []) if isinstance(m, dict) and m.get("id")]
+            if models:
+                self.root.after(0, self._apply_local_server_models, models)
+        except Exception:
+            self.root.after(0, lambda: self.status_var.set("Provider: Local Server (OpenAI API)"))
+
+    def _apply_local_server_models(self, models: list[str]) -> None:
+        """Apply fetched model list to the model combobox (called on main thread)."""
+        if self.provider_var.get() != "local_server":
+            return
+        self.model_combo["values"] = models
+        self.model_combo.config(state="readonly")
+        current = self.model_var.get()
+        if current not in models:
+            preferred = (os.getenv("TALKBOT_LOCAL_SERVER_MODEL") or "").strip()
+            self.model_var.set(preferred if preferred in models else models[0])
+        self.status_var.set(f"Provider: Local Server ({len(models)} models)")
 
     def _get_system_prompt(self) -> str | None:
         text = self.prompt_text.get("1.0", tk.END).strip()

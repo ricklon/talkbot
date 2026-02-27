@@ -1,0 +1,48 @@
+{
+  "_comment": "Cross-provider comparison: same Ministral-3B model across openrouter, local (llama-cpp), and local_server (Ollama). Requires: models/ministral-3b-2512-q4_k_m.gguf downloaded and 'ministral-3b' imported into Ollama. Run scripts/setup_ministral.sh first.",
+  "benchmark": {
+    "schema_version": "2026.1",
+    "values_file": "benchmarks/evaluation_values.json",
+    "rubric": {
+      "version": "2026.full-suite.v1",
+      "weights": {
+        "task_success_rate": 0.35,
+        "tool_selection_accuracy": 0.2,
+        "argument_accuracy": 0.15,
+        "recovery_success_rate": 0.1,
+        "multistep_success_rate": 0.1,
+        "robustness_success_rate": 0.05,
+        "context_success_rate": 0.05
+      },
+      "penalties": {
+        "latency_ms_multiplier": 0.002,
+        "memory_mb_multiplier": 0.002,
+        "tool_error_rate_multiplier": 20.0,
+        "model_error_rate_multiplier": 30.0
+      }
+    },
+    "context_analysis": {
+      "near_peak_ratio": 0.95,
+      "dropoff_ratio": 0.9
+    }
+  },
+  "profiles": [
+    {
+      "name": "openrouter-ministral-3b",
+      "provider": "openrouter",
+      "model": "mistralai/ministral-3b-2512",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0
+    },
+    {
+      "name": "ollama-ministral-3b",
+      "provider": "local_server",
+      "model": "ministral-3b",
+      "local_server_url": "http://localhost:11434/v1",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0
+    }
+  ]
+}

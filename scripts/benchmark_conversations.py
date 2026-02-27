@@ -21,6 +21,7 @@ from talkbot.benchmark import (
     load_matrix_config,
     load_scenarios,
     run_benchmark,
+    top_n_per_provider,
     write_outputs,
 )
 from talkbot.benchmark_publish import publish_benchmark_results
@@ -133,6 +134,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--no-publish",
         action="store_true",
         help="Do not publish into <publish-root> after run completion",
+    )
+    parser.add_argument(
+        "--no-update-latest",
+        action="store_true",
+        help="Archive run under runs/ without overwriting published/latest/",
     )
     parser.add_argument(
         "--run-name",
@@ -251,6 +257,7 @@ def main(argv: list[str] | None = None) -> int:
             source_root=publish_source,
             published_root=Path(args.publish_root),
             run_name=resolved_run_name,
+            update_latest=not args.no_update_latest,
         )
 
     print(f"Completed {report['run_count']} run(s) across {report['scenario_count']} scenario(s).")
@@ -263,7 +270,56 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Published Latest Leaderboard: {publish_paths['latest_leaderboard']}")
         print(f"Published Run Leaderboard: {publish_paths['run_leaderboard']}")
         print(f"Published Index: {publish_paths['index']}")
+
+    _print_suggested_defaults(report)
     return 0
+
+
+def _print_suggested_defaults(report: dict) -> None:
+    """Print top-3 per provider and the env vars needed to adopt each as the default."""
+    from talkbot.benchmark import _normalize_rubric, _rubric_score
+
+    top = top_n_per_provider(report, n=3)
+    if not top:
+        return
+
+    rubric = _normalize_rubric(report.get("rubric"))
+
+    def _env_lines(provider: str, model: str) -> list[str]:
+        if provider == "local_server":
+            return [
+                "  TALKBOT_LLM_PROVIDER=local_server",
+                f"  TALKBOT_LOCAL_SERVER_MODEL={model}",
+            ]
+        return [
+            f"  TALKBOT_LLM_PROVIDER={provider}",
+            f"  TALKBOT_DEFAULT_MODEL={model}",
+        ]
+
+    print("\n" + "=" * 60)
+    print("Suggested defaults (top 3 per provider by balanced score)")
+    print("=" * 60)
+    for provider, runs in top.items():
+        print(f"\n  Provider: {provider}")
+        print(f"  {'Rank':<5} {'Run':<40} {'Success':>8} {'Score':>7}")
+        print(f"  {'-'*5} {'-'*40} {'-'*8} {'-'*7}")
+        for rank, run in enumerate(runs, start=1):
+            profile = run.get("profile") or {}
+            agg = run["aggregate"]
+            name = profile.get("name", "")
+            success = agg.get("task_success_rate", 0.0)
+            score = _rubric_score(agg, rubric)
+            print(f"  {rank:<5} {name:<40} {success:>7.1%} {score:>7.3f}")
+
+        best_model = (runs[0].get("profile") or {}).get("model", "")
+        print(f"\n  To set {provider!r} as default (top model: {best_model}):")
+        for line in _env_lines(provider, best_model):
+            print(line)
+        print("  Or append to .env:")
+        for line in _env_lines(provider, best_model):
+            print(f"    echo '{line.strip()}' >> .env")
+
+    print("\n" + "=" * 60 + "\n")
 
 
 if __name__ == "__main__":
