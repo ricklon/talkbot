@@ -53,6 +53,52 @@ def get_current_date() -> str:
     return datetime.date.today().isoformat()
 
 
+def time_until(target: str) -> str:
+    """Calculate how long until a target time and return a natural language duration.
+
+    Args:
+        target: Natural language time description (e.g. "tomorrow at 10am", "3pm", "10:30")
+    """
+    now = datetime.datetime.now().astimezone()
+    target_lower = target.lower().strip()
+
+    base_date = (now.date() + datetime.timedelta(days=1)) if "tomorrow" in target_lower else now.date()
+
+    time_match = re.search(r"(\d{1,2})(?::(\d{2}))?\s*(am|pm)?", target_lower)
+    if not time_match:
+        return f"Could not parse a time from: {target}"
+
+    hour = int(time_match.group(1))
+    minute = int(time_match.group(2) or 0)
+    meridiem = time_match.group(3)
+
+    if meridiem == "pm" and hour != 12:
+        hour += 12
+    elif meridiem == "am" and hour == 12:
+        hour = 0
+
+    target_dt = datetime.datetime.combine(base_date, datetime.time(hour, minute)).astimezone()
+
+    if base_date == now.date() and target_dt <= now:
+        target_dt += datetime.timedelta(days=1)
+
+    delta = target_dt - now
+    total_seconds = int(delta.total_seconds())
+
+    if total_seconds < 0:
+        return "That time has already passed."
+
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+
+    if hours > 0 and minutes > 0:
+        return f"{hours} hour{'s' if hours != 1 else ''} and {minutes} minute{'s' if minutes != 1 else ''}"
+    elif hours > 0:
+        return f"{hours} hour{'s' if hours != 1 else ''}"
+    else:
+        return f"{minutes} minute{'s' if minutes != 1 else ''}"
+
+
 # ---------------------------------------------------------------------------
 # Calculator
 # ---------------------------------------------------------------------------
@@ -613,6 +659,19 @@ TOOL_DEFINITIONS = {
         "description": "Get the current date",
         "parameters": {"type": "object", "properties": {}, "required": []},
     },
+    "time_until": {
+        "description": "Calculate how long until a future time. Use when asked 'how long until', 'how much time until', 'when is', or similar duration questions.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "target": {
+                    "type": "string",
+                    "description": "The target time in natural language (e.g. 'tomorrow at 10am', '3pm', '10:30am')",
+                }
+            },
+            "required": ["target"],
+        },
+    },
     "calculator": {
         "description": "Calculate a mathematical expression. Supports: +, -, *, /, sqrt(), pow(), sin(), cos(), tan(), log(), log10(), exp(), pi, e",
         "parameters": {
@@ -762,14 +821,14 @@ TOOL_DEFINITIONS = {
         },
     },
     "add_items_to_list": {
-        "description": "Add multiple items to a named list at once. Use when the user names more than one item.",
+        "description": "Add multiple items to a named list at once. Use when the user names more than one item. REQUIRED: items must always be provided as an array of strings.",
         "parameters": {
             "type": "object",
             "properties": {
                 "items": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Items to add (e.g. [\"lettuce\", \"tomato\", \"onion\"])",
+                    "description": "Items to add — REQUIRED, must be a non-empty array (e.g. [\"lettuce\", \"tomato\", \"onion\"])",
                 },
                 "list_name": {
                     "type": "string",
@@ -868,6 +927,7 @@ TOOL_DEFINITIONS = {
 TOOLS = {
     "get_current_time": get_current_time,
     "get_current_date": get_current_date,
+    "time_until": time_until,
     "calculator": calculator,
     "roll_dice": roll_dice,
     "flip_coin": flip_coin,
