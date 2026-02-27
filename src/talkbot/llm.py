@@ -1236,10 +1236,11 @@ def create_llm_client(
             or os.getenv("TALKBOT_LOCAL_SERVER_URL")
             or "http://127.0.0.1:8000/v1"
         )
-        server_model = (os.getenv("TALKBOT_LOCAL_SERVER_MODEL") or "").strip()
+        # Explicit model param wins (GUI selection); fall back to env var, then local path
+        server_model = model or (os.getenv("TALKBOT_LOCAL_SERVER_MODEL") or "").strip()
         if not server_model:
             local_path = local_model_path or os.getenv("TALKBOT_LOCAL_MODEL_PATH", "")
-            server_model = local_path.strip() or model
+            server_model = local_path.strip()
         return LocalServerClient(
             model=server_model,
             base_url=server_url,

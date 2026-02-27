@@ -41,10 +41,12 @@ def _default_provider() -> str:
 
 
 def _default_model() -> str:
+    provider = _default_provider()
+    if provider == "local_server":
+        return (os.getenv("TALKBOT_LOCAL_SERVER_MODEL") or "").strip()
     configured = os.getenv("TALKBOT_DEFAULT_MODEL", "").strip()
     if configured:
         return configured
-    provider = _default_provider()
     if provider == "openrouter":
         return "mistralai/ministral-3b-2512"
     return "qwen/qwen3-1.7b"

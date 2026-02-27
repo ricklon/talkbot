@@ -1,0 +1,91 @@
+{
+  "_comment": "Benchmark of all locally installed Ollama models via local_server provider. Run 'ollama list' to confirm models are available before running.",
+  "benchmark": {
+    "schema_version": "2026.1",
+    "values_file": "benchmarks/evaluation_values.json",
+    "rubric": {
+      "version": "2026.full-suite.v1",
+      "weights": {
+        "task_success_rate": 0.35,
+        "tool_selection_accuracy": 0.2,
+        "argument_accuracy": 0.15,
+        "recovery_success_rate": 0.1,
+        "multistep_success_rate": 0.1,
+        "robustness_success_rate": 0.05,
+        "context_success_rate": 0.05
+      },
+      "penalties": {
+        "latency_ms_multiplier": 0.002,
+        "memory_mb_multiplier": 0.002,
+        "tool_error_rate_multiplier": 20.0,
+        "model_error_rate_multiplier": 30.0
+      }
+    },
+    "context_analysis": {
+      "near_peak_ratio": 0.95,
+      "dropoff_ratio": 0.9
+    }
+  },
+  "profiles": [
+    {
+      "name": "ollama-gemma3-4b",
+      "provider": "local_server",
+      "model": "gemma3:4b",
+      "local_server_url": "http://localhost:11434/v1",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0,
+      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only."
+    },
+    {
+      "name": "ollama-phi4-mini",
+      "provider": "local_server",
+      "model": "phi4-mini:latest",
+      "local_server_url": "http://localhost:11434/v1",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0,
+      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only."
+    },
+    {
+      "name": "ollama-llama3.2-3b",
+      "provider": "local_server",
+      "model": "llama3.2:3b",
+      "local_server_url": "http://localhost:11434/v1",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0,
+      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only."
+    },
+    {
+      "name": "ollama-deepseek-r1-1.5b",
+      "provider": "local_server",
+      "model": "deepseek-r1:1.5b",
+      "local_server_url": "http://localhost:11434/v1",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0,
+      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only."
+    },
+    {
+      "name": "ollama-mistral-nemo-12b",
+      "provider": "local_server",
+      "model": "mistral-nemo:latest",
+      "local_server_url": "http://localhost:11434/v1",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0,
+      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only."
+    },
+    {
+      "name": "ollama-ministral-3b",
+      "provider": "local_server",
+      "model": "ministral-3b",
+      "local_server_url": "http://localhost:11434/v1",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0,
+      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only."
+    }
+  ]
+}

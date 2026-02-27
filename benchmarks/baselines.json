@@ -1,0 +1,46 @@
+{
+  "version": "1",
+  "description": "Minimum acceptable metric floors for known-good profiles. Derived from full_all-with-smalltoolcall-20260226-184414. Floors are ~10-15% below observed values, rounded to nearest 5%.",
+  "profiles": {
+    "openrouter-ministral-3b-2512": {
+      "source_run": "full_all-with-smalltoolcall-20260226-184414",
+      "metrics": {
+        "task_success_rate": 0.57,
+        "tool_selection_accuracy": 0.85,
+        "argument_accuracy": 0.90
+      }
+    },
+    "local-qwen3-1.7b-llm-ctx2048": {
+      "source_run": "full_all-with-smalltoolcall-20260226-184414",
+      "metrics": {
+        "task_success_rate": 0.75,
+        "tool_selection_accuracy": 0.80,
+        "argument_accuracy": 0.90
+      }
+    },
+    "openrouter-claude-3.5-sonnet": {
+      "source_run": "full_all-with-smalltoolcall-20260226-184414",
+      "metrics": {
+        "task_success_rate": 0.60,
+        "tool_selection_accuracy": 0.85,
+        "argument_accuracy": 0.90
+      }
+    },
+    "openrouter-gpt-4o-mini": {
+      "source_run": "full_all-with-smalltoolcall-20260226-184414",
+      "metrics": {
+        "task_success_rate": 0.45,
+        "tool_selection_accuracy": 0.80,
+        "argument_accuracy": 0.90
+      }
+    },
+    "local-qwen3-8b-llm-ctx4096": {
+      "source_run": "full_all-with-smalltoolcall-20260226-184414",
+      "metrics": {
+        "task_success_rate": 0.45,
+        "tool_selection_accuracy": 0.65,
+        "argument_accuracy": 0.90
+      }
+    }
+  }
+}

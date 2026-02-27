@@ -202,6 +202,17 @@
 | local/qwen/qwen3-1.7b (qwen3-1.7b-q4_k_m.gguf) | 2048, 4096 | 73.000 @ 2048 | 67.868 | 2048 | none | 78.57% | 1238.6 | 891.2 |
 | local/qwen/qwen3-8b (qwen3-8b-q4_k_m.gguf) | 4096, 8192 | 69.167 @ 4096 | 57.915 | 4096 | none | 64.29% | 2764.3 | 1993.6 |
 
+## Top 3 Per Provider
+
+| Provider | Rank | Run | Model | Success | Score |
+|---|---:|---|---|---:|---:|
+| local | 1 | local-qwen3-1.7b-llm-ctx2048 | qwen/qwen3-1.7b | 85.71% | 76.703 |
+| local | 2 | local-qwen3-1.7b-llm-ctx4096 | qwen/qwen3-1.7b | 85.71% | 76.531 |
+| local | 3 | local-qwen3-8b-intent-ctx4096 | qwen/qwen3-8b | 71.43% | 66.749 |
+| openrouter | 1 | openrouter-ministral-3b-2512 | mistralai/ministral-3b-2512 | 71.43% | 71.269 |
+| openrouter | 2 | openrouter-gemini-2.5-flash-lite | google/gemini-2.5-flash-lite | 42.86% | 55.453 |
+| openrouter | 3 | openrouter-claude-3.5-sonnet | anthropic/claude-3.5-sonnet | 71.43% | 54.182 |
+
 ## Recommendations
 
 - Best overall quality: `local-qwen3-1.7b-llm-ctx2048` (qwen/qwen3-1.7b)
