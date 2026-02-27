@@ -31,12 +31,9 @@ from talkbot.ui.tabs.lists_tab import create_lists_tab
 from talkbot.ui.tabs.prompt_tab import create_prompt_tab
 
 OPENROUTER_MODELS = [
-    "mistralai/ministral-3b-2512",
-    "google/gemini-2.5-flash-lite",
-    "google/gemini-2.0-flash-lite-001",
-    "mistralai/mistral-small-3.1-24b-instruct:free",
-    "qwen/qwen3-8b",
-    "qwen/qwen3-4b:free",
+    "mistralai/ministral-3b-2512",       # #1 balanced score — fast, cheap, reliable tool use
+    "google/gemini-2.5-flash-lite",      # #2 balanced score — fastest remote latency
+    "anthropic/claude-3.5-sonnet",       # #3 balanced score — best tool selection accuracy
 ]
 
 

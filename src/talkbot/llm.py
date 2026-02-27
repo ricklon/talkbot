@@ -186,7 +186,7 @@ class LocalLlamaCppClient:
         binary: str = "llama-cli",
         n_ctx: int = 2048,
         enable_thinking: bool = False,
-        temperature: float = 0.7,
+        temperature: float = 0.3,
         max_tokens: int = 512,
     ) -> None:
         import datetime as _dt
@@ -365,7 +365,7 @@ class LocalLlamaCppClient:
     def chat_completion(
         self,
         messages: list[dict],
-        temperature: float = 0.7,
+        temperature: float = 0.3,
         max_tokens: Optional[int] = None,
         stream: bool = False,
     ) -> dict:
@@ -417,7 +417,7 @@ class LocalLlamaCppClient:
     def chat_with_tools(
         self,
         messages: list[dict],
-        temperature: float = 0.7,
+        temperature: float = 0.3,
         max_tokens: Optional[int] = None,
         max_tool_calls: int = 10,
     ) -> str:
@@ -929,7 +929,7 @@ class LocalServerClient:
     def chat_completion(
         self,
         messages: list[dict],
-        temperature: float = 0.7,
+        temperature: float = 0.3,
         max_tokens: Optional[int] = None,
         stream: bool = False,
         include_tools: bool = True,
@@ -964,7 +964,7 @@ class LocalServerClient:
     def chat_with_tools(
         self,
         messages: list[dict],
-        temperature: float = 0.7,
+        temperature: float = 0.3,
         max_tokens: Optional[int] = None,
         max_tool_calls: int = 10,
     ) -> str:
@@ -1201,11 +1201,20 @@ def create_llm_client(
             if default_path.exists():
                 local_path = str(default_path)
         if local_path:
-            try:
-                n_ctx = int(os.getenv("TALKBOT_LOCAL_N_CTX", "2048"))
-            except ValueError:
-                n_ctx = 2048
-            n_ctx = max(512, n_ctx)
+            _env_n_ctx = os.getenv("TALKBOT_LOCAL_N_CTX", "").strip()
+            if _env_n_ctx:
+                try:
+                    n_ctx = max(512, int(_env_n_ctx))
+                except ValueError:
+                    n_ctx = 2048
+            else:
+                # Auto-select based on model size detected from path.
+                # Benchmark sweep: qwen3-1.7b peaks at 2048, qwen3-8b at 4096.
+                _path_lower = local_path.lower()
+                if any(t in _path_lower for t in ("8b", "13b", "14b", "32b", "70b")):
+                    n_ctx = 4096
+                else:
+                    n_ctx = 2048
             return LocalLlamaCppClient(
                 model_path=local_path,
                 binary=llamacpp_bin or os.getenv("TALKBOT_LLAMACPP_BIN", "llama-cli"),

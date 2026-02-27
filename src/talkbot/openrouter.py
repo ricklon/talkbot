@@ -165,7 +165,7 @@ class OpenRouterClient:
     def chat_completion(
         self,
         messages: list[dict],
-        temperature: float = 0.7,
+        temperature: float = 0.3,
         max_tokens: Optional[int] = None,
         stream: bool = False,
     ) -> dict:
@@ -463,7 +463,7 @@ class OpenRouterClient:
     def chat_with_tools(
         self,
         messages: list[dict],
-        temperature: float = 0.7,
+        temperature: float = 0.3,
         max_tokens: Optional[int] = None,
         max_tool_calls: int = 10,
     ) -> str:
