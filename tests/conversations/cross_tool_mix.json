@@ -1,0 +1,42 @@
+{
+  "id": "cross_tool_mix",
+  "name": "Cross-Tool Mix: Time, Timer, List",
+  "description": "Model should call different tool categories across turns: utility (time), timer (set), and list (add). Tests multi-tool breadth in a single conversation.",
+  "tags": ["utility", "tools", "multistep", "core"],
+  "reset_state": true,
+  "turns": [
+    {
+      "user": "What time is it?",
+      "expect": {
+        "tool_calls": [
+          {
+            "name": "get_current_time"
+          }
+        ]
+      }
+    },
+    {
+      "user": "Set a timer for 5 minutes.",
+      "expect": {
+        "tool_calls": [
+          {
+            "name": "set_timer",
+            "args_contains": {
+              "seconds": 300
+            }
+          }
+        ]
+      }
+    },
+    {
+      "user": "Add 'check the timer' to my reminders list.",
+      "expect": {
+        "tool_calls": [
+          {
+            "name": "add_to_list"
+          }
+        ]
+      }
+    }
+  ]
+}

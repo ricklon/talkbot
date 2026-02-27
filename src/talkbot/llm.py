@@ -1010,7 +1010,11 @@ class LocalServerClient:
             if not message:
                 return _response_content(response)
             content = _response_content(response)
-            tool_calls = message.get("tool_calls") or self._extract_tag_tool_calls(content)
+            tool_calls = (
+                message.get("tool_calls")
+                or self._extract_tag_tool_calls(content)
+                or self._extract_bracket_tool_calls(content)
+            )
             # Fallback: bare tool name (e.g. "list_timers" or "list_timers()")
             if not tool_calls:
                 name_candidate = content.strip().rstrip("()")
@@ -1083,10 +1087,54 @@ class LocalServerClient:
         # the accumulated tool results instead of the raw function-call text.
         if executed_tool_summaries and (
             self._extract_python_style_tool_calls(final_text)
+            or self._extract_bracket_tool_calls(final_text)
             or final_text.strip().rstrip("()") in self.tools
         ):
             return "\n".join(s.split(" -> ", 1)[-1] for s in executed_tool_summaries)
         return final_text
+
+    @staticmethod
+    def _extract_bracket_tool_calls(content: str) -> list[dict]:
+        """Fallback parser for Mistral-family models via Ollama that emit [TOOL_CALLS] prefix text.
+
+        Handles formats that Ollama passes through as plain content instead of structured
+        tool_calls objects:
+            [TOOL_CALLS][{"name": "fn", "arguments": {...}}]
+            [TOOL_CALLS] {"name": "fn", "arguments": {...}}
+            [TOOL_CALLS] [{"name": "fn", "arguments": {...}}, ...]
+        """
+        if not content or "[TOOL_CALLS]" not in content:
+            return []
+        tool_calls: list[dict] = []
+        decoder = json.JSONDecoder()
+        for idx, match in enumerate(re.finditer(r"\[TOOL_CALLS\]\s*", content)):
+            remainder = content[match.end():]
+            if not remainder or remainder[0] not in ("[", "{"):
+                continue
+            try:
+                obj, _ = decoder.raw_decode(remainder)
+            except (json.JSONDecodeError, ValueError):
+                continue
+            calls = obj if isinstance(obj, list) else [obj]
+            for call_idx, call in enumerate(calls):
+                if not isinstance(call, dict):
+                    continue
+                name = str(call.get("name", "")).strip()
+                if not name:
+                    continue
+                args = call.get("arguments", {})
+                if not isinstance(args, dict):
+                    args = {}
+                tool_calls.append(
+                    {
+                        "id": f"bracket-{idx}-{call_idx}",
+                        "function": {
+                            "name": name,
+                            "arguments": json.dumps(args),
+                        },
+                    }
+                )
+        return tool_calls
 
     def _extract_python_style_tool_calls(self, content: str) -> list[dict]:
         """Fallback for models that output tool calls as Python-style calls: name(k="v", ...)."""

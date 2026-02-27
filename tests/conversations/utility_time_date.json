@@ -1,0 +1,29 @@
+{
+  "id": "utility_time_date",
+  "name": "Utility: Date and Time",
+  "description": "Model should call get_current_date then get_current_time for separate date/time queries. Date is asked first so its result (date only) gives no shortcut for the subsequent time question, and vice versa.",
+  "tags": ["utility", "tools", "core"],
+  "reset_state": true,
+  "turns": [
+    {
+      "user": "What's today's date?",
+      "expect": {
+        "tool_calls": [
+          {
+            "name": "get_current_date"
+          }
+        ]
+      }
+    },
+    {
+      "user": "And what time is it right now?",
+      "expect": {
+        "tool_calls": [
+          {
+            "name": "get_current_time"
+          }
+        ]
+      }
+    }
+  ]
+}

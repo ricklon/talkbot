@@ -1,37 +1,30 @@
 {
   "id": "recovery_timer_retry",
-  "name": "Recovery: Timer Retry",
-  "description": "Model should recover after an invalid timer request by retrying with valid arguments.",
+  "name": "Recovery: Cancel Nonexistent Timer",
+  "description": "Model should handle a cancel request for a timer ID that was never set, read the error result, and respond sensibly. Tests genuine unexpected failure recovery.",
   "tags": ["timers", "tools", "recovery", "robustness"],
   "reset_state": true,
   "turns": [
     {
-      "user": "Set a timer for 0 seconds.",
+      "user": "Cancel timer 99.",
       "expect": {
         "tool_calls": [
           {
-            "name": "set_timer",
-            "args_contains": {
-              "seconds": 0
-            }
+            "name_any": ["cancel_timer", "list_timers"]
           }
         ],
         "min_tool_calls": 1,
-        "response_regex": "(?i)(error|timer\\s*#|successfully set)"
+        "response_regex": "(?i)(no timer|not found|couldn.t find|doesn.t exist|no active|timer 99|couldn.t cancel|unable to cancel|there is no)"
       }
     },
     {
-      "user": "Retry that timer with 6 seconds.",
+      "user": "List my timers so I can see what's actually running.",
       "expect": {
         "tool_calls": [
           {
-            "name": "set_timer",
-            "args_contains": {
-              "seconds": 6
-            }
+            "name": "list_timers"
           }
-        ],
-        "response_regex": "(?i)(timer\\s*#|successfully set|will fire in 6)"
+        ]
       }
     }
   ]
