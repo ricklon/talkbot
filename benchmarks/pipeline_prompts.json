@@ -1,0 +1,110 @@
+[
+  {
+    "id": "tool_current_time",
+    "category": "tool_time",
+    "text": "What time is it right now?",
+    "requires_tool": "get_current_time",
+    "expected_answer_contains": [":"],
+    "expected_tts_spoken_form": "e.g. three forty five PM",
+    "notes": "Answer varies; verify tool was called and time is spoken naturally."
+  },
+  {
+    "id": "tool_current_date",
+    "category": "tool_date",
+    "text": "What is today's date?",
+    "requires_tool": "get_current_date",
+    "expected_answer_contains": ["2026"],
+    "expected_tts_spoken_form": "e.g. February twenty seventh twenty twenty six",
+    "notes": "Verify TTS speaks month name, not numeric month."
+  },
+  {
+    "id": "tool_math_divide",
+    "category": "tool_calculator",
+    "text": "What is 144 divided by 12?",
+    "requires_tool": "calculator",
+    "expected_answer_contains": ["12"],
+    "expected_tts_spoken_form": "twelve",
+    "notes": "Simple division. Verify calculator tool called, answer is 12."
+  },
+  {
+    "id": "tool_math_percent",
+    "category": "tool_calculator",
+    "text": "What is 15 percent of 200?",
+    "requires_tool": "calculator",
+    "expected_answer_contains": ["30"],
+    "expected_tts_spoken_form": "thirty",
+    "notes": "Verify calculator used, not LLM hallucination."
+  },
+  {
+    "id": "tool_time_until",
+    "category": "tool_time",
+    "text": "How long until midnight?",
+    "requires_tool": "time_until",
+    "expected_answer_contains": ["hour", "minute"],
+    "expected_tts_spoken_form": "e.g. four hours and twelve minutes",
+    "notes": "Answer varies. Verify duration is spoken naturally."
+  },
+  {
+    "id": "llm_history_apollo",
+    "category": "llm_history",
+    "text": "What year did the Apollo 11 moon landing happen?",
+    "requires_tool": null,
+    "expected_answer_contains": ["1969"],
+    "expected_tts_spoken_form": "nineteen sixty nine",
+    "notes": "Tests LLM recall and TTS handling of a 4-digit year."
+  },
+  {
+    "id": "llm_history_ww2",
+    "category": "llm_history",
+    "text": "What year did World War Two end?",
+    "requires_tool": null,
+    "expected_answer_contains": ["1945"],
+    "expected_tts_spoken_form": "nineteen forty five",
+    "notes": "Tests year spoken as pair-of-pairs, not 'one thousand nine hundred'."
+  },
+  {
+    "id": "llm_science_formula",
+    "category": "llm_science",
+    "text": "What is the chemical formula for water?",
+    "requires_tool": null,
+    "expected_answer_contains": ["water", "hydrogen", "oxygen"],
+    "expected_tts_spoken_form": "H two O",
+    "notes": "Tests TTS speaking chemical formula correctly."
+  },
+  {
+    "id": "llm_science_speed_of_light",
+    "category": "llm_science",
+    "text": "What is the speed of light in meters per second?",
+    "requires_tool": null,
+    "expected_answer_contains": ["299", "792", "458"],
+    "expected_tts_spoken_form": "approximately three times ten to the eighth meters per second",
+    "notes": "Tests TTS with large number and scientific notation."
+  },
+  {
+    "id": "llm_conversion_seconds",
+    "category": "llm_conversion",
+    "text": "How many seconds are in an hour?",
+    "requires_tool": null,
+    "expected_answer_contains": ["3600"],
+    "expected_tts_spoken_form": "three thousand six hundred",
+    "notes": "Tests TTS speaking a 4-digit number correctly."
+  },
+  {
+    "id": "llm_acronym_dna",
+    "category": "llm_science",
+    "text": "What does DNA stand for?",
+    "requires_tool": null,
+    "expected_answer_contains": ["deoxyribonucleic", "Deoxyribonucleic"],
+    "expected_tts_spoken_form": "deoxyribonucleic acid",
+    "notes": "Tests STT picking up acronym and TTS speaking a long scientific word."
+  },
+  {
+    "id": "llm_math_pi",
+    "category": "llm_math",
+    "text": "What is pi to two decimal places?",
+    "requires_tool": null,
+    "expected_answer_contains": ["3.14"],
+    "expected_tts_spoken_form": "three point one four",
+    "notes": "Tests TTS speaking a decimal number correctly."
+  }
+]
