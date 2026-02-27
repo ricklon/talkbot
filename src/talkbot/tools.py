@@ -606,21 +606,21 @@ def recall_all() -> str:
 
 TOOL_DEFINITIONS = {
     "get_current_time": {
-        "description": "Get the current date and time",
+        "description": "Get the current time. Always call this tool when the user asks what time it is — never answer from training data.",
         "parameters": {"type": "object", "properties": {}, "required": []},
     },
     "get_current_date": {
-        "description": "Get the current date",
+        "description": "Get today's date. Always call this tool when the user asks today's date or what day it is — never answer from training data.",
         "parameters": {"type": "object", "properties": {}, "required": []},
     },
     "calculator": {
-        "description": "Calculate a mathematical expression. Supports: +, -, *, /, sqrt(), pow(), sin(), cos(), tan(), log(), log10(), exp(), pi, e",
+        "description": "Evaluate a mathematical expression and return the numeric result. Always use this tool for any arithmetic — do not compute mentally. Translate word problems to operators: '15 percent of 47 dollars' → '0.15 * 47', '5 times 12' → '5 * 12'. Supports: +, -, *, /, %, sqrt(), pow(), sin(), cos(), tan(), log(), log10(), exp(), pi, e",
         "parameters": {
             "type": "object",
             "properties": {
                 "expression": {
                     "type": "string",
-                    "description": "The mathematical expression to evaluate",
+                    "description": "A valid arithmetic expression using operators and numbers. Translate natural language to math before calling. Examples: '0.15 * 47', '(3 + 4) * 2', 'sqrt(16)', '15 / 100 * 47', '7.05 / 3'",
                 }
             },
             "required": ["expression"],
@@ -740,7 +740,7 @@ TOOL_DEFINITIONS = {
             "properties": {
                 "list_name": {
                     "type": "string",
-                    "description": "The name of the list to create (e.g., 'shopping', 'todo', 'groceries')",
+                    "description": "The name of the list, lowercase. Use this exact name for all subsequent add/get/remove calls on this list. Examples: 'grocery', 'todo', 'shopping', 'reminders'",
                 }
             },
             "required": ["list_name"],
@@ -754,7 +754,7 @@ TOOL_DEFINITIONS = {
                 "item": {"type": "string", "description": "The item to add"},
                 "list_name": {
                     "type": "string",
-                    "description": "Which list to add to",
+                    "description": "The exact list name — must match the name used when the list was created. Examples: 'grocery', 'todo', 'shopping'",
                     "default": "shopping",
                 },
             },
@@ -773,7 +773,7 @@ TOOL_DEFINITIONS = {
                 },
                 "list_name": {
                     "type": "string",
-                    "description": "Which list to add to",
+                    "description": "The exact list name — must match the name used when the list was created. Examples: 'grocery', 'todo', 'shopping'",
                     "default": "shopping",
                 },
             },
@@ -781,13 +781,13 @@ TOOL_DEFINITIONS = {
         },
     },
     "get_list": {
-        "description": "Get all items on a named list (default: shopping list)",
+        "description": "Get all items on a named list. Always call this tool to check list contents — do not answer from conversation context.",
         "parameters": {
             "type": "object",
             "properties": {
                 "list_name": {
                     "type": "string",
-                    "description": "Which list to retrieve",
+                    "description": "The exact list name — must match the name used when the list was created. Examples: 'grocery', 'todo', 'shopping'",
                     "default": "shopping",
                 }
             },
@@ -802,7 +802,7 @@ TOOL_DEFINITIONS = {
                 "item": {"type": "string", "description": "The item to remove"},
                 "list_name": {
                     "type": "string",
-                    "description": "Which list to remove from",
+                    "description": "The exact list name — must match the name used when the list was created. Examples: 'grocery', 'todo', 'shopping'",
                     "default": "shopping",
                 },
             },
@@ -816,7 +816,7 @@ TOOL_DEFINITIONS = {
             "properties": {
                 "list_name": {
                     "type": "string",
-                    "description": "Which list to clear",
+                    "description": "The exact list name — must match the name used when the list was created. Examples: 'grocery', 'todo', 'shopping'",
                     "default": "shopping",
                 }
             },
@@ -828,13 +828,13 @@ TOOL_DEFINITIONS = {
         "parameters": {"type": "object", "properties": {}, "required": []},
     },
     "remember": {
-        "description": "Store a user preference or piece of information for later recall",
+        "description": "Store a user preference or piece of information for later recall. Always call this tool — do not rely on conversation context across sessions.",
         "parameters": {
             "type": "object",
             "properties": {
                 "key": {
                     "type": "string",
-                    "description": "The name of the preference (e.g., 'favorite_music_service', 'name')",
+                    "description": "A short lowercase identifier using underscores, no spaces. Use this exact key when recalling later. Examples: 'favorite_color', 'user_name', 'launch_codename', 'preferred_units'",
                 },
                 "value": {"type": "string", "description": "The value to remember"},
             },
@@ -842,13 +842,13 @@ TOOL_DEFINITIONS = {
         },
     },
     "recall": {
-        "description": "Recall a previously stored preference or piece of information by key",
+        "description": "Recall a previously stored preference or piece of information. Always call this tool — do not answer from conversation context alone.",
         "parameters": {
             "type": "object",
             "properties": {
                 "key": {
                     "type": "string",
-                    "description": "The name of the preference to look up",
+                    "description": "The exact key used when storing with remember — must match exactly, including underscores. Examples: 'favorite_color', 'user_name', 'launch_codename'",
                 }
             },
             "required": ["key"],
