@@ -11,7 +11,7 @@ dependencies = [
     "click>=8.0",
     "edge-tts>=6.1",
     "httpx>=0.24",
-    "kittentts>=0.1.0",
+    "kittentts @ https://github.com/KittenML/KittenTTS/releases/download/0.8.1/kittentts-0.8.1-py3-none-any.whl",
     "pygame>=2.5",
     "pyttsx3>=2.90",
     "python-dotenv>=1.0",
