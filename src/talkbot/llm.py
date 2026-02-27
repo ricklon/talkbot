@@ -186,8 +186,9 @@ class LocalLlamaCppClient:
         binary: str = "llama-cli",
         n_ctx: int = 2048,
         enable_thinking: bool = False,
-        temperature: float = 0.7,
+        temperature: float = 0.3,
         max_tokens: int = 512,
+        direct_tool_routing: Optional[bool] = None,
     ) -> None:
         import datetime as _dt
         _now = _dt.datetime.now().astimezone()
@@ -204,7 +205,10 @@ class LocalLlamaCppClient:
         self.last_usage: dict = {}
         self.tools: dict[str, Callable] = {}
         self.tool_definitions: list[dict] = []
-        self.direct_tool_routing = os.getenv("TALKBOT_LOCAL_DIRECT_TOOL_ROUTING", "0").strip().lower() in {"1", "true", "yes", "on"}
+        if direct_tool_routing is None:
+            self.direct_tool_routing = os.getenv("TALKBOT_LOCAL_DIRECT_TOOL_ROUTING", "0").strip().lower() in {"1", "true", "yes", "on"}
+        else:
+            self.direct_tool_routing = direct_tool_routing
         self._llm = None
         self._use_python_backend = False
         self._requested_binary = binary
@@ -365,7 +369,7 @@ class LocalLlamaCppClient:
     def chat_completion(
         self,
         messages: list[dict],
-        temperature: float = 0.7,
+        temperature: float = 0.3,
         max_tokens: Optional[int] = None,
         stream: bool = False,
     ) -> dict:
@@ -417,7 +421,7 @@ class LocalLlamaCppClient:
     def chat_with_tools(
         self,
         messages: list[dict],
-        temperature: float = 0.7,
+        temperature: float = 0.3,
         max_tokens: Optional[int] = None,
         max_tool_calls: int = 10,
     ) -> str:
@@ -929,7 +933,7 @@ class LocalServerClient:
     def chat_completion(
         self,
         messages: list[dict],
-        temperature: float = 0.7,
+        temperature: float = 0.3,
         max_tokens: Optional[int] = None,
         stream: bool = False,
         include_tools: bool = True,
@@ -964,7 +968,7 @@ class LocalServerClient:
     def chat_with_tools(
         self,
         messages: list[dict],
-        temperature: float = 0.7,
+        temperature: float = 0.3,
         max_tokens: Optional[int] = None,
         max_tool_calls: int = 10,
     ) -> str:
@@ -1201,16 +1205,33 @@ def create_llm_client(
             if default_path.exists():
                 local_path = str(default_path)
         if local_path:
-            try:
-                n_ctx = int(os.getenv("TALKBOT_LOCAL_N_CTX", "2048"))
-            except ValueError:
-                n_ctx = 2048
-            n_ctx = max(512, n_ctx)
+            _path_lower = local_path.lower()
+            _env_n_ctx = os.getenv("TALKBOT_LOCAL_N_CTX", "").strip()
+            if _env_n_ctx:
+                try:
+                    n_ctx = max(512, int(_env_n_ctx))
+                except ValueError:
+                    n_ctx = 2048
+            else:
+                # Auto-select based on model size detected from path.
+                # Benchmark sweep: qwen3-1.7b peaks at 2048, qwen3-8b at 4096.
+                if any(t in _path_lower for t in ("8b", "13b", "14b", "32b", "70b")):
+                    n_ctx = 4096
+                else:
+                    n_ctx = 2048
+            _env_routing = os.getenv("TALKBOT_LOCAL_DIRECT_TOOL_ROUTING", "").strip()
+            if _env_routing:
+                _direct_routing: Optional[bool] = _env_routing.lower() in {"1", "true", "yes", "on"}
+            else:
+                # Benchmark A/B: intent routing helps 8b+ models (+14% success),
+                # hurts small models like 1.7b (-14%). Auto-select by size.
+                _direct_routing = any(t in _path_lower for t in ("8b", "13b", "14b", "32b", "70b"))
             return LocalLlamaCppClient(
                 model_path=local_path,
                 binary=llamacpp_bin or os.getenv("TALKBOT_LLAMACPP_BIN", "llama-cli"),
                 n_ctx=n_ctx,
                 enable_thinking=enable_thinking,
+                direct_tool_routing=_direct_routing,
             )
         raise LLMProviderError(
             "Local provider selected but TALKBOT_LOCAL_MODEL_PATH is not set. "
@@ -1236,10 +1257,11 @@ def create_llm_client(
             or os.getenv("TALKBOT_LOCAL_SERVER_URL")
             or "http://127.0.0.1:8000/v1"
         )
-        server_model = (os.getenv("TALKBOT_LOCAL_SERVER_MODEL") or "").strip()
+        # Explicit model param wins (GUI selection); fall back to env var, then local path
+        server_model = model or (os.getenv("TALKBOT_LOCAL_SERVER_MODEL") or "").strip()
         if not server_model:
             local_path = local_model_path or os.getenv("TALKBOT_LOCAL_MODEL_PATH", "")
-            server_model = local_path.strip() or model
+            server_model = local_path.strip()
         return LocalServerClient(
             model=server_model,
             base_url=server_url,

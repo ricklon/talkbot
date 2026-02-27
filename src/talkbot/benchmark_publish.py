@@ -3,11 +3,72 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import time
 from pathlib import Path
 from typing import Any
+
+
+def check_regressions(
+    results_path: str | Path,
+    baselines_path: str | Path = "benchmarks/baselines.json",
+) -> list[dict[str, Any]]:
+    """Return list of regressions: profile+metric combos that fell below baseline floor.
+
+    Each regression dict contains:
+        profile, metric, baseline, actual, delta, source_run
+    """
+    baselines_path = Path(baselines_path)
+    if not baselines_path.exists():
+        return []
+
+    baselines = json.loads(baselines_path.read_text(encoding="utf-8"))
+    profile_floors: dict[str, dict[str, float]] = {
+        name: entry.get("metrics", {})
+        for name, entry in baselines.get("profiles", {}).items()
+    }
+    profile_source: dict[str, str] = {
+        name: entry.get("source_run", "")
+        for name, entry in baselines.get("profiles", {}).items()
+    }
+
+    report = json.loads(Path(results_path).read_text(encoding="utf-8"))
+    regressions: list[dict[str, Any]] = []
+    for run in report.get("runs", []):
+        profile_name = run.get("profile", {}).get("name", "")
+        if profile_name not in profile_floors:
+            continue
+        floors = profile_floors[profile_name]
+        agg = run.get("aggregate", {})
+        for metric, floor in floors.items():
+            actual = agg.get(metric)
+            if actual is None:
+                continue
+            if actual < floor:
+                regressions.append(
+                    {
+                        "profile": profile_name,
+                        "metric": metric,
+                        "baseline": floor,
+                        "actual": actual,
+                        "delta": round(actual - floor, 4),
+                        "source_run": profile_source.get(profile_name, ""),
+                    }
+                )
+
+    if regressions:
+        print("\n[benchmark] WARNING: Regression(s) detected below baseline floor:")
+        for r in regressions:
+            print(
+                f"  {r['profile']} | {r['metric']}: "
+                f"actual={r['actual']:.3f} < floor={r['baseline']:.3f} "
+                f"(delta={r['delta']:+.4f})"
+            )
+        print()
+
+    return regressions
 
 
 def _safe_segment(value: str) -> str:
@@ -62,18 +123,31 @@ def _write_index(published_root: Path, latest_run: str) -> Path:
     return index_path
 
 
+def _read_index_latest_run(published_root: Path) -> str:
+    index_path = published_root / "index.json"
+    if index_path.exists():
+        try:
+            return str(json.loads(index_path.read_text(encoding="utf-8")).get("latest_run", ""))
+        except Exception:
+            pass
+    return ""
+
+
 def publish_benchmark_results(
     *,
     source_root: str | Path = "benchmark_results",
     published_root: str | Path = "benchmarks/published",
     run_name: str | None = None,
-) -> dict[str, str]:
-    """Copy latest benchmark artifacts into published/latest and published/runs/<run>.
+    update_latest: bool = True,
+) -> dict[str, Any]:
+    """Copy benchmark artifacts into published/runs/<run> and optionally published/latest.
 
     Args:
         source_root: Directory containing `results.json` and `leaderboard.md`.
         published_root: Repo-tracked destination root.
         run_name: Optional explicit run folder name under `runs/`.
+        update_latest: When False, skip updating `latest/` and preserve the existing
+            `latest_run` value in `index.json`. The run still appears in `runs[]`.
     """
     src = Path(source_root)
     results_src = src / "results.json"
@@ -93,28 +167,42 @@ def publish_benchmark_results(
     pub = Path(published_root)
     latest_dir = pub / "latest"
     runs_dir = pub / "runs" / run_folder
-    latest_dir.mkdir(parents=True, exist_ok=True)
     runs_dir.mkdir(parents=True, exist_ok=True)
 
-    latest_results = latest_dir / "results.json"
-    latest_leaderboard = latest_dir / "leaderboard.md"
     run_results = runs_dir / "results.json"
     run_leaderboard = runs_dir / "leaderboard.md"
+    if results_src.resolve() != run_results.resolve():
+        shutil.copyfile(results_src, run_results)
+    if leaderboard_src.resolve() != run_leaderboard.resolve():
+        shutil.copyfile(leaderboard_src, run_leaderboard)
 
-    shutil.copyfile(results_src, latest_results)
-    shutil.copyfile(leaderboard_src, latest_leaderboard)
-    shutil.copyfile(results_src, run_results)
-    shutil.copyfile(leaderboard_src, run_leaderboard)
+    if update_latest:
+        latest_dir.mkdir(parents=True, exist_ok=True)
+        latest_results = latest_dir / "results.json"
+        latest_leaderboard = latest_dir / "leaderboard.md"
+        shutil.copyfile(results_src, latest_results)
+        shutil.copyfile(leaderboard_src, latest_leaderboard)
+        (latest_dir / "run_name.txt").write_text(run_folder, encoding="utf-8")
+        try:
+            rel = Path(os.path.relpath(src.resolve(), latest_dir.resolve()))
+        except ValueError:
+            rel = src.resolve()
+        (latest_dir / "source_root.txt").write_text(str(rel), encoding="utf-8")
+        index_latest = run_folder
+    else:
+        index_latest = _read_index_latest_run(pub) or run_folder
 
-    (latest_dir / "run_name.txt").write_text(run_folder, encoding="utf-8")
-    (latest_dir / "source_root.txt").write_text(str(src.resolve()), encoding="utf-8")
-    index_path = _write_index(pub, run_folder)
+    index_path = _write_index(pub, index_latest)
+
+    regressions = check_regressions(results_src)
+
     return {
         "published_root": str(pub),
-        "latest_results": str(latest_results),
-        "latest_leaderboard": str(latest_leaderboard),
+        "latest_results": str(latest_dir / "results.json"),
+        "latest_leaderboard": str(latest_dir / "leaderboard.md"),
         "run_results": str(run_results),
         "run_leaderboard": str(run_leaderboard),
         "index": str(index_path),
         "run_name": run_folder,
+        "regressions": regressions,
     }

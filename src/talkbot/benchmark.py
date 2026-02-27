@@ -1399,6 +1399,32 @@ def _context_sweep_summary(
     return rows
 
 
+def top_n_per_provider(
+    report: dict[str, Any],
+    n: int = 3,
+) -> dict[str, list[dict[str, Any]]]:
+    """Group successful runs by provider and return top-N per group by balanced rubric score.
+
+    Returns an ordered dict keyed by provider string (e.g. "local", "local_server",
+    "openrouter"), each value being up to *n* run dicts sorted best-first.
+    """
+    rubric = _normalize_rubric(report.get("rubric"))
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for run in report.get("runs", []):
+        if run.get("status") != "ok":
+            continue
+        provider = str((run.get("profile") or {}).get("provider") or "").strip().lower() or "unknown"
+        groups.setdefault(provider, []).append(run)
+    return {
+        provider: sorted(
+            group,
+            key=lambda r: _rubric_score(r["aggregate"], rubric),
+            reverse=True,
+        )[:n]
+        for provider, group in sorted(groups.items())
+    }
+
+
 def build_leaderboard_markdown(report: dict[str, Any]) -> str:
     """Render a markdown leaderboard from run results."""
     runs = [run for run in report.get("runs", []) if run.get("status") == "ok"]
@@ -1744,6 +1770,29 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             )
             for row in context_rows
         )
+
+    top_per_provider = top_n_per_provider(report, n=3)
+    lines.extend(["", "## Top 3 Per Provider", ""])
+    if top_per_provider:
+        lines.extend(
+            [
+                "| Provider | Rank | Run | Model | Success | Score |",
+                "|---|---:|---|---|---:|---:|",
+            ]
+        )
+        for provider, provider_runs in top_per_provider.items():
+            for rank, prun in enumerate(provider_runs, start=1):
+                profile = prun.get("profile") or {}
+                agg = prun["aggregate"]
+                score = _rubric_score(agg, rubric)
+                lines.append(
+                    f"| {provider} | {rank} | {profile.get('name', '')} | "
+                    f"{profile.get('model', '')} | "
+                    f"{_coerce_float(agg.get('task_success_rate'), 0.0):.2%} | "
+                    f"{score:.3f} |"
+                )
+    else:
+        lines.append("No successful runs.")
 
     best_low_mem = low_mem_rank[0]
     best_quality = quality_rank[0]
