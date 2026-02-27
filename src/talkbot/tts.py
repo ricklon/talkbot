@@ -19,6 +19,8 @@ os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
 # Disable HF download progress bars: tqdm crashes when stdout is fd-redirected during
 # KittenTTS init (_suppress_stdio_fds sends fd 1 to devnull before hf_hub_download runs).
 os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+# Suppress Windows symlink warning — HF cache works fine without symlinks.
+os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
 
 # Try to import edge-tts, fall back to pyttsx3
 try:
@@ -275,16 +277,16 @@ class KittenTTSBackend:
     """KittenTTS backend (local, neural, no internet required)."""
 
     VOICES = [
-        "expr-voice-2-m",
-        "expr-voice-2-f",
-        "expr-voice-3-m",
-        "expr-voice-3-f",
-        "expr-voice-4-m",
-        "expr-voice-4-f",
-        "expr-voice-5-m",
-        "expr-voice-5-f",
+        "Bella",
+        "Jasper",
+        "Luna",
+        "Bruno",
+        "Rosie",
+        "Hugo",
+        "Kiki",
+        "Leo",
     ]
-    DEFAULT_MODEL = None
+    DEFAULT_MODEL = "KittenML/kitten-tts-nano-0.8-int8"
 
     @staticmethod
     @contextlib.contextmanager
