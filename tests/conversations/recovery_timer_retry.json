@@ -14,7 +14,7 @@
           }
         ],
         "min_tool_calls": 1,
-        "response_regex": "(?i)(no timer|not found|couldn.t find|doesn.t exist|no active|timer 99|couldn.t cancel|unable to cancel|there is no)"
+        "response_regex": "(?i)(no timer|not found|couldn.t find|can.t find|doesn.t exist|no active|timer 99|couldn.t cancel|can.t cancel|unable to cancel|there is no)"
       }
     },
     {

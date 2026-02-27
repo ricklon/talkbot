@@ -664,7 +664,7 @@ class LocalLlamaCppClient:
                     }
                 ]
         recall_match = re.search(
-            r"\b(?:what\s+is|recall)\s+(?:my\s+)?([a-z0-9_ ]{2,40})\??$",
+            r"\b(?:what\s+is|recall)\s+(?:my\s+)?([a-z_ ]{2,40})\??$",
             lowered,
         )
         if recall_match:
@@ -776,7 +776,7 @@ class LocalLlamaCppClient:
                     }
                 ]
         recall_match = re.search(
-            r"\b(?:what\s+is|recall)\s+(?:my\s+)?([a-z0-9_ ]{2,40})\??$",
+            r"\b(?:what\s+is|recall)\s+(?:my\s+)?([a-z_ ]{2,40})\??$",
             user_text,
         )
         if recall_match:
