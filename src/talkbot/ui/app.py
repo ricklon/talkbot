@@ -1012,6 +1012,8 @@ class TalkBotGUI:
         self.tools_btn.config(
             text=self._tools_label(), bg=self._tools_bg(), fg=self._tools_fg()
         )
+        if self.tools_var.get() and self.provider_var.get() == "local_server":
+            self.status_var.set("WARNING: Local Server tool calling scored 0% in benchmarks — results may vary")
 
     def _poll_timers(self) -> None:
         """Update the Timers tab with current active timers every second."""
@@ -1174,7 +1176,8 @@ class TalkBotGUI:
                 self.model_combo["values"] = []
             self.model_combo.config(state="normal")
             self.local_row.pack_forget()
-            self.status_var.set("Provider: Local Server — fetching models...")
+            tools_warn = " — WARNING: tool calling not validated" if self.tools_var.get() else ""
+            self.status_var.set(f"Provider: Local Server — fetching models...{tools_warn}")
             threading.Thread(target=self._fetch_local_server_models, daemon=True).start()
         else:  # local
             local_models = self._find_local_models()
@@ -1208,7 +1211,8 @@ class TalkBotGUI:
         if current not in models:
             preferred = (os.getenv("TALKBOT_LOCAL_SERVER_MODEL") or "").strip()
             self.model_var.set(preferred if preferred in models else models[0])
-        self.status_var.set(f"Provider: Local Server ({len(models)} models)")
+        tools_warn = " — WARNING: tool calling not validated" if self.tools_var.get() else ""
+        self.status_var.set(f"Provider: Local Server ({len(models)} models){tools_warn}")
 
     def _get_system_prompt(self) -> str | None:
         text = self.prompt_text.get("1.0", tk.END).strip()
