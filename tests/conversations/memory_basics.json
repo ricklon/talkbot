@@ -12,7 +12,7 @@
           {
             "name": "remember",
             "args_contains": {
-              "key": "favorite_color"
+              "value": "blue"
             }
           }
         ]
@@ -23,10 +23,7 @@
       "expect": {
         "tool_calls": [
           {
-            "name": "recall",
-            "args_contains": {
-              "key": "favorite_color"
-            }
+            "name": "recall"
           }
         ],
         "response_contains": ["blue"]

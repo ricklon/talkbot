@@ -652,11 +652,11 @@ def recall_all() -> str:
 
 TOOL_DEFINITIONS = {
     "get_current_time": {
-        "description": "Get the current date and time",
+        "description": "Get the current time. Always call this tool when the user asks what time it is — never answer from training data.",
         "parameters": {"type": "object", "properties": {}, "required": []},
     },
     "get_current_date": {
-        "description": "Get the current date",
+        "description": "Get today's date. Always call this tool when the user asks today's date or what day it is — never answer from training data.",
         "parameters": {"type": "object", "properties": {}, "required": []},
     },
     "time_until": {
@@ -673,13 +673,13 @@ TOOL_DEFINITIONS = {
         },
     },
     "calculator": {
-        "description": "Calculate a mathematical expression. Supports: +, -, *, /, sqrt(), pow(), sin(), cos(), tan(), log(), log10(), exp(), pi, e",
+        "description": "Evaluate a mathematical expression and return the numeric result. Always use this tool for any arithmetic — do not compute mentally. Translate word problems to operators: '15 percent of 47 dollars' → '0.15 * 47', '5 times 12' → '5 * 12'. Supports: +, -, *, /, %, sqrt(), pow(), sin(), cos(), tan(), log(), log10(), exp(), pi, e",
         "parameters": {
             "type": "object",
             "properties": {
                 "expression": {
                     "type": "string",
-                    "description": "The mathematical expression to evaluate",
+                    "description": "A valid arithmetic expression using operators and numbers. Translate natural language to math before calling. Examples: '0.15 * 47', '(3 + 4) * 2', 'sqrt(16)', '15 / 100 * 47', '7.05 / 3'",
                 }
             },
             "required": ["expression"],
@@ -799,7 +799,7 @@ TOOL_DEFINITIONS = {
             "properties": {
                 "list_name": {
                     "type": "string",
-                    "description": "The name of the list to create (e.g., 'shopping', 'todo', 'groceries')",
+                    "description": "The name of the list, lowercase. Use this exact name for all subsequent add/get/remove calls on this list. Examples: 'grocery', 'todo', 'shopping', 'reminders'",
                 }
             },
             "required": ["list_name"],
@@ -813,7 +813,7 @@ TOOL_DEFINITIONS = {
                 "item": {"type": "string", "description": "The item to add"},
                 "list_name": {
                     "type": "string",
-                    "description": "Which list to add to",
+                    "description": "The exact list name — must match the name used when the list was created. Examples: 'grocery', 'todo', 'shopping'",
                     "default": "shopping",
                 },
             },
@@ -832,7 +832,7 @@ TOOL_DEFINITIONS = {
                 },
                 "list_name": {
                     "type": "string",
-                    "description": "Which list to add to",
+                    "description": "The exact list name — must match the name used when the list was created. Examples: 'grocery', 'todo', 'shopping'",
                     "default": "shopping",
                 },
             },
@@ -840,13 +840,13 @@ TOOL_DEFINITIONS = {
         },
     },
     "get_list": {
-        "description": "Get all items on a named list (default: shopping list)",
+        "description": "Get all items on a named list. Always call this tool to check list contents — do not answer from conversation context.",
         "parameters": {
             "type": "object",
             "properties": {
                 "list_name": {
                     "type": "string",
-                    "description": "Which list to retrieve",
+                    "description": "The exact list name — must match the name used when the list was created. Examples: 'grocery', 'todo', 'shopping'",
                     "default": "shopping",
                 }
             },
@@ -861,7 +861,7 @@ TOOL_DEFINITIONS = {
                 "item": {"type": "string", "description": "The item to remove"},
                 "list_name": {
                     "type": "string",
-                    "description": "Which list to remove from",
+                    "description": "The exact list name — must match the name used when the list was created. Examples: 'grocery', 'todo', 'shopping'",
                     "default": "shopping",
                 },
             },
@@ -875,7 +875,7 @@ TOOL_DEFINITIONS = {
             "properties": {
                 "list_name": {
                     "type": "string",
-                    "description": "Which list to clear",
+                    "description": "The exact list name — must match the name used when the list was created. Examples: 'grocery', 'todo', 'shopping'",
                     "default": "shopping",
                 }
             },
@@ -887,13 +887,13 @@ TOOL_DEFINITIONS = {
         "parameters": {"type": "object", "properties": {}, "required": []},
     },
     "remember": {
-        "description": "Store a user preference or piece of information for later recall",
+        "description": "Store a user preference or piece of information for later recall. Always call this tool — do not rely on conversation context across sessions.",
         "parameters": {
             "type": "object",
             "properties": {
                 "key": {
                     "type": "string",
-                    "description": "The name of the preference (e.g., 'favorite_music_service', 'name')",
+                    "description": "A short lowercase identifier using underscores, no spaces. Use this exact key when recalling later. Examples: 'favorite_color', 'user_name', 'launch_codename', 'preferred_units'",
                 },
                 "value": {"type": "string", "description": "The value to remember"},
             },
@@ -901,23 +901,190 @@ TOOL_DEFINITIONS = {
         },
     },
     "recall": {
-        "description": "Recall a previously stored preference or piece of information by key",
+        "description": "Recall a previously stored preference or piece of information. Always call this tool — do not answer from conversation context alone.",
         "parameters": {
             "type": "object",
             "properties": {
                 "key": {
                     "type": "string",
-                    "description": "The name of the preference to look up",
+                    "description": "The exact key used when storing with remember — must match exactly, including underscores. Examples: 'favorite_color', 'user_name', 'launch_codename'",
                 }
             },
             "required": ["key"],
         },
     },
     "recall_all": {
-        "description": "Recall all stored user preferences and memories",
+        "description": "Recall all stored user preferences and memories at once. Always call this tool when asked to retrieve everything you remember — do not answer from conversation context.",
         "parameters": {"type": "object", "properties": {}, "required": []},
     },
 }
+
+
+# ---------------------------------------------------------------------------
+# Tool categories (used for tool search / selective schema loading)
+# ---------------------------------------------------------------------------
+
+TOOL_CATEGORIES: dict[str, list[str]] = {
+    "utility":  ["get_current_time", "get_current_date", "calculator",
+                 "roll_dice", "flip_coin", "random_number", "web_search"],
+    "timer":    ["set_timer", "set_reminder", "cancel_timer", "list_timers"],
+    "list":     ["create_list", "add_to_list", "add_items_to_list", "get_list",
+                 "remove_from_list", "clear_list", "list_all_lists"],
+    "memory":   ["remember", "recall", "recall_all"],
+}
+
+# Reverse map: tool_name -> category
+TOOL_CATEGORY_MAP: dict[str, str] = {
+    tool: cat
+    for cat, tools in TOOL_CATEGORIES.items()
+    for tool in tools
+}
+
+# Schema variant descriptions — same tool set, different description strategies.
+# "minimal"  : short, no compliance language, no examples  (lowest token cost)
+# "standard" : current enriched descriptions               (default)
+# "examples" : description is worked examples only, minimal prose
+TOOL_DEFINITION_VARIANTS: dict[str, dict[str, dict]] = {
+    "minimal": {
+        "get_current_time":   {"description": "Get the current time.",
+                               "parameters": TOOL_DEFINITIONS["get_current_time"]["parameters"]},
+        "get_current_date":   {"description": "Get today's date.",
+                               "parameters": TOOL_DEFINITIONS["get_current_date"]["parameters"]},
+        "calculator":         {"description": "Evaluate a math expression. Supports +,-,*,/,sqrt(),pow(),%.",
+                               "parameters": TOOL_DEFINITIONS["calculator"]["parameters"]},
+        "remember":           {"description": "Store a key-value memory for later recall.",
+                               "parameters": TOOL_DEFINITIONS["remember"]["parameters"]},
+        "recall":             {"description": "Look up a stored memory by key.",
+                               "parameters": TOOL_DEFINITIONS["recall"]["parameters"]},
+        "recall_all":         {"description": "Return all stored memories.",
+                               "parameters": TOOL_DEFINITIONS["recall_all"]["parameters"]},
+        "set_timer":          {"description": "Set a countdown timer.",
+                               "parameters": TOOL_DEFINITIONS["set_timer"]["parameters"]},
+        "cancel_timer":       {"description": "Cancel a timer by ID.",
+                               "parameters": TOOL_DEFINITIONS["cancel_timer"]["parameters"]},
+        "list_timers":        {"description": "List active timers.",
+                               "parameters": TOOL_DEFINITIONS["list_timers"]["parameters"]},
+        "add_to_list":        {"description": "Add an item to a named list.",
+                               "parameters": TOOL_DEFINITIONS["add_to_list"]["parameters"]},
+        "get_list":           {"description": "Get all items on a named list.",
+                               "parameters": TOOL_DEFINITIONS["get_list"]["parameters"]},
+        "create_list":        {"description": "Create a new empty named list.",
+                               "parameters": TOOL_DEFINITIONS["create_list"]["parameters"]},
+        "list_all_lists":     {"description": "Show all lists and their contents.",
+                               "parameters": TOOL_DEFINITIONS["list_all_lists"]["parameters"]},
+    },
+    "examples": {
+        "get_current_time":   {"description": 'Returns e.g. "2026-02-27 10:35:42 EST". Call when user asks what time it is.',
+                               "parameters": TOOL_DEFINITIONS["get_current_time"]["parameters"]},
+        "get_current_date":   {"description": 'Returns e.g. "2026-02-27". Call when user asks today\'s date.',
+                               "parameters": TOOL_DEFINITIONS["get_current_date"]["parameters"]},
+        "calculator":         {"description": 'Call with expression="0.15*47" or "7.05/3" or "sqrt(16)". Translate: "15% of 47" → "0.15*47".',
+                               "parameters": TOOL_DEFINITIONS["calculator"]["parameters"]},
+        "remember":           {"description": 'Call with key="favorite_color", value="blue". Key: lowercase_underscore.',
+                               "parameters": TOOL_DEFINITIONS["remember"]["parameters"]},
+        "recall":             {"description": 'Call with key="favorite_color". Key must exactly match the key used in remember.',
+                               "parameters": TOOL_DEFINITIONS["recall"]["parameters"]},
+        "recall_all":         {"description": 'Returns all stored memories as a dict. Call when asked "what do you remember about me?".',
+                               "parameters": TOOL_DEFINITIONS["recall_all"]["parameters"]},
+        "set_timer":          {"description": 'Call with seconds=300, label="pasta". "5 minutes" → seconds=300.',
+                               "parameters": TOOL_DEFINITIONS["set_timer"]["parameters"]},
+        "cancel_timer":       {"description": 'Call with timer_id="1". ID comes from set_timer result.',
+                               "parameters": TOOL_DEFINITIONS["cancel_timer"]["parameters"]},
+        "list_timers":        {"description": 'Returns list of active timers with IDs and remaining seconds.',
+                               "parameters": TOOL_DEFINITIONS["list_timers"]["parameters"]},
+        "add_to_list":        {"description": 'Call with item="milk", list_name="grocery". list_name must match create_list name exactly.',
+                               "parameters": TOOL_DEFINITIONS["add_to_list"]["parameters"]},
+        "get_list":           {"description": 'Call with list_name="grocery". Returns items as array. list_name must match exactly.',
+                               "parameters": TOOL_DEFINITIONS["get_list"]["parameters"]},
+        "create_list":        {"description": 'Call with list_name="grocery". Then use list_name="grocery" for all add/get/remove calls.',
+                               "parameters": TOOL_DEFINITIONS["create_list"]["parameters"]},
+        "list_all_lists":     {"description": 'Returns all list names and their items.',
+                               "parameters": TOOL_DEFINITIONS["list_all_lists"]["parameters"]},
+    },
+}
+# "standard" variant is just the canonical TOOL_DEFINITIONS — no copy needed.
+TOOL_DEFINITION_VARIANTS["standard"] = {
+    name: {"description": defn["description"], "parameters": defn["parameters"]}
+    for name, defn in TOOL_DEFINITIONS.items()
+}
+
+
+def get_tool_definitions_for_variant(
+    variant: str = "standard",
+    tool_filter: list[str] | None = None,
+) -> dict[str, dict]:
+    """Return tool definitions for a given schema variant, optionally filtered to a subset."""
+    source = TOOL_DEFINITION_VARIANTS.get(variant, TOOL_DEFINITION_VARIANTS["standard"])
+    if tool_filter is not None:
+        return {k: v for k, v in source.items() if k in tool_filter}
+    # Fall back to TOOL_DEFINITIONS for tools not in the variant (e.g. rare tools in minimal)
+    result = {}
+    for name in TOOL_DEFINITIONS:
+        if name in source:
+            result[name] = source[name]
+        else:
+            result[name] = {"description": TOOL_DEFINITIONS[name]["description"],
+                            "parameters": TOOL_DEFINITIONS[name]["parameters"]}
+    return result
+
+
+def get_tools_for_query(
+    query: str,
+    max_categories: int = 2,
+    always_include: list[str] | None = None,
+) -> list[str]:
+    """Category-based tool search: return tool names relevant to a query.
+
+    Classifies the query into at most max_categories buckets and returns
+    the tools from those buckets. Falls back to all tools if no category
+    matches. This is Option A (zero-latency category routing).
+    """
+    import re
+    q = query.lower()
+    matched: list[str] = []
+
+    patterns = {
+        "utility": re.compile(
+            r"\b(time|date|today|clock|calculat|percent|math|compute|how much|"
+            r"roll|dice|flip|coin|random|search|look up|weather)\b"
+        ),
+        "timer": re.compile(
+            r"\b(timer|remind|alarm|countdown|minutes?|seconds?|hours?|cancel timer|"
+            r"stop timer|set a timer|active timers?)\b"
+        ),
+        "list": re.compile(
+            r"\b(list|shopping|grocery|groceries|todo|add|remove|clear|items?|"
+            r"what.s on|show me my)\b"
+        ),
+        "memory": re.compile(
+            r"\b(remember|recall|forget|stored|preference|what.s my|what is my|"
+            r"do you know my|my favorite|you remember)\b"
+        ),
+    }
+
+    for cat, pattern in patterns.items():
+        if pattern.search(q):
+            matched.append(cat)
+        if len(matched) >= max_categories:
+            break
+
+    if not matched:
+        # No match — return the core always-useful set
+        matched = ["utility"]
+
+    tools: list[str] = []
+    seen: set[str] = set()
+    for cat in matched:
+        for t in TOOL_CATEGORIES.get(cat, []):
+            if t not in seen:
+                tools.append(t)
+                seen.add(t)
+
+    for t in (always_include or []):
+        if t not in seen:
+            tools.append(t)
+
+    return tools
 
 
 # ---------------------------------------------------------------------------

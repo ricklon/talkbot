@@ -1,0 +1,145 @@
+{
+  "_comment": "Benchmark matrix v3 (2026-02-27). 10 profiles / 11 runs. Removed: ollama-llama3.2-3b t0.0 (dominated by t0.3), ollama-mistral-nemo (slow/low score post-fix), gemini-2.5-flash (dominated by flash-lite), ministral-3b t0.3 (temp hurts -20%), qwen3-8b ctx8192 (ctx4096 optimal), gpt-4o-mini (not a GUI default), claude-3.5-sonnet (outdated). Added: claude-haiku-4-5 and claude-sonnet-4-6 to establish current Anthropic tier.",
+  "benchmark": {
+    "schema_version": "2026.1",
+    "values_file": "benchmarks/evaluation_values.json",
+    "rubric": {
+      "version": "2026.full-suite.v1",
+      "weights": {
+        "task_success_rate": 0.35,
+        "tool_selection_accuracy": 0.2,
+        "argument_accuracy": 0.15,
+        "recovery_success_rate": 0.1,
+        "multistep_success_rate": 0.1,
+        "robustness_success_rate": 0.05,
+        "context_success_rate": 0.05
+      },
+      "penalties": {
+        "latency_ms_multiplier": 0.002,
+        "memory_mb_multiplier": 0.002,
+        "tool_error_rate_multiplier": 20.0,
+        "model_error_rate_multiplier": 30.0
+      }
+    },
+    "context_analysis": {
+      "near_peak_ratio": 0.95,
+      "dropoff_ratio": 0.9
+    }
+  },
+  "profiles": [
+    {
+      "name": "local-qwen3-1.7b-llm",
+      "provider": "local",
+      "model": "qwen/qwen3-1.7b",
+      "local_model_path": "models/qwen3-1.7b-q4_k_m.gguf",
+      "llamacpp_bin": "llama-cli",
+      "enable_thinking": false,
+      "use_tools": true,
+      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+      "max_tokens": 256,
+      "temperature": 0.0,
+      "context_windows": [2048, 4096],
+      "env": {
+        "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "0"
+      }
+    },
+    {
+      "name": "local-qwen3-1.7b-llm-t0.3",
+      "provider": "local",
+      "model": "qwen/qwen3-1.7b",
+      "local_model_path": "models/qwen3-1.7b-q4_k_m.gguf",
+      "llamacpp_bin": "llama-cli",
+      "enable_thinking": false,
+      "use_tools": true,
+      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+      "max_tokens": 256,
+      "temperature": 0.3,
+      "context_windows": [2048],
+      "env": {
+        "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "0"
+      }
+    },
+    {
+      "name": "local-qwen3-1.7b-intent",
+      "provider": "local",
+      "model": "qwen/qwen3-1.7b",
+      "local_model_path": "models/qwen3-1.7b-q4_k_m.gguf",
+      "llamacpp_bin": "llama-cli",
+      "enable_thinking": false,
+      "use_tools": true,
+      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+      "max_tokens": 256,
+      "temperature": 0.0,
+      "context_windows": [2048],
+      "env": {
+        "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "1"
+      }
+    },
+    {
+      "name": "local-qwen3-8b-intent",
+      "provider": "local",
+      "model": "qwen/qwen3-8b",
+      "local_model_path": "models/qwen3-8b-q4_k_m.gguf",
+      "llamacpp_bin": "llama-cli",
+      "enable_thinking": false,
+      "use_tools": true,
+      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+      "max_tokens": 256,
+      "temperature": 0.0,
+      "context_windows": [4096],
+      "env": {
+        "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "1"
+      }
+    },
+    {
+      "name": "ollama-llama3.2-3b",
+      "provider": "local_server",
+      "model": "llama3.2:3b",
+      "local_server_url": "http://localhost:11434/v1",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.3,
+      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only."
+    },
+    {
+      "name": "openrouter-ministral-3b-2512",
+      "provider": "openrouter",
+      "model": "mistralai/ministral-3b-2512",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0
+    },
+    {
+      "name": "openrouter-gemini-2.5-flash-lite",
+      "provider": "openrouter",
+      "model": "google/gemini-2.5-flash-lite",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0
+    },
+    {
+      "name": "openrouter-gemini-2.5-pro",
+      "provider": "openrouter",
+      "model": "google/gemini-2.5-pro",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0
+    },
+    {
+      "name": "openrouter-claude-haiku-4-5",
+      "provider": "openrouter",
+      "model": "anthropic/claude-haiku-4-5",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0
+    },
+    {
+      "name": "openrouter-claude-sonnet-4-6",
+      "provider": "openrouter",
+      "model": "anthropic/claude-sonnet-4-6",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0
+    }
+  ]
+}

@@ -34,7 +34,7 @@
             "name": "get_list"
           }
         ],
-        "response_contains": ["socks", "charger"]
+        "response_regex": "(?si)(?=.*socks)(?=.*charger)"
       }
     }
   ]

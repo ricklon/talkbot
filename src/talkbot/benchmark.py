@@ -12,6 +12,7 @@ import platform
 import re
 import socket
 import statistics
+import subprocess
 import sys
 import time
 import tracemalloc
@@ -21,7 +22,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from talkbot.llm import create_llm_client, supports_tools
-from talkbot.tools import TOOL_DEFINITIONS, TOOLS, reset_runtime_state
+from talkbot.tools import TOOL_DEFINITIONS, TOOLS, get_tool_definitions_for_variant, reset_runtime_state
 
 try:
     import resource
@@ -52,6 +53,8 @@ class BenchmarkProfile:
     max_tokens: int = 512
     temperature: float = 0.0
     env: dict[str, str] = field(default_factory=dict)
+    tool_filter: list[str] | None = None  # None = all tools; list = only these tool names
+    tool_schema_variant: str = "standard"  # "standard" | "minimal" | "examples"
 
 
 @dataclass
@@ -422,7 +425,7 @@ def _normalize_scenario(payload: dict[str, Any], source: Path) -> dict[str, Any]
 
 
 def _expand_profile_entry(entry: dict[str, Any]) -> list[BenchmarkProfile]:
-    base = dict(entry)
+    base = {k: v for k, v in entry.items() if not k.startswith("_")}
     context_windows = base.pop("context_windows", None)
     n_ctx = base.pop("n_ctx", None)
 
@@ -533,14 +536,20 @@ def _current_rss_mb() -> float:
     return round(rss / (1024.0 * 1024.0), 3)
 
 
-def _register_traced_tools(client: Any, recorder: ToolRecorder) -> None:
+def _register_traced_tools(
+    client: Any,
+    recorder: ToolRecorder,
+    tool_filter: list[str] | None = None,
+    tool_schema_variant: str = "standard",
+) -> None:
     if hasattr(client, "clear_tools"):
         try:
             client.clear_tools()
         except Exception:
             pass
+    definitions = get_tool_definitions_for_variant(tool_schema_variant, tool_filter)
     for name, func in TOOLS.items():
-        definition = TOOL_DEFINITIONS.get(name)
+        definition = definitions.get(name)
         if not definition:
             continue
         client.register_tool(
@@ -681,8 +690,138 @@ def _detect_raspberry_pi_model() -> str:
     return ""
 
 
-def detect_runner_info(*, label: str | None = None, notes: str | None = None) -> dict[str, Any]:
-    """Collect host metadata for benchmark comparability across machines."""
+_DEFAULT_PROBE_ENDPOINTS: list[tuple[str, str]] = [
+    ("openrouter", "https://openrouter.ai/api/v1/models"),
+    ("ollama-local", "http://localhost:11434/api/tags"),
+]
+
+
+def _probe_endpoint(label: str, url: str, timeout: float = 5.0, samples: int = 3) -> dict[str, Any]:
+    """Measure TTFB to *url* using *samples* requests, reporting the median.
+
+    Uses httpx streaming so we record time-to-first-byte (headers received)
+    without downloading the full response body. This isolates network + API
+    gateway overhead from model inference time.
+    """
+    try:
+        import httpx as _httpx
+
+        timings: list[float] = []
+        last_status: int | None = None
+        for _ in range(samples):
+            try:
+                t0 = time.perf_counter()
+                with _httpx.Client(timeout=timeout, follow_redirects=True) as client:
+                    with client.stream("GET", url) as response:
+                        ttfb_ms = (time.perf_counter() - t0) * 1000
+                        last_status = response.status_code
+                timings.append(ttfb_ms)
+            except Exception:
+                pass  # skip failed samples; report error below if none succeed
+
+        if not timings:
+            raise RuntimeError("all samples failed")
+
+        return {
+            "label": label,
+            "url": url,
+            "ttfb_ms_median": round(statistics.median(timings), 1),
+            "ttfb_ms_min": round(min(timings), 1),
+            "ttfb_ms_max": round(max(timings), 1),
+            "samples": len(timings),
+            "http_status": last_status,
+            "error": None,
+        }
+    except Exception as exc:
+        return {
+            "label": label,
+            "url": url,
+            "ttfb_ms_median": None,
+            "ttfb_ms_min": None,
+            "ttfb_ms_max": None,
+            "samples": 0,
+            "http_status": None,
+            "error": str(exc)[:120],
+        }
+
+
+def _detect_network_type() -> str:
+    """Best-effort detection of the primary active network interface type.
+
+    On macOS: uses ``networksetup -getinfo`` directly (no psutil needed) — checks
+    each common service name for an active IP address.
+    On Linux/other: uses psutil interface name heuristics (wlan*/eth* prefixes).
+    Returns a short string like ``"wifi (Wi-Fi)"``, ``"ethernet (Ethernet)"``,
+    or ``"unknown"`` on failure.
+    """
+    try:
+        if platform.system() == "Darwin":
+            # Check common macOS service names in priority order; first with a live
+            # IP address wins.  networksetup -getinfo prints "IP address: <ip>" when
+            # connected or "IP address: none" when not.
+            for svc_name, kind in (
+                ("Wi-Fi", "wifi"),
+                ("Thunderbolt Ethernet", "ethernet"),
+                ("USB 10/100/1000 LAN", "ethernet"),
+                ("Ethernet", "ethernet"),
+                ("Thunderbolt Bridge", "ethernet"),
+            ):
+                try:
+                    out = subprocess.check_output(
+                        ["networksetup", "-getinfo", svc_name],
+                        stderr=subprocess.DEVNULL,
+                        timeout=3,
+                        text=True,
+                    )
+                    for line in out.splitlines():
+                        if line.startswith("IP address:"):
+                            ip = line.split(":", 1)[1].strip()
+                            if ip and ip.lower() != "none":
+                                return f"{kind} ({svc_name})"
+                except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+                    continue
+            return "unknown (macOS)"
+
+        # Linux / other: use psutil interface name heuristics
+        if psutil is None:
+            return "unknown"
+        stats = psutil.net_if_stats()
+        addrs = psutil.net_if_addrs()
+        active = [
+            iface
+            for iface, st in stats.items()
+            if st.isup
+            and iface not in ("lo", "lo0")
+            and any(
+                a.family == socket.AF_INET and not a.address.startswith("127.")
+                for a in addrs.get(iface, [])
+            )
+        ]
+        wifi_prefixes = ("wlan", "wlp", "wl", "ath")
+        eth_prefixes = ("eth", "eno", "enp", "em")
+        for iface in active:
+            low = iface.lower()
+            if any(low.startswith(p) for p in wifi_prefixes):
+                return f"wifi ({iface})"
+            if any(low.startswith(p) for p in eth_prefixes):
+                return f"ethernet ({iface})"
+        return f"unknown ({', '.join(active[:2])})" if active else "none"
+    except Exception:
+        return "unknown"
+
+
+def detect_runner_info(
+    *,
+    label: str | None = None,
+    notes: str | None = None,
+    network_type: str | None = None,
+    probe_endpoints: list[tuple[str, str]] | None = None,
+) -> dict[str, Any]:
+    """Collect host metadata for benchmark comparability across machines.
+
+    *probe_endpoints* is a list of ``(label, url)`` pairs to TTFB-probe before
+    the run. Defaults to :data:`_DEFAULT_PROBE_ENDPOINTS`. Pass ``[]`` to skip.
+    """
     runner_label = str(label or os.getenv("TALKBOT_BENCHMARK_RUNNER") or "").strip()
     pi_model = _detect_raspberry_pi_model()
     is_pi = "raspberry pi" in pi_model.lower()
@@ -693,6 +832,15 @@ def detect_runner_info(*, label: str | None = None, notes: str | None = None) ->
             physical_cpus = psutil.cpu_count(logical=False)
         except Exception:
             physical_cpus = None
+
+    endpoints_to_probe = probe_endpoints if probe_endpoints is not None else _DEFAULT_PROBE_ENDPOINTS
+    print(f"[runner] probing {len(endpoints_to_probe)} endpoint(s) for TTFB latency...", flush=True)
+    probes = [_probe_endpoint(lbl, url) for lbl, url in endpoints_to_probe]
+    for p in probes:
+        if p["error"]:
+            print(f"  {p['label']}: unreachable — {p['error']}", flush=True)
+        else:
+            print(f"  {p['label']}: {p['ttfb_ms_median']} ms median TTFB (min {p['ttfb_ms_min']}, max {p['ttfb_ms_max']}, n={p['samples']})", flush=True)
 
     payload = {
         "label": runner_label or None,
@@ -706,6 +854,8 @@ def detect_runner_info(*, label: str | None = None, notes: str | None = None) ->
         "cpu_count_physical": int(physical_cpus) if isinstance(physical_cpus, int) else None,
         "is_raspberry_pi": is_pi,
         "raspberry_pi_model": pi_model or None,
+        "network_type": str(network_type or "").strip() or _detect_network_type(),
+        "endpoint_probes": probes,
         "notes": str(notes or "").strip() or None,
     }
     return _json_safe(payload)
@@ -753,7 +903,11 @@ def run_benchmark(
                 with factory(profile) as client:
                     rss_peak = max(rss_peak, _current_rss_mb())
                     if profile.use_tools and supports_tools(client):
-                        _register_traced_tools(client, recorder)
+                        _register_traced_tools(
+                            client, recorder,
+                            tool_filter=profile.tool_filter,
+                            tool_schema_variant=profile.tool_schema_variant,
+                        )
                     elif profile.use_tools:
                         raise RuntimeError("Client does not support tool registration.")
 
@@ -1441,7 +1595,11 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
     runner_machine = str(runner.get("machine") or "").strip()
     runner_python = str(runner.get("python_version") or "").strip()
     runner_pi_model = str(runner.get("raspberry_pi_model") or "").strip()
+    runner_network = str(runner.get("network_type") or "").strip()
     runner_notes = str(runner.get("notes") or "").strip()
+    runner_probes: list[dict[str, Any]] = [
+        p for p in (runner.get("endpoint_probes") or []) if isinstance(p, dict)
+    ]
     main_output_root = str(meta.get("main_output_root") or "benchmark_results")
     latest_run = str(meta.get("latest_run") or "").strip()
     latest_run_text = latest_run if latest_run else "not provided"
@@ -1533,6 +1691,7 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
         base = (
             f"| {profile.get('name', '')} | {profile.get('provider', '')} | "
             f"{profile.get('model', '')} | {routing} | "
+            f"{profile.get('temperature', 0.0):.1f} | "
             f"{_coerce_float(agg.get('task_success_rate'), 0.0):.2%} | "
             f"{_coerce_float(agg.get('tool_selection_accuracy'), 0.0):.2%} | "
             f"{_coerce_float(agg.get('argument_accuracy'), 0.0):.2%} | "
@@ -1573,8 +1732,34 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
     ]
     if runner_pi_model:
         lines.insert(lines.index("## Rubric") - 1, f"- Raspberry Pi model: `{runner_pi_model}`")
+    if runner_network:
+        lines.insert(lines.index("## Rubric") - 1, f"- Network: `{runner_network}`")
     if runner_notes:
         lines.insert(lines.index("## Rubric") - 1, f"- Runner notes: {runner_notes}")
+    if runner_probes:
+        probe_lines = [
+            "",
+            "## Endpoint Latency (TTFB)",
+            "",
+            "- Measured before benchmarking: time-to-first-byte (headers received) over 3 samples.",
+            "- Subtract median TTFB from a model's `Avg ms` to estimate server-side inference time.",
+            "",
+            "| Endpoint | URL | Median ms | Min ms | Max ms | HTTP |",
+            "|---|---|---:|---:|---:|---:|",
+        ]
+        for p in runner_probes:
+            if p.get("error"):
+                probe_lines.append(
+                    f"| {p.get('label', '')} | {p.get('url', '')} | n/a | n/a | n/a | err: {p['error'][:60]} |"
+                )
+            else:
+                probe_lines.append(
+                    f"| {p.get('label', '')} | {p.get('url', '')} | "
+                    f"{p.get('ttfb_ms_median', 0):.1f} | {p.get('ttfb_ms_min', 0):.1f} | "
+                    f"{p.get('ttfb_ms_max', 0):.1f} | {p.get('http_status', '?')} |"
+                )
+        rubric_idx = lines.index("## Rubric")
+        lines[rubric_idx:rubric_idx] = probe_lines
     lines.extend(
         f"| {metric} | {float(weight):.3f} |"
         for metric, weight in sorted((rubric.get("weights") or {}).items())
@@ -1596,8 +1781,8 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             "",
             "## Quality Rank",
             "",
-            "| Run | Provider | Model | Routing | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens |",
-            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            "| Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens |",
+            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     lines.extend(row(run) for run in quality_rank)
@@ -1607,8 +1792,8 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             "",
             "## Low-Memory Rank",
             "",
-            "| Run | Provider | Model | Routing | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens |",
-            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            "| Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens |",
+            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     lines.extend(row(run) for run in low_mem_rank)
@@ -1618,8 +1803,8 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             "",
             "## Balanced Rank",
             "",
-            "| Run | Provider | Model | Routing | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens | Score |",
-            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            "| Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens | Score |",
+            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     lines.extend(row(run, include_score=True) for run in balanced_rank)
@@ -1637,8 +1822,8 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
     if remote_rank:
         lines.extend(
             [
-                "| Run | Provider | Model | Routing | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens | Score (Remote) |",
-                "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+                "| Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens | Score (Remote) |",
+                "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
             ]
         )
         lines.extend(
@@ -1657,8 +1842,8 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             "",
             "## Efficiency Rank",
             "",
-            "| Run | Provider | Model | Routing | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens |",
-            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            "| Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens |",
+            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     lines.extend(row(run) for run in efficiency_rank)
@@ -1708,8 +1893,8 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             "",
             "## Pareto Frontier (Quality/Latency/Memory)",
             "",
-            "| Run | Provider | Model | Routing | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens | Score |",
-            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            "| Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens | Score |",
+            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     lines.extend(row(run, include_score=True) for run in pareto)
@@ -1776,8 +1961,8 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
     if top_per_provider:
         lines.extend(
             [
-                "| Provider | Rank | Run | Model | Success | Score |",
-                "|---|---:|---|---|---:|---:|",
+                "| Provider | Rank | Run | Model | Temp | Success | Score |",
+                "|---|---:|---|---|---:|---:|---:|",
             ]
         )
         for provider, provider_runs in top_per_provider.items():
@@ -1788,6 +1973,7 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
                 lines.append(
                     f"| {provider} | {rank} | {profile.get('name', '')} | "
                     f"{profile.get('model', '')} | "
+                    f"{profile.get('temperature', 0.0):.1f} | "
                     f"{_coerce_float(agg.get('task_success_rate'), 0.0):.2%} | "
                     f"{score:.3f} |"
                 )

@@ -1,0 +1,29 @@
+{
+  "id": "calculator_basic",
+  "name": "Calculator: Basic Arithmetic",
+  "description": "Model should use the calculator tool for math questions and retain context for a follow-up calculation.",
+  "tags": ["utility", "tools", "calculator"],
+  "reset_state": true,
+  "turns": [
+    {
+      "user": "What is 15 percent of 47 dollars?",
+      "expect": {
+        "tool_calls": [
+          {
+            "name": "calculator"
+          }
+        ]
+      }
+    },
+    {
+      "user": "Now divide that by 3.",
+      "expect": {
+        "tool_calls": [
+          {
+            "name": "calculator"
+          }
+        ]
+      }
+    }
+  ]
+}
