@@ -5,6 +5,37 @@ observed, what we changed, and what the data confirmed. Ordered newest-first.
 
 ---
 
+## 2026-02-27 — Pipeline benchmark: Mistral [TOOL_CALLS] in OpenRouter prompt-tool path
+
+### Mistral models ignore XML tool tag instruction and emit [TOOL_CALLS] regardless
+
+**Observation:** `mistral-small-3.1-24b-instruct` via OpenRouter was classified by
+the preflight check as not supporting native tools (`_native_tools_supported=False`),
+so `chat_with_tools` routed to `_chat_with_prompt_tools`. That path injects a system
+prompt instructing the model to use `<tool_call>{...}</tool_call>` XML tags. The model
+ignored this and emitted `[TOOL_CALLS][{"name": "get_current_time", "arguments": {}}]`
+in its native Mistral format anyway. `_extract_prompt_tool_call` only parsed XML tags,
+so the tool was never dispatched and the raw `[TOOL_CALLS]` string was returned —
+which TTS would speak aloud verbatim.
+
+**Fix:** Added `_extract_bracket_tool_calls()` static method to `OpenRouterClient`
+(same logic as `LocalServerClient`) and wired it as a fallback in both
+`_chat_with_prompt_tools` (after XML extraction fails) and `_chat_with_native_tools`
+(after `message.get("tool_calls")` is empty). For the native path, synthetic
+`tool_calls` are injected into the assistant message so tool response `tool_call_id`
+references remain valid.
+
+**Lesson:** When a model is routed through the prompt-tool fallback path, it may still
+emit its fine-tuned native tool format regardless of prompt instructions. Always add
+bracket/native format extraction as a fallback in the prompt path — not just in the
+native path. The two extraction paths must stay in sync.
+
+**Benchmark result:** mistral-small-3.1-24b-instruct via pipeline benchmark:
+- Before fix: 8/12 answers correct, 3/5 tool calls correct
+- After fix: 10/12 answers correct, 5/5 tool calls correct
+
+---
+
 ## 2026-02-27 — Schema variants and tool profile experiments
 
 ### Schema descriptions are invisible to local small models
