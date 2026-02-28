@@ -375,6 +375,16 @@ class OpenRouterClient:
             content = _response_content(response)
             parsed = self._extract_prompt_tool_call(content)
             if not parsed:
+                # Mistral-family models may ignore the XML prompt and emit [TOOL_CALLS] anyway.
+                bracket = self._extract_bracket_tool_calls(content)
+                if bracket:
+                    tc = bracket[0]
+                    try:
+                        args = json.loads(tc["function"]["arguments"])
+                    except Exception:
+                        args = {}
+                    parsed = {"name": tc["function"]["name"], "arguments": args}
+            if not parsed:
                 return content
 
             function_name = parsed["name"]
@@ -410,6 +420,41 @@ class OpenRouterClient:
         )
         return _response_content(response)
 
+    @staticmethod
+    def _extract_bracket_tool_calls(content: str) -> list[dict]:
+        """Fallback for Mistral-family models that emit [TOOL_CALLS] as plain text content.
+
+        OpenRouter usually normalizes this, but some model routes pass it through raw.
+        Handles: [TOOL_CALLS][{...}]  and  [TOOL_CALLS] [{...}, ...]
+        """
+        if not content or "[TOOL_CALLS]" not in content:
+            return []
+        tool_calls: list[dict] = []
+        decoder = json.JSONDecoder()
+        for idx, match in enumerate(re.finditer(r"\[TOOL_CALLS\]\s*", content)):
+            remainder = content[match.end():]
+            if not remainder or remainder[0] not in ("[", "{"):
+                continue
+            try:
+                obj, _ = decoder.raw_decode(remainder)
+            except (json.JSONDecodeError, ValueError):
+                continue
+            calls = obj if isinstance(obj, list) else [obj]
+            for call_idx, call in enumerate(calls):
+                if not isinstance(call, dict):
+                    continue
+                name = str(call.get("name", "")).strip()
+                if not name:
+                    continue
+                args = call.get("arguments", {})
+                if not isinstance(args, dict):
+                    args = {}
+                tool_calls.append({
+                    "id": f"bracket-{idx}-{call_idx}",
+                    "function": {"name": name, "arguments": json.dumps(args)},
+                })
+        return tool_calls
+
     def _chat_with_native_tools(
         self,
         messages: list[dict],
@@ -426,10 +471,21 @@ class OpenRouterClient:
             if not message:
                 return _response_content(response)
 
-            tool_calls = message.get("tool_calls")
+            content = _response_content(response)
+            native_tool_calls = message.get("tool_calls")
+            bracket_tool_calls = self._extract_bracket_tool_calls(content) if not native_tool_calls else []
+            tool_calls = native_tool_calls or bracket_tool_calls
             if not tool_calls:
-                return _response_content(response)
+                return content
 
+            # If tool calls came from bracket extraction (not native API), inject them
+            # into the message so tool response messages have valid tool_call_id refs.
+            if bracket_tool_calls:
+                message = dict(message)
+                message["tool_calls"] = [
+                    {"id": tc["id"], "type": "function", "function": tc["function"]}
+                    for tc in bracket_tool_calls
+                ]
             current_messages.append(message)
             for tool_call in tool_calls:
                 tool_call_count += 1
