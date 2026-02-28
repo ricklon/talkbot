@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-02-27T15:15:10-0500",
-  "latest_run": "validated-20260227-v2",
+  "updated_at": "2026-02-28T11:41:04-0500",
+  "latest_run": "ollama_models-20260228-112957",
   "runs": [
     "validated-20260227-v3-schemas",
     "validated-20260227-v3-fixed",
@@ -10,6 +10,9 @@
     "tool-profiles-20260227",
     "schema-variants-20260227",
     "openrouter_small3",
+    "ollama_models-20260228-112957",
+    "ollama_models-20260228-112126",
+    "ollama_models-20260228-111949",
     "ministral-cross-provider",
     "latest",
     "full_remote-20260226-175045",

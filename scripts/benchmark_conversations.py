@@ -10,6 +10,8 @@ import re
 import shutil
 import sys
 import time
+import urllib.request
+import urllib.error
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -25,6 +27,98 @@ from talkbot.benchmark import (
     write_outputs,
 )
 from talkbot.benchmark_publish import publish_benchmark_results
+
+
+# ---------------------------------------------------------------------------
+# Ollama model-pull helpers
+# ---------------------------------------------------------------------------
+
+def _ollama_base_url(server_url: str) -> str:
+    """Derive the Ollama native API base from an OpenAI-compat server URL.
+
+    e.g. http://localhost:11434/v1  -> http://localhost:11434
+         https://host/ollama/v1    -> https://host/ollama
+    """
+    url = server_url.rstrip("/")
+    if url.endswith("/v1"):
+        url = url[:-3]
+    return url
+
+
+def _ollama_list_models(base_url: str, timeout: int = 10) -> set[str]:
+    """Return set of model names installed on the Ollama server."""
+    try:
+        req = urllib.request.Request(f"{base_url}/api/tags")
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read())
+        return {m["name"] for m in data.get("models", [])}
+    except Exception:
+        return set()
+
+
+def _ollama_pull(base_url: str, model: str) -> None:
+    """Pull a model from Ollama, streaming progress to stdout."""
+    payload = json.dumps({"model": model, "stream": True}).encode()
+    req = urllib.request.Request(
+        f"{base_url}/api/pull",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=3600) as resp:
+            last_status = ""
+            while chunk := resp.readline():
+                try:
+                    line = json.loads(chunk)
+                except json.JSONDecodeError:
+                    continue
+                status = line.get("status", "")
+                completed = line.get("completed", 0)
+                total = line.get("total", 0)
+                if total:
+                    pct = completed / total * 100
+                    print(f"\r    {status}: {pct:.0f}%   ", end="", flush=True)
+                elif status != last_status:
+                    if last_status:
+                        print()  # newline before new status group
+                    print(f"    {status}", end="", flush=True)
+                last_status = status
+            print()  # final newline
+    except urllib.error.URLError as e:
+        print(f"\n  Pull failed: {e}", file=sys.stderr)
+        raise
+
+
+def ensure_ollama_models(profiles: list, server_url: str) -> None:
+    """For local_server profiles, pull any models not yet installed."""
+    needed = {
+        p.model
+        for p in profiles
+        if getattr(p, "provider", None) == "local_server" and getattr(p, "model", None)
+    }
+    if not needed:
+        return
+
+    base_url = _ollama_base_url(server_url)
+    print(f"[ollama] checking {len(needed)} model(s) against {base_url} ...")
+    installed = _ollama_list_models(base_url)
+    if not installed:
+        print("  Warning: could not reach Ollama API — skipping model pull", file=sys.stderr)
+        return
+
+    missing = needed - installed
+    if not missing:
+        print(f"  All {len(needed)} model(s) already installed.")
+        return
+
+    for model in sorted(missing):
+        print(f"  Pulling {model!r} ...")
+        _ollama_pull(base_url, model)
+        print(f"  Done: {model!r}")
+
+
+# ---------------------------------------------------------------------------
 
 
 def _safe_segment(value: str) -> str:
@@ -147,6 +241,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
     parser.add_argument("--repeats", type=int, default=1, help="Repeat each profile N times")
     parser.add_argument(
+        "--pull-models",
+        action="store_true",
+        default=False,
+        help="Pull missing Ollama models before running (local_server profiles only)",
+    )
+    parser.add_argument(
         "--runner-label",
         default=os.getenv("TALKBOT_BENCHMARK_RUNNER", ""),
         help="Optional machine label for cross-system comparison (e.g., linux-main, win-dev, pi5).",
@@ -238,6 +338,11 @@ def main(argv: list[str] | None = None) -> int:
         profiles = [_default_profile_from_args(args)]
 
     profiles = _expand_repeats(profiles, max(1, args.repeats))
+
+    if args.pull_models:
+        server_url = os.getenv("TALKBOT_LOCAL_SERVER_URL", "http://localhost:11434/v1")
+        ensure_ollama_models(profiles, server_url)
+
     report = run_benchmark(
         profiles=profiles,
         scenarios=scenarios,
