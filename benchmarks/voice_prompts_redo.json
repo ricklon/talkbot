@@ -1,0 +1,21 @@
+[
+  {
+    "id": "date_iso",
+    "category": "date",
+    "text": "The due date is 2026-02-26.",
+    "notes": "Speak naturally; do not over-enunciate symbols.",
+    "expected_variants": ["The due date is February twenty sixth twenty twenty six."]
+  },
+  {
+    "id": "time_24h",
+    "category": "time",
+    "text": "Maintenance starts at 15:45.",
+    "expected_variants": ["Maintenance starts at fifteen forty five."]
+  },
+  {
+    "id": "year_1905",
+    "category": "year",
+    "text": "The building was completed in 1905.",
+    "expected_variants": ["The building was completed in nineteen oh five."]
+  }
+]

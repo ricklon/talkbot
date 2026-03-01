@@ -1,0 +1,251 @@
+{
+  "model": "mistralai/mistral-small-3.1-24b-instruct",
+  "provider": "openrouter",
+  "stt_model": "small.en",
+  "take": 1,
+  "use_tools": true,
+  "ran_at": "2026-02-27T23:21:43Z",
+  "summary": {
+    "total": 12,
+    "answer_ok": 0,
+    "tool_ok": 0,
+    "tool_total": 5
+  },
+  "results": [
+    {
+      "prompt_id": "tool_current_time",
+      "category": "tool_time",
+      "take": 1,
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T231035Z__ricklon__tool_current_time__take01.wav",
+      "expected_question": "What time is it right now?",
+      "stt_transcript": "",
+      "stt_ms": 0,
+      "llm_response": "Hello! How can I assist you today?",
+      "llm_ms": 1233,
+      "tool_calls_made": [],
+      "requires_tool": "get_current_time",
+      "expected_answer_contains": [
+        "AM",
+        "PM",
+        ":"
+      ],
+      "answer_ok": false,
+      "tool_ok": false,
+      "scored_at": "2026-02-27T23:21:20Z"
+    },
+    {
+      "prompt_id": "tool_current_date",
+      "category": "tool_date",
+      "take": 1,
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T231035Z__ricklon__tool_current_date__take01.wav",
+      "expected_question": "What is today's date?",
+      "stt_transcript": "",
+      "stt_ms": 0,
+      "llm_response": "Hello! How can I assist you today?",
+      "llm_ms": 1093,
+      "tool_calls_made": [],
+      "requires_tool": "get_current_date",
+      "expected_answer_contains": [
+        "2026"
+      ],
+      "answer_ok": false,
+      "tool_ok": false,
+      "scored_at": "2026-02-27T23:21:21Z"
+    },
+    {
+      "prompt_id": "tool_math_divide",
+      "category": "tool_calculator",
+      "take": 1,
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T231035Z__ricklon__tool_math_divide__take01.wav",
+      "expected_question": "What is 144 divided by 12?",
+      "stt_transcript": "",
+      "stt_ms": 0,
+      "llm_response": "Hello! How can I assist you today?",
+      "llm_ms": 1016,
+      "tool_calls_made": [],
+      "requires_tool": "calculator",
+      "expected_answer_contains": [
+        "12"
+      ],
+      "answer_ok": false,
+      "tool_ok": false,
+      "scored_at": "2026-02-27T23:21:22Z"
+    },
+    {
+      "prompt_id": "tool_math_percent",
+      "category": "tool_calculator",
+      "take": 1,
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T231035Z__ricklon__tool_math_percent__take01.wav",
+      "expected_question": "What is 15 percent of 200?",
+      "stt_transcript": "",
+      "stt_ms": 0,
+      "llm_response": "Hello! How can I assist you today?",
+      "llm_ms": 1639,
+      "tool_calls_made": [],
+      "requires_tool": "calculator",
+      "expected_answer_contains": [
+        "30"
+      ],
+      "answer_ok": false,
+      "tool_ok": false,
+      "scored_at": "2026-02-27T23:21:24Z"
+    },
+    {
+      "prompt_id": "tool_time_until",
+      "category": "tool_time",
+      "take": 1,
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T231035Z__ricklon__tool_time_until__take01.wav",
+      "expected_question": "How long until midnight?",
+      "stt_transcript": "",
+      "stt_ms": 0,
+      "llm_response": "Hello! How can I assist you today?",
+      "llm_ms": 1921,
+      "tool_calls_made": [],
+      "requires_tool": "time_until",
+      "expected_answer_contains": [
+        "hour",
+        "minute"
+      ],
+      "answer_ok": false,
+      "tool_ok": false,
+      "scored_at": "2026-02-27T23:21:26Z"
+    },
+    {
+      "prompt_id": "llm_history_apollo",
+      "category": "llm_history",
+      "take": 1,
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T231035Z__ricklon__llm_history_apollo__take01.wav",
+      "expected_question": "What year did the Apollo 11 moon landing happen?",
+      "stt_transcript": "",
+      "stt_ms": 0,
+      "llm_response": "Hello! How can I assist you today?",
+      "llm_ms": 1438,
+      "tool_calls_made": [],
+      "requires_tool": null,
+      "expected_answer_contains": [
+        "1969"
+      ],
+      "answer_ok": false,
+      "tool_ok": null,
+      "scored_at": "2026-02-27T23:21:27Z"
+    },
+    {
+      "prompt_id": "llm_history_ww2",
+      "category": "llm_history",
+      "take": 1,
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T231035Z__ricklon__llm_history_ww2__take01.wav",
+      "expected_question": "What year did World War Two end?",
+      "stt_transcript": "",
+      "stt_ms": 0,
+      "llm_response": "Hello! How can I assist you today?",
+      "llm_ms": 1843,
+      "tool_calls_made": [],
+      "requires_tool": null,
+      "expected_answer_contains": [
+        "1945"
+      ],
+      "answer_ok": false,
+      "tool_ok": null,
+      "scored_at": "2026-02-27T23:21:29Z"
+    },
+    {
+      "prompt_id": "llm_science_formula",
+      "category": "llm_science",
+      "take": 1,
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T231035Z__ricklon__llm_science_formula__take01.wav",
+      "expected_question": "What is the chemical formula for water?",
+      "stt_transcript": "",
+      "stt_ms": 0,
+      "llm_response": "Hello! How can I assist you today?",
+      "llm_ms": 2202,
+      "tool_calls_made": [],
+      "requires_tool": null,
+      "expected_answer_contains": [
+        "H2O",
+        "H\u2082O"
+      ],
+      "answer_ok": false,
+      "tool_ok": null,
+      "scored_at": "2026-02-27T23:21:31Z"
+    },
+    {
+      "prompt_id": "llm_science_speed_of_light",
+      "category": "llm_science",
+      "take": 1,
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T231035Z__ricklon__llm_science_speed_of_light__take01.wav",
+      "expected_question": "What is the speed of light in meters per second?",
+      "stt_transcript": "",
+      "stt_ms": 0,
+      "llm_response": "Hello! How can I assist you today?",
+      "llm_ms": 3032,
+      "tool_calls_made": [],
+      "requires_tool": null,
+      "expected_answer_contains": [
+        "299",
+        "792",
+        "458"
+      ],
+      "answer_ok": false,
+      "tool_ok": null,
+      "scored_at": "2026-02-27T23:21:34Z"
+    },
+    {
+      "prompt_id": "llm_conversion_seconds",
+      "category": "llm_conversion",
+      "take": 1,
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T231035Z__ricklon__llm_conversion_seconds__take01.wav",
+      "expected_question": "How many seconds are in an hour?",
+      "stt_transcript": "",
+      "stt_ms": 0,
+      "llm_response": "Hello! How can I assist you today?",
+      "llm_ms": 3358,
+      "tool_calls_made": [],
+      "requires_tool": null,
+      "expected_answer_contains": [
+        "3600"
+      ],
+      "answer_ok": false,
+      "tool_ok": null,
+      "scored_at": "2026-02-27T23:21:37Z"
+    },
+    {
+      "prompt_id": "llm_acronym_dna",
+      "category": "llm_science",
+      "take": 1,
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T231035Z__ricklon__llm_acronym_dna__take01.wav",
+      "expected_question": "What does DNA stand for?",
+      "stt_transcript": "",
+      "stt_ms": 0,
+      "llm_response": "Hello! How can I assist you today?",
+      "llm_ms": 4047,
+      "tool_calls_made": [],
+      "requires_tool": null,
+      "expected_answer_contains": [
+        "deoxyribonucleic",
+        "Deoxyribonucleic"
+      ],
+      "answer_ok": false,
+      "tool_ok": null,
+      "scored_at": "2026-02-27T23:21:41Z"
+    },
+    {
+      "prompt_id": "llm_math_pi",
+      "category": "llm_math",
+      "take": 1,
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T231035Z__ricklon__llm_math_pi__take01.wav",
+      "expected_question": "What is pi to two decimal places?",
+      "stt_transcript": "",
+      "stt_ms": 0,
+      "llm_response": "Hello! How can I assist you today?",
+      "llm_ms": 1046,
+      "tool_calls_made": [],
+      "requires_tool": null,
+      "expected_answer_contains": [
+        "3.14"
+      ],
+      "answer_ok": false,
+      "tool_ok": null,
+      "scored_at": "2026-02-27T23:21:43Z"
+    }
+  ]
+}

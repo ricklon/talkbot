@@ -1,0 +1,3169 @@
+{
+  "started_at": "2026-02-28T12:20:55-0500",
+  "finished_at": "2026-02-28T12:21:00-0500",
+  "runner": {
+    "label": "win-dev",
+    "hostname": "mudmachine",
+    "os": "Windows",
+    "os_release": "11",
+    "machine": "AMD64",
+    "processor": "AMD64 Family 25 Model 33 Stepping 0, AuthenticAMD",
+    "python_version": "3.12.12",
+    "cpu_count_logical": 16,
+    "cpu_count_physical": null,
+    "is_raspberry_pi": false,
+    "raspberry_pi_model": null,
+    "network_type": "unknown",
+    "endpoint_probes": [
+      {
+        "label": "openrouter",
+        "url": "https://openrouter.ai/api/v1/models",
+        "ttfb_ms_median": 114.1,
+        "ttfb_ms_min": 106.9,
+        "ttfb_ms_max": 206.9,
+        "samples": 3,
+        "http_status": 200,
+        "error": null
+      },
+      {
+        "label": "ollama-local",
+        "url": "http://localhost:11434/api/tags",
+        "ttfb_ms_median": 5021.6,
+        "ttfb_ms_min": 5020.5,
+        "ttfb_ms_max": 5037.5,
+        "samples": 3,
+        "http_status": 200,
+        "error": null
+      }
+    ],
+    "notes": null
+  },
+  "scenario_count": 10,
+  "run_count": 5,
+  "rubric": {
+    "version": "2026.full-suite.v1",
+    "weights": {
+      "task_success_rate": 0.35,
+      "tool_selection_accuracy": 0.2,
+      "argument_accuracy": 0.15,
+      "recovery_success_rate": 0.1,
+      "multistep_success_rate": 0.1,
+      "robustness_success_rate": 0.05,
+      "context_success_rate": 0.05
+    },
+    "penalties": {
+      "latency_ms_multiplier": 0.002,
+      "memory_mb_multiplier": 0.002,
+      "tool_error_rate_multiplier": 20.0,
+      "model_error_rate_multiplier": 30.0
+    }
+  },
+  "context_analysis": {
+    "near_peak_ratio": 0.95,
+    "dropoff_ratio": 0.9
+  },
+  "runs": [
+    {
+      "profile": {
+        "name": "ollama-gemma3-4b",
+        "provider": "local_server",
+        "model": "gemma3:4b",
+        "api_key": null,
+        "local_model_path": null,
+        "llamacpp_bin": null,
+        "local_server_url": null,
+        "local_server_api_key": null,
+        "enable_thinking": false,
+        "use_tools": true,
+        "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+        "max_tokens": 512,
+        "temperature": 0.0,
+        "env": {},
+        "tool_filter": null,
+        "tool_schema_variant": "standard"
+      },
+      "status": "ok",
+      "error": null,
+      "started_at": "2026-02-28T12:20:56-0500",
+      "duration_s": 0.863,
+      "aggregate": {
+        "scenario_count": 10,
+        "scenario_passed": 0,
+        "task_success_rate": 0.0,
+        "total_turns": 25,
+        "avg_turn_latency_ms": 33.611,
+        "p95_turn_latency_ms": 65.791,
+        "avg_turns_to_success": 0.0,
+        "expected_tool_calls": 0,
+        "matched_tool_names": 0,
+        "tool_selection_accuracy": 0.0,
+        "expected_arg_checks": 0,
+        "matched_arg_checks": 0,
+        "argument_accuracy": 0.0,
+        "actual_tool_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "max_history_messages": 4,
+        "max_history_chars": 641,
+        "cpu_time_s": 0.078,
+        "python_peak_mb": 0.363,
+        "process_rss_delta_mb": 0.0,
+        "memory_peak_mb": 0.363,
+        "avg_tool_latency_ms": 0.0,
+        "p95_tool_latency_ms": 0.0,
+        "tool_call_error_count": 0,
+        "tool_call_error_rate": 0.0,
+        "model_execution_error_count": 25,
+        "model_execution_error_rate": 1.0,
+        "first_turn_latency_ms": 36.02,
+        "tokens_per_second": 0.0,
+        "scenario_success_per_second": 0.0,
+        "tag_success": {
+          "calculator": 0.0,
+          "context": 0.0,
+          "core": 0.0,
+          "lists": 0.0,
+          "memory": 0.0,
+          "multistep": 0.0,
+          "practical": 0.0,
+          "recovery": 0.0,
+          "robustness": 0.0,
+          "timers": 0.0,
+          "tools": 0.0,
+          "utility": 0.0
+        }
+      },
+      "scenarios": [
+        {
+          "id": "calculator_basic",
+          "name": "Calculator: Basic Arithmetic",
+          "tags": [
+            "utility",
+            "tools",
+            "calculator"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What is 15 percent of 47 dollars?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 76.185,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 268
+            },
+            {
+              "index": 1,
+              "user": "Now divide that by 3.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 36.92,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 289
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "cross_tool_mix",
+          "name": "Cross-Tool Mix: Time, Timer, List",
+          "tags": [
+            "utility",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What time is it?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 32.812,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 251
+            },
+            {
+              "index": 1,
+              "user": "Set a timer for 5 minutes.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 30.919,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 277
+            },
+            {
+              "index": 2,
+              "user": "Add 'check the timer' to my reminders list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 33.578,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 320
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "list_basics",
+          "name": "List Basics",
+          "tags": [
+            "lists",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a grocery list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 30.361,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 257
+            },
+            {
+              "index": 1,
+              "user": "Add milk to the grocery list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 30.818,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 286
+            },
+            {
+              "index": 2,
+              "user": "What lists do you have?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 29.5,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 309
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "list_multistep_packing",
+          "name": "Multistep: Packing List Workflow",
+          "tags": [
+            "lists",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 35.8,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 257
+            },
+            {
+              "index": 1,
+              "user": "Add socks and charger to the packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 41.538,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 299
+            },
+            {
+              "index": 2,
+              "user": "Show me the packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 30.866,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 324
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_persistent_strict",
+          "name": "Memory Persistent (Strict)",
+          "tags": [
+            "memory",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 31.167,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 275
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 29.38,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 301
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_context_flexible",
+          "name": "Memory Context (Flexible)",
+          "tags": [
+            "memory",
+            "tools",
+            "practical"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 30.111,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 275
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 33.718,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 301
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_context_pressure",
+          "name": "Context: Long-Context Memory Retrieval",
+          "tags": [
+            "memory",
+            "tools",
+            "context",
+            "multistep"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that the launch codename is atlas.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 33.566,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 278
+            },
+            {
+              "index": 1,
+              "user": "Read this long note: project timeline, ownership, and milestone details repeated for context pressure. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 31.394,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 572
+            },
+            {
+              "index": 2,
+              "user": "After that long note, what launch codename did I ask you to remember?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 30.219,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 641
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "recovery_timer_retry",
+          "name": "Recovery: Cancel Nonexistent Timer",
+          "tags": [
+            "timers",
+            "tools",
+            "recovery",
+            "robustness"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Cancel timer 99.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 34.026,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 251
+            },
+            {
+              "index": 1,
+              "user": "List my timers so I can see what's actually running.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 30.54,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 303
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "timer_basics",
+          "name": "Timer Basics",
+          "tags": [
+            "timers",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Set a timer for 10 seconds.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 29.386,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 262
+            },
+            {
+              "index": 1,
+              "user": "List timers.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 27.784,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 274
+            },
+            {
+              "index": 2,
+              "user": "Cancel timer 1.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 33.169,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 289
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "utility_time_date",
+          "name": "Utility: Date and Time",
+          "tags": [
+            "utility",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What's today's date?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 26.781,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 255
+            },
+            {
+              "index": 1,
+              "user": "And what time is it right now?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 29.74,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 285
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        }
+      ],
+      "tool_traces": []
+    },
+    {
+      "profile": {
+        "name": "ollama-phi4-mini",
+        "provider": "local_server",
+        "model": "phi4-mini:latest",
+        "api_key": null,
+        "local_model_path": null,
+        "llamacpp_bin": null,
+        "local_server_url": null,
+        "local_server_api_key": null,
+        "enable_thinking": false,
+        "use_tools": true,
+        "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+        "max_tokens": 512,
+        "temperature": 0.0,
+        "env": {},
+        "tool_filter": null,
+        "tool_schema_variant": "standard"
+      },
+      "status": "ok",
+      "error": null,
+      "started_at": "2026-02-28T12:20:57-0500",
+      "duration_s": 1.015,
+      "aggregate": {
+        "scenario_count": 10,
+        "scenario_passed": 0,
+        "task_success_rate": 0.0,
+        "total_turns": 25,
+        "avg_turn_latency_ms": 39.723,
+        "p95_turn_latency_ms": 190.057,
+        "avg_turns_to_success": 0.0,
+        "expected_tool_calls": 0,
+        "matched_tool_names": 0,
+        "tool_selection_accuracy": 0.0,
+        "expected_arg_checks": 0,
+        "matched_arg_checks": 0,
+        "argument_accuracy": 0.0,
+        "actual_tool_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "max_history_messages": 4,
+        "max_history_chars": 641,
+        "cpu_time_s": 0.109,
+        "python_peak_mb": 0.321,
+        "process_rss_delta_mb": 0.0,
+        "memory_peak_mb": 0.321,
+        "avg_tool_latency_ms": 0.0,
+        "p95_tool_latency_ms": 0.0,
+        "tool_call_error_count": 0,
+        "tool_call_error_rate": 0.0,
+        "model_execution_error_count": 25,
+        "model_execution_error_rate": 1.0,
+        "first_turn_latency_ms": 33.103,
+        "tokens_per_second": 0.0,
+        "scenario_success_per_second": 0.0,
+        "tag_success": {
+          "calculator": 0.0,
+          "context": 0.0,
+          "core": 0.0,
+          "lists": 0.0,
+          "memory": 0.0,
+          "multistep": 0.0,
+          "practical": 0.0,
+          "recovery": 0.0,
+          "robustness": 0.0,
+          "timers": 0.0,
+          "tools": 0.0,
+          "utility": 0.0
+        }
+      },
+      "scenarios": [
+        {
+          "id": "calculator_basic",
+          "name": "Calculator: Basic Arithmetic",
+          "tags": [
+            "utility",
+            "tools",
+            "calculator"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What is 15 percent of 47 dollars?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 58.476,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 268
+            },
+            {
+              "index": 1,
+              "user": "Now divide that by 3.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 30.628,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 289
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "cross_tool_mix",
+          "name": "Cross-Tool Mix: Time, Timer, List",
+          "tags": [
+            "utility",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What time is it?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 28.63,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 251
+            },
+            {
+              "index": 1,
+              "user": "Set a timer for 5 minutes.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 29.261,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 277
+            },
+            {
+              "index": 2,
+              "user": "Add 'check the timer' to my reminders list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 33.048,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 320
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "list_basics",
+          "name": "List Basics",
+          "tags": [
+            "lists",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a grocery list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 27.069,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 257
+            },
+            {
+              "index": 1,
+              "user": "Add milk to the grocery list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 26.314,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 286
+            },
+            {
+              "index": 2,
+              "user": "What lists do you have?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 28.29,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 309
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "list_multistep_packing",
+          "name": "Multistep: Packing List Workflow",
+          "tags": [
+            "lists",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 30.086,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 257
+            },
+            {
+              "index": 1,
+              "user": "Add socks and charger to the packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 25.586,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 299
+            },
+            {
+              "index": 2,
+              "user": "Show me the packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 28.868,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 324
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_persistent_strict",
+          "name": "Memory Persistent (Strict)",
+          "tags": [
+            "memory",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 29.993,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 275
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 30.314,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 301
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_context_flexible",
+          "name": "Memory Context (Flexible)",
+          "tags": [
+            "memory",
+            "tools",
+            "practical"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 33.486,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 275
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 35.222,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 301
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_context_pressure",
+          "name": "Context: Long-Context Memory Retrieval",
+          "tags": [
+            "memory",
+            "tools",
+            "context",
+            "multistep"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that the launch codename is atlas.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 29.103,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 278
+            },
+            {
+              "index": 1,
+              "user": "Read this long note: project timeline, ownership, and milestone details repeated for context pressure. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 27.3,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 572
+            },
+            {
+              "index": 2,
+              "user": "After that long note, what launch codename did I ask you to remember?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 28.911,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 641
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "recovery_timer_retry",
+          "name": "Recovery: Cancel Nonexistent Timer",
+          "tags": [
+            "timers",
+            "tools",
+            "recovery",
+            "robustness"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Cancel timer 99.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 31.592,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 251
+            },
+            {
+              "index": 1,
+              "user": "List my timers so I can see what's actually running.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 29.533,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 303
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "timer_basics",
+          "name": "Timer Basics",
+          "tags": [
+            "timers",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Set a timer for 10 seconds.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 27.497,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 262
+            },
+            {
+              "index": 1,
+              "user": "List timers.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 246.449,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 274
+            },
+            {
+              "index": 2,
+              "user": "Cancel timer 1.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 29.166,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 289
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "utility_time_date",
+          "name": "Utility: Date and Time",
+          "tags": [
+            "utility",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What's today's date?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 35.094,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 255
+            },
+            {
+              "index": 1,
+              "user": "And what time is it right now?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 33.155,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 285
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        }
+      ],
+      "tool_traces": []
+    },
+    {
+      "profile": {
+        "name": "ollama-llama3.2-3b",
+        "provider": "local_server",
+        "model": "llama3.2:3b",
+        "api_key": null,
+        "local_model_path": null,
+        "llamacpp_bin": null,
+        "local_server_url": null,
+        "local_server_api_key": null,
+        "enable_thinking": false,
+        "use_tools": true,
+        "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+        "max_tokens": 512,
+        "temperature": 0.0,
+        "env": {},
+        "tool_filter": null,
+        "tool_schema_variant": "standard"
+      },
+      "status": "ok",
+      "error": null,
+      "started_at": "2026-02-28T12:20:58-0500",
+      "duration_s": 1.133,
+      "aggregate": {
+        "scenario_count": 10,
+        "scenario_passed": 0,
+        "task_success_rate": 0.0,
+        "total_turns": 25,
+        "avg_turn_latency_ms": 44.457,
+        "p95_turn_latency_ms": 200.922,
+        "avg_turns_to_success": 0.0,
+        "expected_tool_calls": 0,
+        "matched_tool_names": 0,
+        "tool_selection_accuracy": 0.0,
+        "expected_arg_checks": 0,
+        "matched_arg_checks": 0,
+        "argument_accuracy": 0.0,
+        "actual_tool_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "max_history_messages": 4,
+        "max_history_chars": 641,
+        "cpu_time_s": 0.141,
+        "python_peak_mb": 0.349,
+        "process_rss_delta_mb": 0.0,
+        "memory_peak_mb": 0.349,
+        "avg_tool_latency_ms": 0.0,
+        "p95_tool_latency_ms": 0.0,
+        "tool_call_error_count": 0,
+        "tool_call_error_rate": 0.0,
+        "model_execution_error_count": 25,
+        "model_execution_error_rate": 1.0,
+        "first_turn_latency_ms": 35.921,
+        "tokens_per_second": 0.0,
+        "scenario_success_per_second": 0.0,
+        "tag_success": {
+          "calculator": 0.0,
+          "context": 0.0,
+          "core": 0.0,
+          "lists": 0.0,
+          "memory": 0.0,
+          "multistep": 0.0,
+          "practical": 0.0,
+          "recovery": 0.0,
+          "robustness": 0.0,
+          "timers": 0.0,
+          "tools": 0.0,
+          "utility": 0.0
+        }
+      },
+      "scenarios": [
+        {
+          "id": "calculator_basic",
+          "name": "Calculator: Basic Arithmetic",
+          "tags": [
+            "utility",
+            "tools",
+            "calculator"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What is 15 percent of 47 dollars?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 60.503,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 268
+            },
+            {
+              "index": 1,
+              "user": "Now divide that by 3.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 33.68,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 289
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "cross_tool_mix",
+          "name": "Cross-Tool Mix: Time, Timer, List",
+          "tags": [
+            "utility",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What time is it?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 30.278,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 251
+            },
+            {
+              "index": 1,
+              "user": "Set a timer for 5 minutes.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 29.445,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 277
+            },
+            {
+              "index": 2,
+              "user": "Add 'check the timer' to my reminders list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 37.652,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 320
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "list_basics",
+          "name": "List Basics",
+          "tags": [
+            "lists",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a grocery list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 31.642,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 257
+            },
+            {
+              "index": 1,
+              "user": "Add milk to the grocery list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 41.031,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 286
+            },
+            {
+              "index": 2,
+              "user": "What lists do you have?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 261.101,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 309
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "list_multistep_packing",
+          "name": "Multistep: Packing List Workflow",
+          "tags": [
+            "lists",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 43.224,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 257
+            },
+            {
+              "index": 1,
+              "user": "Add socks and charger to the packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 42.39,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 299
+            },
+            {
+              "index": 2,
+              "user": "Show me the packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 38.563,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 324
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_persistent_strict",
+          "name": "Memory Persistent (Strict)",
+          "tags": [
+            "memory",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 30.973,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 275
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 36.923,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 301
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_context_flexible",
+          "name": "Memory Context (Flexible)",
+          "tags": [
+            "memory",
+            "tools",
+            "practical"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 36.08,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 275
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 28.931,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 301
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_context_pressure",
+          "name": "Context: Long-Context Memory Retrieval",
+          "tags": [
+            "memory",
+            "tools",
+            "context",
+            "multistep"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that the launch codename is atlas.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 31.78,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 278
+            },
+            {
+              "index": 1,
+              "user": "Read this long note: project timeline, ownership, and milestone details repeated for context pressure. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 32.703,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 572
+            },
+            {
+              "index": 2,
+              "user": "After that long note, what launch codename did I ask you to remember?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 37.272,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 641
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "recovery_timer_retry",
+          "name": "Recovery: Cancel Nonexistent Timer",
+          "tags": [
+            "timers",
+            "tools",
+            "recovery",
+            "robustness"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Cancel timer 99.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 34.468,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 251
+            },
+            {
+              "index": 1,
+              "user": "List my timers so I can see what's actually running.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 29.604,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 303
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "timer_basics",
+          "name": "Timer Basics",
+          "tags": [
+            "timers",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Set a timer for 10 seconds.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 31.336,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 262
+            },
+            {
+              "index": 1,
+              "user": "List timers.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 34.007,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 274
+            },
+            {
+              "index": 2,
+              "user": "Cancel timer 1.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 32.704,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 289
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "utility_time_date",
+          "name": "Utility: Date and Time",
+          "tags": [
+            "utility",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What's today's date?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 28.925,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 255
+            },
+            {
+              "index": 1,
+              "user": "And what time is it right now?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 36.214,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 285
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        }
+      ],
+      "tool_traces": []
+    },
+    {
+      "profile": {
+        "name": "ollama-deepseek-r1-1.5b",
+        "provider": "local_server",
+        "model": "deepseek-r1:1.5b",
+        "api_key": null,
+        "local_model_path": null,
+        "llamacpp_bin": null,
+        "local_server_url": null,
+        "local_server_api_key": null,
+        "enable_thinking": false,
+        "use_tools": true,
+        "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+        "max_tokens": 512,
+        "temperature": 0.0,
+        "env": {},
+        "tool_filter": null,
+        "tool_schema_variant": "standard"
+      },
+      "status": "ok",
+      "error": null,
+      "started_at": "2026-02-28T12:20:59-0500",
+      "duration_s": 0.775,
+      "aggregate": {
+        "scenario_count": 10,
+        "scenario_passed": 0,
+        "task_success_rate": 0.0,
+        "total_turns": 25,
+        "avg_turn_latency_ms": 30.168,
+        "p95_turn_latency_ms": 49.788,
+        "avg_turns_to_success": 0.0,
+        "expected_tool_calls": 0,
+        "matched_tool_names": 0,
+        "tool_selection_accuracy": 0.0,
+        "expected_arg_checks": 0,
+        "matched_arg_checks": 0,
+        "argument_accuracy": 0.0,
+        "actual_tool_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "max_history_messages": 4,
+        "max_history_chars": 641,
+        "cpu_time_s": 0.141,
+        "python_peak_mb": 0.318,
+        "process_rss_delta_mb": 0.0,
+        "memory_peak_mb": 0.318,
+        "avg_tool_latency_ms": 0.0,
+        "p95_tool_latency_ms": 0.0,
+        "tool_call_error_count": 0,
+        "tool_call_error_rate": 0.0,
+        "model_execution_error_count": 25,
+        "model_execution_error_rate": 1.0,
+        "first_turn_latency_ms": 31.321,
+        "tokens_per_second": 0.0,
+        "scenario_success_per_second": 0.0,
+        "tag_success": {
+          "calculator": 0.0,
+          "context": 0.0,
+          "core": 0.0,
+          "lists": 0.0,
+          "memory": 0.0,
+          "multistep": 0.0,
+          "practical": 0.0,
+          "recovery": 0.0,
+          "robustness": 0.0,
+          "timers": 0.0,
+          "tools": 0.0,
+          "utility": 0.0
+        }
+      },
+      "scenarios": [
+        {
+          "id": "calculator_basic",
+          "name": "Calculator: Basic Arithmetic",
+          "tags": [
+            "utility",
+            "tools",
+            "calculator"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What is 15 percent of 47 dollars?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 54.611,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 268
+            },
+            {
+              "index": 1,
+              "user": "Now divide that by 3.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 27.773,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 289
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "cross_tool_mix",
+          "name": "Cross-Tool Mix: Time, Timer, List",
+          "tags": [
+            "utility",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What time is it?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 29.751,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 251
+            },
+            {
+              "index": 1,
+              "user": "Set a timer for 5 minutes.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 25.675,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 277
+            },
+            {
+              "index": 2,
+              "user": "Add 'check the timer' to my reminders list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 27.53,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 320
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "list_basics",
+          "name": "List Basics",
+          "tags": [
+            "lists",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a grocery list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 28.298,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 257
+            },
+            {
+              "index": 1,
+              "user": "Add milk to the grocery list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 33.771,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 286
+            },
+            {
+              "index": 2,
+              "user": "What lists do you have?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 26.944,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 309
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "list_multistep_packing",
+          "name": "Multistep: Packing List Workflow",
+          "tags": [
+            "lists",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 26.92,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 257
+            },
+            {
+              "index": 1,
+              "user": "Add socks and charger to the packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 25.019,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 299
+            },
+            {
+              "index": 2,
+              "user": "Show me the packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 27.652,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 324
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_persistent_strict",
+          "name": "Memory Persistent (Strict)",
+          "tags": [
+            "memory",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 27.192,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 275
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 28.608,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 301
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_context_flexible",
+          "name": "Memory Context (Flexible)",
+          "tags": [
+            "memory",
+            "tools",
+            "practical"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 25.794,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 275
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 25.312,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 301
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_context_pressure",
+          "name": "Context: Long-Context Memory Retrieval",
+          "tags": [
+            "memory",
+            "tools",
+            "context",
+            "multistep"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that the launch codename is atlas.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 28.206,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 278
+            },
+            {
+              "index": 1,
+              "user": "Read this long note: project timeline, ownership, and milestone details repeated for context pressure. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 28.383,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 572
+            },
+            {
+              "index": 2,
+              "user": "After that long note, what launch codename did I ask you to remember?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 29.991,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 641
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "recovery_timer_retry",
+          "name": "Recovery: Cancel Nonexistent Timer",
+          "tags": [
+            "timers",
+            "tools",
+            "recovery",
+            "robustness"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Cancel timer 99.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 29.011,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 251
+            },
+            {
+              "index": 1,
+              "user": "List my timers so I can see what's actually running.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 38.534,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 303
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "timer_basics",
+          "name": "Timer Basics",
+          "tags": [
+            "timers",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Set a timer for 10 seconds.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 31.297,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 262
+            },
+            {
+              "index": 1,
+              "user": "List timers.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 32.079,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 274
+            },
+            {
+              "index": 2,
+              "user": "Cancel timer 1.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 32.863,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 289
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "utility_time_date",
+          "name": "Utility: Date and Time",
+          "tags": [
+            "utility",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What's today's date?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 32.133,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 255
+            },
+            {
+              "index": 1,
+              "user": "And what time is it right now?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 30.863,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 285
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        }
+      ],
+      "tool_traces": []
+    },
+    {
+      "profile": {
+        "name": "ollama-mistral-nemo-12b",
+        "provider": "local_server",
+        "model": "mistral-nemo:latest",
+        "api_key": null,
+        "local_model_path": null,
+        "llamacpp_bin": null,
+        "local_server_url": null,
+        "local_server_api_key": null,
+        "enable_thinking": false,
+        "use_tools": true,
+        "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+        "max_tokens": 512,
+        "temperature": 0.0,
+        "env": {},
+        "tool_filter": null,
+        "tool_schema_variant": "standard"
+      },
+      "status": "ok",
+      "error": null,
+      "started_at": "2026-02-28T12:21:00-0500",
+      "duration_s": 0.826,
+      "aggregate": {
+        "scenario_count": 10,
+        "scenario_passed": 0,
+        "task_success_rate": 0.0,
+        "total_turns": 25,
+        "avg_turn_latency_ms": 32.183,
+        "p95_turn_latency_ms": 63.087,
+        "avg_turns_to_success": 0.0,
+        "expected_tool_calls": 0,
+        "matched_tool_names": 0,
+        "tool_selection_accuracy": 0.0,
+        "expected_arg_checks": 0,
+        "matched_arg_checks": 0,
+        "argument_accuracy": 0.0,
+        "actual_tool_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "max_history_messages": 4,
+        "max_history_chars": 641,
+        "cpu_time_s": 0.125,
+        "python_peak_mb": 0.346,
+        "process_rss_delta_mb": 0.0,
+        "memory_peak_mb": 0.346,
+        "avg_tool_latency_ms": 0.0,
+        "p95_tool_latency_ms": 0.0,
+        "tool_call_error_count": 0,
+        "tool_call_error_rate": 0.0,
+        "model_execution_error_count": 25,
+        "model_execution_error_rate": 1.0,
+        "first_turn_latency_ms": 35.463,
+        "tokens_per_second": 0.0,
+        "scenario_success_per_second": 0.0,
+        "tag_success": {
+          "calculator": 0.0,
+          "context": 0.0,
+          "core": 0.0,
+          "lists": 0.0,
+          "memory": 0.0,
+          "multistep": 0.0,
+          "practical": 0.0,
+          "recovery": 0.0,
+          "robustness": 0.0,
+          "timers": 0.0,
+          "tools": 0.0,
+          "utility": 0.0
+        }
+      },
+      "scenarios": [
+        {
+          "id": "calculator_basic",
+          "name": "Calculator: Basic Arithmetic",
+          "tags": [
+            "utility",
+            "tools",
+            "calculator"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What is 15 percent of 47 dollars?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 68.583,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 268
+            },
+            {
+              "index": 1,
+              "user": "Now divide that by 3.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 31.917,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 289
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "cross_tool_mix",
+          "name": "Cross-Tool Mix: Time, Timer, List",
+          "tags": [
+            "utility",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What time is it?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 29.807,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 251
+            },
+            {
+              "index": 1,
+              "user": "Set a timer for 5 minutes.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 30.195,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 277
+            },
+            {
+              "index": 2,
+              "user": "Add 'check the timer' to my reminders list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 35.469,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 320
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "list_basics",
+          "name": "List Basics",
+          "tags": [
+            "lists",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a grocery list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 34.62,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 257
+            },
+            {
+              "index": 1,
+              "user": "Add milk to the grocery list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 28.991,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 286
+            },
+            {
+              "index": 2,
+              "user": "What lists do you have?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 25.266,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 309
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "list_multistep_packing",
+          "name": "Multistep: Packing List Workflow",
+          "tags": [
+            "lists",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 26.362,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 257
+            },
+            {
+              "index": 1,
+              "user": "Add socks and charger to the packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 30.048,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 299
+            },
+            {
+              "index": 2,
+              "user": "Show me the packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 25.325,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 324
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_persistent_strict",
+          "name": "Memory Persistent (Strict)",
+          "tags": [
+            "memory",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 29.157,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 275
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 30.722,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 301
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_context_flexible",
+          "name": "Memory Context (Flexible)",
+          "tags": [
+            "memory",
+            "tools",
+            "practical"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 27.398,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 275
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 27.113,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 301
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_context_pressure",
+          "name": "Context: Long-Context Memory Retrieval",
+          "tags": [
+            "memory",
+            "tools",
+            "context",
+            "multistep"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that the launch codename is atlas.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 26.004,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 278
+            },
+            {
+              "index": 1,
+              "user": "Read this long note: project timeline, ownership, and milestone details repeated for context pressure. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 31.082,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 572
+            },
+            {
+              "index": 2,
+              "user": "After that long note, what launch codename did I ask you to remember?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 32.795,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 641
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "recovery_timer_retry",
+          "name": "Recovery: Cancel Nonexistent Timer",
+          "tags": [
+            "timers",
+            "tools",
+            "recovery",
+            "robustness"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Cancel timer 99.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 27.719,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 251
+            },
+            {
+              "index": 1,
+              "user": "List my timers so I can see what's actually running.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 27.657,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 303
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "timer_basics",
+          "name": "Timer Basics",
+          "tags": [
+            "timers",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Set a timer for 10 seconds.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 50.264,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 262
+            },
+            {
+              "index": 1,
+              "user": "List timers.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 29.836,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 274
+            },
+            {
+              "index": 2,
+              "user": "Cancel timer 1.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 33.212,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 289
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "utility_time_date",
+          "name": "Utility: Date and Time",
+          "tags": [
+            "utility",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What's today's date?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 34.719,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 255
+            },
+            {
+              "index": 1,
+              "user": "And what time is it right now?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '403 Forbidden' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+              ],
+              "latency_ms": 30.314,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 285
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        }
+      ],
+      "tool_traces": []
+    }
+  ],
+  "meta": {
+    "main_output_root": "benchmark_results",
+    "latest_run": "D:\\Projects\\GitHub\\talkbot\\benchmark_results\\latest",
+    "run_name": "ollama_models-20260228-122039",
+    "runner_label": "win-dev",
+    "update_main": true
+  }
+}
