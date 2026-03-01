@@ -17,6 +17,9 @@ sample.wav
 models/*.gguf
 models/*.GGUF
 
+# System/installation-specific tools (e.g. llama.cpp binaries)
+tools/
+
 # IDE
 .vscode/
 .idea/
