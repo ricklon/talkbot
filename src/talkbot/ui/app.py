@@ -44,6 +44,13 @@ LOCAL_SERVER_MODELS = [
     "ministral-3b:latest", # 2GB — fast chat, no tool support in Ollama
 ]
 
+VAD_PRESETS: dict[str, dict | None] = {
+    "Quiet":  {"threshold": 0.2, "silence_ms": 1500, "min_speech_ms": 200},
+    "Normal": {"threshold": 0.3, "silence_ms": 1200, "min_speech_ms": 250},
+    "Noisy":  {"threshold": 0.5, "silence_ms": 800,  "min_speech_ms": 300},
+    "Custom": None,
+}
+
 # Substring → tool support. True=supported, False=not supported, absent=unknown (default ON).
 LOCAL_SERVER_TOOL_SUPPORT: dict[str, bool] = {
     "llama3.2": True,
@@ -122,7 +129,7 @@ class TalkBotGUI:
         self.local_model_path = _default_local_model_path()
         self.llamacpp_bin = _default_llamacpp_bin()
         self.local_server_url = os.getenv(
-            "TALKBOT_LOCAL_SERVER_URL", "http://127.0.0.1:8000/v1"
+            "TALKBOT_LOCAL_SERVER_URL", "http://localhost:11434/v1"
         )
         self.local_server_api_key = os.getenv("TALKBOT_LOCAL_SERVER_API_KEY")
         self.client = None
@@ -284,9 +291,10 @@ class TalkBotGUI:
         )
         settings_frame.grid(row=1, column=0, sticky="ew", pady=(0, 15))
 
-        # LLM row: provider + model + toggle buttons
+        # Row 1: LLM provider + model + controls + max tokens
         row1 = tk.Frame(settings_frame, bg=ModernStyle.BG_SECONDARY)
-        row1.pack(fill=tk.X, pady=(0, 8))
+        row1.pack(fill=tk.X, pady=(0, 4))
+        self._row1_ref = row1
 
         tk.Label(
             row1,
@@ -321,7 +329,7 @@ class TalkBotGUI:
             row1,
             textvariable=self.model_var,
             values=[],
-            width=35,
+            width=30,
             style="Modern.TCombobox",
         )
         self.model_combo.pack(side=tk.LEFT, padx=(10, 20))
@@ -355,11 +363,74 @@ class TalkBotGUI:
             pady=4,
             cursor="hand2",
         )
-        self.tools_btn.pack(side=tk.LEFT)
+        self.tools_btn.pack(side=tk.LEFT, padx=(0, 12))
 
-        # TTS row: backend + status indicator + voice dropdown
+        tk.Label(
+            row1,
+            text="Max Tokens:",
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+        ).pack(side=tk.LEFT)
+        self.max_tokens_var = tk.StringVar(value=str(self.default_max_tokens))
+        self.max_tokens_entry = tk.Entry(
+            row1,
+            textvariable=self.max_tokens_var,
+            width=6,
+            bg=ModernStyle.BG_TERTIARY,
+            fg=ModernStyle.TEXT_PRIMARY,
+            insertbackground=ModernStyle.TEXT_PRIMARY,
+            relief=tk.FLAT,
+            bd=4,
+        )
+        self.max_tokens_entry.pack(side=tk.LEFT, padx=(8, 0))
+
+        # Server URL row — shown only when provider = local_server
+        self.server_url_row = tk.Frame(settings_frame, bg=ModernStyle.BG_SECONDARY)
+        # (not packed by default — shown/hidden in _on_provider_changed)
+        self.server_url_var = tk.StringVar(value=self.local_server_url)
+        tk.Label(
+            self.server_url_row,
+            text="Server URL:",
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+        ).pack(side=tk.LEFT)
+        tk.Entry(
+            self.server_url_row,
+            textvariable=self.server_url_var,
+            width=44,
+            bg=ModernStyle.BG_TERTIARY,
+            fg=ModernStyle.TEXT_PRIMARY,
+            insertbackground=ModernStyle.TEXT_PRIMARY,
+            relief=tk.FLAT,
+            bd=4,
+        ).pack(side=tk.LEFT, padx=(8, 8))
+        self.server_test_btn = tk.Button(
+            self.server_url_row,
+            text="Test",
+            command=self._test_server_connection,
+            bg=ModernStyle.BG_TERTIARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            relief=tk.FLAT,
+            padx=8,
+            pady=2,
+            cursor="hand2",
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+        )
+        self.server_test_btn.pack(side=tk.LEFT)
+        self.server_test_label = tk.Label(
+            self.server_url_row,
+            text="",
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_SMALL),
+        )
+        self.server_test_label.pack(side=tk.LEFT, padx=(8, 0))
+
+        # TTS row: backend + status + voice + English filter + Rate + Volume
         row_tts = tk.Frame(settings_frame, bg=ModernStyle.BG_SECONDARY)
-        row_tts.pack(fill=tk.X, pady=(0, 8))
+        row_tts.pack(fill=tk.X, pady=(0, 4))
 
         tk.Label(
             row_tts,
@@ -388,7 +459,7 @@ class TalkBotGUI:
             fg=ModernStyle.SUCCESS,
             font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
         )
-        self.backend_status_label.pack(side=tk.LEFT, padx=(0, 20))
+        self.backend_status_label.pack(side=tk.LEFT, padx=(0, 16))
 
         tk.Label(
             row_tts,
@@ -400,7 +471,7 @@ class TalkBotGUI:
 
         self.voice_var = tk.StringVar()
         self.voice_combo = ttk.Combobox(
-            row_tts, textvariable=self.voice_var, width=40, style="Modern.TCombobox"
+            row_tts, textvariable=self.voice_var, width=30, style="Modern.TCombobox"
         )
         self.voice_combo.pack(side=tk.LEFT, padx=(10, 0))
         self.voice_combo.bind("<<ComboboxSelected>>", self._on_voice_selected)
@@ -408,7 +479,7 @@ class TalkBotGUI:
         self.english_only_var = tk.BooleanVar(value=True)
         self.english_only_check = tk.Checkbutton(
             row_tts,
-            text="English only",
+            text="EN",
             variable=self.english_only_var,
             command=self._on_voice_filter_toggled,
             bg=ModernStyle.BG_SECONDARY,
@@ -416,9 +487,86 @@ class TalkBotGUI:
             selectcolor=ModernStyle.BG_TERTIARY,
             activebackground=ModernStyle.BG_SECONDARY,
             activeforeground=ModernStyle.TEXT_PRIMARY,
-            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_SMALL),
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
         )
-        self.english_only_check.pack(side=tk.LEFT, padx=(12, 0))
+        self.english_only_check.pack(side=tk.LEFT, padx=(8, 16))
+
+        # Rate slider (in TTS row)
+        tk.Label(
+            row_tts,
+            text="Rate:",
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+        ).pack(side=tk.LEFT)
+
+        self.rate_var = tk.IntVar(value=175)
+        rate_scale = tk.Scale(
+            row_tts,
+            from_=50,
+            to=300,
+            variable=self.rate_var,
+            orient=tk.HORIZONTAL,
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_PRIMARY,
+            troughcolor=ModernStyle.BG_TERTIARY,
+            highlightthickness=0,
+            bd=0,
+            length=120,
+            showvalue=False,
+        )
+        rate_scale.pack(side=tk.LEFT, padx=(8, 4))
+
+        self.rate_label = tk.Label(
+            row_tts,
+            text="175",
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.ACCENT,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL, "bold"),
+        )
+        self.rate_label.pack(side=tk.LEFT, padx=(0, 12))
+        rate_scale.configure(
+            command=lambda v: self.rate_label.config(text=str(int(float(v))))
+        )
+
+        # Volume slider (in TTS row)
+        tk.Label(
+            row_tts,
+            text="Vol:",
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+        ).pack(side=tk.LEFT)
+
+        self.volume_var = tk.DoubleVar(value=1.0)
+        vol_scale = tk.Scale(
+            row_tts,
+            from_=0.0,
+            to=1.0,
+            variable=self.volume_var,
+            orient=tk.HORIZONTAL,
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_PRIMARY,
+            troughcolor=ModernStyle.BG_TERTIARY,
+            highlightthickness=0,
+            bd=0,
+            length=100,
+            resolution=0.1,
+            showvalue=False,
+        )
+        vol_scale.pack(side=tk.LEFT, padx=(8, 4))
+
+        self.volume_label = tk.Label(
+            row_tts,
+            text="100%",
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.ACCENT,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL, "bold"),
+        )
+        self.volume_label.pack(side=tk.LEFT)
+        vol_scale.configure(
+            command=lambda v: self.volume_label.config(text=f"{int(float(v) * 100)}%")
+        )
 
         # Local paths row — shown only when provider=local, packed dynamically
         self.local_row = tk.Frame(settings_frame, bg=ModernStyle.BG_SECONDARY)
@@ -463,123 +611,36 @@ class TalkBotGUI:
         )
         self.llamacpp_bin_entry.pack(side=tk.LEFT, padx=(8, 12))
 
-        # Sliders row
-        row2 = tk.Frame(settings_frame, bg=ModernStyle.BG_SECONDARY)
-        row2.pack(fill=tk.X)
-        self._slider_row_ref = row2
+        # Advanced / STT toggle button
+        self.advanced_expanded = False
+        adv_toggle_row = tk.Frame(settings_frame, bg=ModernStyle.BG_SECONDARY)
+        adv_toggle_row.pack(fill=tk.X, pady=(6, 0))
+        self._adv_anchor = adv_toggle_row
 
-        # Rate slider
-        rate_frame = tk.Frame(row2, bg=ModernStyle.BG_SECONDARY)
-        rate_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
-
-        tk.Label(
-            rate_frame,
-            text="Rate:",
-            bg=ModernStyle.BG_SECONDARY,
-            fg=ModernStyle.TEXT_SECONDARY,
-            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
-        ).pack(side=tk.LEFT)
-
-        self.rate_var = tk.IntVar(value=175)
-        rate_scale = tk.Scale(
-            rate_frame,
-            from_=50,
-            to=300,
-            variable=self.rate_var,
-            orient=tk.HORIZONTAL,
-            bg=ModernStyle.BG_SECONDARY,
-            fg=ModernStyle.TEXT_PRIMARY,
-            troughcolor=ModernStyle.BG_TERTIARY,
-            highlightthickness=0,
-            bd=0,
-            length=150,
-            showvalue=False,
-        )
-        rate_scale.pack(side=tk.LEFT, padx=(10, 5))
-
-        self.rate_label = tk.Label(
-            rate_frame,
-            text="175",
-            bg=ModernStyle.BG_SECONDARY,
-            fg=ModernStyle.ACCENT,
-            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL, "bold"),
-        )
-        self.rate_label.pack(side=tk.LEFT)
-        rate_scale.configure(
-            command=lambda v: self.rate_label.config(text=str(int(float(v))))
-        )
-
-        # Volume slider
-        vol_frame = tk.Frame(row2, bg=ModernStyle.BG_SECONDARY)
-        vol_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
-
-        tk.Label(
-            vol_frame,
-            text="Volume:",
-            bg=ModernStyle.BG_SECONDARY,
-            fg=ModernStyle.TEXT_SECONDARY,
-            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
-        ).pack(side=tk.LEFT)
-
-        self.volume_var = tk.DoubleVar(value=1.0)
-        vol_scale = tk.Scale(
-            vol_frame,
-            from_=0.0,
-            to=1.0,
-            variable=self.volume_var,
-            orient=tk.HORIZONTAL,
-            bg=ModernStyle.BG_SECONDARY,
-            fg=ModernStyle.TEXT_PRIMARY,
-            troughcolor=ModernStyle.BG_TERTIARY,
-            highlightthickness=0,
-            bd=0,
-            length=150,
-            resolution=0.1,
-            showvalue=False,
-        )
-        vol_scale.pack(side=tk.LEFT, padx=(10, 5))
-
-        self.volume_label = tk.Label(
-            vol_frame,
-            text="100%",
-            bg=ModernStyle.BG_SECONDARY,
-            fg=ModernStyle.ACCENT,
-            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL, "bold"),
-        )
-        self.volume_label.pack(side=tk.LEFT)
-        vol_scale.configure(
-            command=lambda v: self.volume_label.config(text=f"{int(float(v) * 100)}%")
-        )
-
-        # Max tokens control
-        tokens_frame = tk.Frame(row2, bg=ModernStyle.BG_SECONDARY)
-        tokens_frame.pack(side=tk.LEFT, padx=(12, 0))
-        tk.Label(
-            tokens_frame,
-            text="Max Tokens:",
-            bg=ModernStyle.BG_SECONDARY,
-            fg=ModernStyle.TEXT_SECONDARY,
-            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
-        ).pack(side=tk.LEFT)
-        self.max_tokens_var = tk.StringVar(value=str(self.default_max_tokens))
-        self.max_tokens_entry = tk.Entry(
-            tokens_frame,
-            textvariable=self.max_tokens_var,
-            width=6,
+        self.advanced_btn = tk.Button(
+            adv_toggle_row,
+            text="▶ Advanced / STT",
+            command=self._toggle_advanced,
             bg=ModernStyle.BG_TERTIARY,
-            fg=ModernStyle.TEXT_PRIMARY,
-            insertbackground=ModernStyle.TEXT_PRIMARY,
+            fg=ModernStyle.TEXT_SECONDARY,
             relief=tk.FLAT,
-            bd=4,
+            padx=8,
+            pady=3,
+            cursor="hand2",
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
         )
-        self.max_tokens_entry.pack(side=tk.LEFT, padx=(8, 0))
+        self.advanced_btn.pack(side=tk.LEFT)
 
-        # Voice chat controls
-        row3 = tk.Frame(settings_frame, bg=ModernStyle.BG_SECONDARY)
-        row3.pack(fill=tk.X, pady=(10, 0))
+        # Advanced frame (collapsed by default)
+        self.advanced_frame = tk.Frame(settings_frame, bg=ModernStyle.BG_SECONDARY)
+        # Not packed — shown when toggle is clicked
+
+        # Mic + Speaker row inside advanced
+        adv_mic_row = tk.Frame(self.advanced_frame, bg=ModernStyle.BG_SECONDARY)
+        adv_mic_row.pack(fill=tk.X, pady=(4, 0))
 
         tk.Label(
-            row3,
+            adv_mic_row,
             text="Mic:",
             bg=ModernStyle.BG_SECONDARY,
             fg=ModernStyle.TEXT_SECONDARY,
@@ -587,7 +648,7 @@ class TalkBotGUI:
         ).pack(side=tk.LEFT)
         self.mic_var = tk.StringVar(value="default")
         self.mic_combo = ttk.Combobox(
-            row3,
+            adv_mic_row,
             textvariable=self.mic_var,
             width=22,
             style="Modern.TCombobox",
@@ -596,7 +657,7 @@ class TalkBotGUI:
         self.mic_combo.pack(side=tk.LEFT, padx=(8, 12))
 
         tk.Label(
-            row3,
+            adv_mic_row,
             text="Speaker:",
             bg=ModernStyle.BG_SECONDARY,
             fg=ModernStyle.TEXT_SECONDARY,
@@ -604,7 +665,7 @@ class TalkBotGUI:
         ).pack(side=tk.LEFT)
         self.spk_var = tk.StringVar(value="default")
         self.spk_combo = ttk.Combobox(
-            row3,
+            adv_mic_row,
             textvariable=self.spk_var,
             width=22,
             style="Modern.TCombobox",
@@ -612,56 +673,12 @@ class TalkBotGUI:
         )
         self.spk_combo.pack(side=tk.LEFT, padx=(8, 12))
 
-        self.voice_start_btn = RoundedButton(
-            row3,
-            text="Start Voice",
-            command=self._start_voice_chat,
-            bg_color=ModernStyle.SUCCESS,
-            fg_color=ModernStyle.BG_PRIMARY,
-            hover_color="#c8f0c3",
-            width=100,
-            height=30,
-        )
-        self.voice_start_btn.pack(side=tk.LEFT, padx=(0, 8))
-        self.voice_stop_btn = RoundedButton(
-            row3,
-            text="Stop Voice",
-            command=self._stop_voice_chat,
-            bg_color=ModernStyle.ERROR,
-            fg_color=ModernStyle.TEXT_PRIMARY,
-            hover_color="#f5a0b5",
-            width=100,
-            height=30,
-        )
-        self.voice_stop_btn.pack(side=tk.LEFT)
-        self.voice_test_btn = RoundedButton(
-            row3,
-            text="Test STT",
-            command=self._test_stt_once,
-            bg_color=ModernStyle.BG_TERTIARY,
-            fg_color=ModernStyle.TEXT_SECONDARY,
-            hover_color=ModernStyle.BORDER,
-            width=90,
-            height=30,
-        )
-        self.voice_test_btn.pack(side=tk.LEFT, padx=(8, 0))
-        self.voice_sim_btn = RoundedButton(
-            row3,
-            text="Sim STT",
-            command=self._simulate_stt_once,
-            bg_color=ModernStyle.BG_TERTIARY,
-            fg_color=ModernStyle.TEXT_SECONDARY,
-            hover_color=ModernStyle.BORDER,
-            width=90,
-            height=30,
-        )
-        self.voice_sim_btn.pack(side=tk.LEFT, padx=(8, 0))
-
-        row4 = tk.Frame(settings_frame, bg=ModernStyle.BG_SECONDARY)
-        row4.pack(fill=tk.X, pady=(8, 0))
+        # STT model + Language + VAD preset row inside advanced
+        adv_stt_row = tk.Frame(self.advanced_frame, bg=ModernStyle.BG_SECONDARY)
+        adv_stt_row.pack(fill=tk.X, pady=(4, 0))
 
         tk.Label(
-            row4,
+            adv_stt_row,
             text="STT Model:",
             bg=ModernStyle.BG_SECONDARY,
             fg=ModernStyle.TEXT_SECONDARY,
@@ -669,7 +686,7 @@ class TalkBotGUI:
         ).pack(side=tk.LEFT)
         self.stt_model_var = tk.StringVar(value="small.en")
         self.stt_model_combo = ttk.Combobox(
-            row4,
+            adv_stt_row,
             textvariable=self.stt_model_var,
             values=["base.en", "small.en", "medium.en"],
             width=12,
@@ -679,7 +696,7 @@ class TalkBotGUI:
         self.stt_model_combo.pack(side=tk.LEFT, padx=(8, 12))
 
         tk.Label(
-            row4,
+            adv_stt_row,
             text="Lang:",
             bg=ModernStyle.BG_SECONDARY,
             fg=ModernStyle.TEXT_SECONDARY,
@@ -687,7 +704,7 @@ class TalkBotGUI:
         ).pack(side=tk.LEFT)
         self.stt_lang_var = tk.StringVar(value="en")
         self.stt_lang_entry = tk.Entry(
-            row4,
+            adv_stt_row,
             textvariable=self.stt_lang_var,
             width=6,
             bg=ModernStyle.BG_TERTIARY,
@@ -698,16 +715,48 @@ class TalkBotGUI:
         )
         self.stt_lang_entry.pack(side=tk.LEFT, padx=(8, 12))
 
+        # VAD preset
         tk.Label(
-            row4,
+            adv_stt_row,
             text="VAD:",
             bg=ModernStyle.BG_SECONDARY,
             fg=ModernStyle.TEXT_SECONDARY,
             font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
         ).pack(side=tk.LEFT)
+        self.vad_preset_var = tk.StringVar(value="Normal")
+        self.vad_preset_combo = ttk.Combobox(
+            adv_stt_row,
+            textvariable=self.vad_preset_var,
+            values=list(VAD_PRESETS.keys()),
+            width=8,
+            style="Modern.TCombobox",
+            state="readonly",
+        )
+        self.vad_preset_combo.pack(side=tk.LEFT, padx=(8, 8))
+        self.vad_preset_combo.bind("<<ComboboxSelected>>", self._on_vad_preset_changed)
+        self.vad_values_label = tk.Label(
+            adv_stt_row,
+            text="(threshold: 0.30, silence: 1200ms, min-speech: 250ms)",
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_SMALL),
+        )
+        self.vad_values_label.pack(side=tk.LEFT)
+
+        # VAD custom fields row (shown only when "Custom" preset selected)
+        self.vad_custom_row = tk.Frame(self.advanced_frame, bg=ModernStyle.BG_SECONDARY)
+        # Not packed by default
+
         self.vad_threshold_var = tk.DoubleVar(value=0.3)
+        tk.Label(
+            self.vad_custom_row,
+            text="Threshold:",
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+        ).pack(side=tk.LEFT)
         vad_scale = tk.Scale(
-            row4,
+            self.vad_custom_row,
             from_=0.1,
             to=0.9,
             variable=self.vad_threshold_var,
@@ -723,7 +772,7 @@ class TalkBotGUI:
         )
         vad_scale.pack(side=tk.LEFT, padx=(8, 5))
         self.vad_label = tk.Label(
-            row4,
+            self.vad_custom_row,
             text="0.30",
             bg=ModernStyle.BG_SECONDARY,
             fg=ModernStyle.ACCENT,
@@ -735,7 +784,7 @@ class TalkBotGUI:
         )
 
         tk.Label(
-            row4,
+            self.vad_custom_row,
             text="Silence(ms):",
             bg=ModernStyle.BG_SECONDARY,
             fg=ModernStyle.TEXT_SECONDARY,
@@ -743,7 +792,7 @@ class TalkBotGUI:
         ).pack(side=tk.LEFT)
         self.vad_silence_var = tk.IntVar(value=1200)
         self.vad_silence_entry = tk.Entry(
-            row4,
+            self.vad_custom_row,
             textvariable=self.vad_silence_var,
             width=6,
             bg=ModernStyle.BG_TERTIARY,
@@ -752,17 +801,40 @@ class TalkBotGUI:
             relief=tk.FLAT,
             bd=4,
         )
-        self.vad_silence_entry.pack(side=tk.LEFT, padx=(8, 0))
+        self.vad_silence_entry.pack(side=tk.LEFT, padx=(8, 12))
 
         tk.Label(
-            row4,
+            self.vad_custom_row,
+            text="Min-speech(ms):",
+            bg=ModernStyle.BG_SECONDARY,
+            fg=ModernStyle.TEXT_SECONDARY,
+            font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
+        ).pack(side=tk.LEFT)
+        self.vad_min_speech_var = tk.IntVar(value=250)
+        self.vad_min_speech_entry = tk.Entry(
+            self.vad_custom_row,
+            textvariable=self.vad_min_speech_var,
+            width=6,
+            bg=ModernStyle.BG_TERTIARY,
+            fg=ModernStyle.TEXT_PRIMARY,
+            insertbackground=ModernStyle.TEXT_PRIMARY,
+            relief=tk.FLAT,
+            bd=4,
+        )
+        self.vad_min_speech_entry.pack(side=tk.LEFT, padx=(8, 0))
+
+        # Mic Level meter row inside advanced
+        adv_meter_row = tk.Frame(self.advanced_frame, bg=ModernStyle.BG_SECONDARY)
+        adv_meter_row.pack(fill=tk.X, pady=(4, 0))
+        tk.Label(
+            adv_meter_row,
             text="Mic Level:",
             bg=ModernStyle.BG_SECONDARY,
             fg=ModernStyle.TEXT_SECONDARY,
             font=(ModernStyle.FONT_FAMILY, ModernStyle.FONT_SIZE_NORMAL),
-        ).pack(side=tk.LEFT, padx=(12, 6))
+        ).pack(side=tk.LEFT, padx=(0, 6))
         self.mic_meter = tk.Canvas(
-            row4,
+            adv_meter_row,
             width=120,
             height=14,
             bg=ModernStyle.BG_TERTIARY,
@@ -774,6 +846,56 @@ class TalkBotGUI:
             0, 0, 0, 14, fill=ModernStyle.SUCCESS, width=0
         )
 
+        # Voice controls row (always visible)
+        row_voice_ctrl = tk.Frame(settings_frame, bg=ModernStyle.BG_SECONDARY)
+        row_voice_ctrl.pack(fill=tk.X, pady=(8, 0))
+
+        self.voice_start_btn = RoundedButton(
+            row_voice_ctrl,
+            text="Start Voice",
+            command=self._start_voice_chat,
+            bg_color=ModernStyle.SUCCESS,
+            fg_color=ModernStyle.BG_PRIMARY,
+            hover_color="#c8f0c3",
+            width=100,
+            height=30,
+        )
+        self.voice_start_btn.pack(side=tk.LEFT, padx=(0, 8))
+        self.voice_stop_btn = RoundedButton(
+            row_voice_ctrl,
+            text="Stop Voice",
+            command=self._stop_voice_chat,
+            bg_color=ModernStyle.ERROR,
+            fg_color=ModernStyle.TEXT_PRIMARY,
+            hover_color="#f5a0b5",
+            width=100,
+            height=30,
+        )
+        self.voice_stop_btn.pack(side=tk.LEFT)
+        self.voice_test_btn = RoundedButton(
+            row_voice_ctrl,
+            text="Test STT",
+            command=self._test_stt_once,
+            bg_color=ModernStyle.BG_TERTIARY,
+            fg_color=ModernStyle.TEXT_SECONDARY,
+            hover_color=ModernStyle.BORDER,
+            width=90,
+            height=30,
+        )
+        self.voice_test_btn.pack(side=tk.LEFT, padx=(8, 0))
+        self.voice_sim_btn = RoundedButton(
+            row_voice_ctrl,
+            text="Sim STT",
+            command=self._simulate_stt_once,
+            bg_color=ModernStyle.BG_TERTIARY,
+            fg_color=ModernStyle.TEXT_SECONDARY,
+            hover_color=ModernStyle.BORDER,
+            width=90,
+            height=30,
+        )
+        self.voice_sim_btn.pack(side=tk.LEFT, padx=(8, 0))
+
+        # Voice phase / transcript row
         row5 = tk.Frame(settings_frame, bg=ModernStyle.BG_SECONDARY)
         row5.pack(fill=tk.X, pady=(8, 0))
         self.voice_phase_var = tk.StringVar(value="Voice: idle")
@@ -921,7 +1043,19 @@ class TalkBotGUI:
             width=90,
             height=28,
         )
-        self.test_btn.pack(side=tk.LEFT)
+        self.test_btn.pack(side=tk.LEFT, padx=(0, 10))
+
+        self.save_env_btn = RoundedButton(
+            toolbar,
+            text="Save to .env",
+            command=self._save_to_env,
+            bg_color=ModernStyle.BG_TERTIARY,
+            fg_color=ModernStyle.TEXT_SECONDARY,
+            hover_color=ModernStyle.BORDER,
+            width=100,
+            height=28,
+        )
+        self.save_env_btn.pack(side=tk.LEFT)
 
         self._set_voice_controls(active=False)
         self._on_provider_changed()
@@ -993,7 +1127,7 @@ class TalkBotGUI:
         if provider == "openrouter":
             return bool(self.api_key)
         if provider == "local_server":
-            return bool(self.local_server_url)
+            return bool(self.server_url_var.get().strip())
         return bool(self.local_model_path_var.get().strip())
 
     def _create_client(self):
@@ -1006,7 +1140,7 @@ class TalkBotGUI:
             site_name=os.getenv("OPENROUTER_SITE_NAME"),
             local_model_path=self.local_model_path_var.get().strip() or None,
             llamacpp_bin=self.llamacpp_bin,
-            local_server_url=self.local_server_url,
+            local_server_url=self.server_url_var.get().strip() or None,
             local_server_api_key=self.local_server_api_key,
             enable_thinking=self.thinking_var.get(),
         )
@@ -1224,6 +1358,7 @@ class TalkBotGUI:
             if self.model_var.get() not in OPENROUTER_MODELS:
                 self.model_var.set(OPENROUTER_MODELS[0])
             self.local_row.pack_forget()
+            self.server_url_row.pack_forget()
             self.status_var.set("Provider: OpenRouter")
         elif provider == "local_server":
             default_server_model = (os.getenv("TALKBOT_LOCAL_SERVER_MODEL") or "").strip()
@@ -1237,6 +1372,7 @@ class TalkBotGUI:
                 self.model_var.set(first)
             self.model_combo.config(state="normal")
             self.local_row.pack_forget()
+            self.server_url_row.pack(fill=tk.X, pady=(0, 4), after=self._row1_ref)
             self.status_var.set("Provider: Local Server — fetching models...")
             self._apply_tool_support_for_model(self.model_var.get())
             threading.Thread(target=self._fetch_local_server_models, daemon=True).start()
@@ -1246,13 +1382,46 @@ class TalkBotGUI:
             self.model_combo.config(state="readonly" if local_models else "normal")
             if local_models and self.model_var.get() not in local_models:
                 self.model_var.set(local_models[0])
-            self.local_row.pack(fill=tk.X, pady=(0, 8), before=self._slider_row_ref)
+            self.server_url_row.pack_forget()
+            self.local_row.pack(fill=tk.X, pady=(0, 4), before=self._adv_anchor)
             self.status_var.set("Provider: Local (non-server)")
+
+    def _test_server_connection(self) -> None:
+        """Test connectivity to the local server URL."""
+        url = self.server_url_var.get().strip()
+        if not url:
+            self.server_test_label.config(text="No URL set", fg=ModernStyle.WARNING)
+            return
+        self.server_test_btn.config(state=tk.DISABLED)
+        self.server_test_label.config(text="testing...", fg=ModernStyle.TEXT_SECONDARY)
+
+        def worker() -> None:
+            try:
+                base = url.rstrip("/")
+                r = httpx.get(f"{base}/models", timeout=5.0)
+                r.raise_for_status()
+                models = r.json().get("data", [])
+                n = len(models)
+                msg = f"✓ {n} model{'s' if n != 1 else ''}"
+                color = ModernStyle.SUCCESS
+            except httpx.ConnectError:
+                msg = "✗ Connection refused"
+                color = ModernStyle.ERROR
+            except httpx.TimeoutException:
+                msg = "✗ Timed out"
+                color = ModernStyle.ERROR
+            except Exception as e:
+                msg = f"✗ {e}"
+                color = ModernStyle.ERROR
+            self.root.after(0, lambda: self.server_test_label.config(text=msg, fg=color))
+            self.root.after(0, lambda: self.server_test_btn.config(state=tk.NORMAL))
+
+        threading.Thread(target=worker, daemon=True).start()
 
     def _fetch_local_server_models(self) -> None:
         """Fetch model list from an OpenAI-compatible local server (e.g. Ollama)."""
         try:
-            base = (self.local_server_url or "http://localhost:11434/v1").rstrip("/")
+            base = (self.server_url_var.get().strip() or self.local_server_url).rstrip("/")
             r = httpx.get(f"{base}/models", timeout=3.0)
             r.raise_for_status()
             data = r.json()
@@ -1365,7 +1534,7 @@ class TalkBotGUI:
                 cfg = VoiceConfig(
                     sample_rate=16000,
                     vad_threshold=float(self.vad_threshold_var.get()),
-                    min_speech_ms=250,
+                    min_speech_ms=self._get_vad_min_speech_ms(),
                     min_silence_ms=int(self.vad_silence_var.get()),
                     max_utterance_sec=12.0,
                     stt_model=self.stt_model_var.get(),
@@ -1384,7 +1553,7 @@ class TalkBotGUI:
                     enable_thinking=self.thinking_var.get(),
                     local_model_path=self.local_model_path_var.get().strip() or None,
                     llamacpp_bin=self.llamacpp_bin,
-                    local_server_url=self.local_server_url,
+                    local_server_url=self.server_url_var.get().strip() or None,
                     local_server_api_key=self.local_server_api_key,
                     site_url=os.getenv("OPENROUTER_SITE_URL"),
                     site_name=os.getenv("OPENROUTER_SITE_NAME"),
@@ -1551,7 +1720,7 @@ class TalkBotGUI:
                 cfg = VoiceConfig(
                     sample_rate=16000,
                     vad_threshold=float(self.vad_threshold_var.get()),
-                    min_speech_ms=250,
+                    min_speech_ms=self._get_vad_min_speech_ms(),
                     min_silence_ms=int(self.vad_silence_var.get()),
                     max_utterance_sec=12.0,
                     stt_model=self.stt_model_var.get(),
@@ -1636,7 +1805,7 @@ class TalkBotGUI:
                 cfg = VoiceConfig(
                     sample_rate=16000,
                     vad_threshold=float(self.vad_threshold_var.get()),
-                    min_speech_ms=250,
+                    min_speech_ms=self._get_vad_min_speech_ms(),
                     min_silence_ms=int(self.vad_silence_var.get()),
                     max_utterance_sec=12.0,
                     stt_model=self.stt_model_var.get(),
@@ -1913,6 +2082,69 @@ class TalkBotGUI:
                     self.root.after(0, lambda: self._set_test_tts_running(False))
 
             threading.Thread(target=worker, daemon=True).start()
+
+    def _toggle_advanced(self) -> None:
+        """Show or hide the Advanced / STT section."""
+        self.advanced_expanded = not self.advanced_expanded
+        if self.advanced_expanded:
+            self.advanced_frame.pack(fill=tk.X, pady=(4, 0), after=self._adv_anchor)
+            self.advanced_btn.config(text="▼ Advanced / STT")
+        else:
+            self.advanced_frame.pack_forget()
+            self.advanced_btn.config(text="▶ Advanced / STT")
+
+    def _on_vad_preset_changed(self, event=None) -> None:
+        """Apply VAD preset values or reveal custom fields."""
+        del event
+        preset_name = self.vad_preset_var.get()
+        preset = VAD_PRESETS.get(preset_name)
+        if preset is not None:
+            self.vad_threshold_var.set(preset["threshold"])
+            self.vad_label.config(text=f"{preset['threshold']:.2f}")
+            self.vad_silence_var.set(preset["silence_ms"])
+            self.vad_min_speech_var.set(preset["min_speech_ms"])
+            self.vad_values_label.config(
+                text=(
+                    f"(threshold: {preset['threshold']:.2f}, "
+                    f"silence: {preset['silence_ms']}ms, "
+                    f"min-speech: {preset['min_speech_ms']}ms)"
+                )
+            )
+            self.vad_custom_row.pack_forget()
+        else:
+            self.vad_values_label.config(text="(custom)")
+            self.vad_custom_row.pack(fill=tk.X, pady=(4, 0))
+
+    def _get_vad_min_speech_ms(self) -> int:
+        """Return min_speech_ms for the current VAD preset or custom value."""
+        preset = VAD_PRESETS.get(self.vad_preset_var.get())
+        if preset is not None:
+            return preset["min_speech_ms"]
+        try:
+            return int(self.vad_min_speech_var.get())
+        except Exception:
+            return 250
+
+    def _save_to_env(self) -> None:
+        """Persist current GUI settings to the .env file."""
+        from dotenv import set_key
+        env_file = Path.cwd() / ".env"
+        provider = self.provider_var.get()
+        model = self.model_var.get()
+        settings: dict[str, str] = {
+            "TALKBOT_LLM_PROVIDER": provider,
+            "TALKBOT_LOCAL_SERVER_URL": self.server_url_var.get().strip(),
+            "TALKBOT_DEFAULT_TTS_BACKEND": self.backend_var.get(),
+            "TALKBOT_DEFAULT_USE_TOOLS": "1" if self.tools_var.get() else "0",
+            "TALKBOT_MAX_TOKENS": self.max_tokens_var.get().strip(),
+        }
+        if provider == "openrouter":
+            settings["TALKBOT_DEFAULT_MODEL"] = model
+        elif provider == "local_server":
+            settings["TALKBOT_LOCAL_SERVER_MODEL"] = model
+        for key, value in settings.items():
+            set_key(str(env_file), key, value)
+        self.status_var.set("Settings saved to .env")
 
     def run(self) -> None:
         """Run the GUI."""
