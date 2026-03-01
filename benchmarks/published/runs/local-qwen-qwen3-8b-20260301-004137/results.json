@@ -69,7 +69,7 @@
         "name": "local-qwen3-8b-intent",
         "provider": "local",
         "model": "qwen/qwen3-8b",
-        "api_key": "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",
+        "api_key": "REDACTED",
         "local_model_path": "models/qwen3-8b-q4_k_m.gguf",
         "llamacpp_bin": "D:/OneDrive/Documents/GitHub/talkbot/tools/llama-cpp/llama-completion.exe",
         "local_server_url": "http://172.19.95.193:11434/v1",

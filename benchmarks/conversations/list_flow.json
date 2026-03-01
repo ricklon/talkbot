@@ -1,0 +1,31 @@
+{
+  "id": "list_flow",
+  "name": "List Create/Add/Read Flow",
+  "description": "3-turn flow: create a named list, add items, then read it back.",
+  "tags": ["lists", "tools", "multi-turn"],
+  "turns": [
+    {
+      "turn": 1,
+      "text": "Create a list called groceries.",
+      "expects": {
+        "tool_calls": ["create_list"],
+        "answer_contains": ["groceries"]
+      }
+    },
+    {
+      "turn": 2,
+      "text": "Add milk and eggs to my groceries list.",
+      "expects": {
+        "tool_calls": ["add_items_to_list"],
+        "answer_contains": []
+      }
+    },
+    {
+      "turn": 3,
+      "text": "What's on my groceries list?",
+      "expects": {
+        "answer_contains": ["milk"]
+      }
+    }
+  ]
+}
