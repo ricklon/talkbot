@@ -1,0 +1,32 @@
+{
+  "id": "time_and_tool_mix",
+  "name": "Time / Time-Until / Date Mix",
+  "description": "3-turn mix: current time, time until a target, current date — tests stateless tool calls across turns.",
+  "tags": ["time", "tools", "multi-turn"],
+  "turns": [
+    {
+      "turn": 1,
+      "text": "What time is it right now?",
+      "expects": {
+        "tool_calls": ["get_current_time"],
+        "answer_contains": []
+      }
+    },
+    {
+      "turn": 2,
+      "text": "How long until 5pm?",
+      "expects": {
+        "tool_calls": ["time_until"],
+        "answer_contains": []
+      }
+    },
+    {
+      "turn": 3,
+      "text": "What's today's date?",
+      "expects": {
+        "tool_calls": ["get_current_date"],
+        "answer_contains": []
+      }
+    }
+  ]
+}

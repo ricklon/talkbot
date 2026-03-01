@@ -1283,8 +1283,10 @@ def _build_aggregate(
 
 
 def _run_to_dict(run: RunResult) -> dict[str, Any]:
+    profile_dict = {k: v for k, v in asdict(run.profile).items()
+                    if k not in ("api_key", "local_server_api_key")}
     return {
-        "profile": asdict(run.profile),
+        "profile": profile_dict,
         "status": run.status,
         "error": run.error,
         "started_at": run.started_at,

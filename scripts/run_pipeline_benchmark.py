@@ -62,6 +62,16 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
         help="Disable tool use",
     )
+    parser.add_argument(
+        "--tts-backend",
+        default=None,
+        help="TTS backend for round-trip timing: edge-tts, kittentts, pyttsx3 (default: auto)",
+    )
+    parser.add_argument(
+        "--no-tts",
+        action="store_true",
+        help="Skip TTS synthesis (omits tts_ms / round_trip_ms)",
+    )
     return parser.parse_args(argv)
 
 
@@ -86,6 +96,42 @@ def _make_tracking_register(client, calls: list[str]) -> None:
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _audio_duration_ms(path: str, backend_name: str) -> int:
+    import wave
+
+    try:
+        if backend_name in ("kittentts", "pyttsx3"):
+            with wave.open(path, "rb") as wf:
+                return int(wf.getnframes() / wf.getframerate() * 1000)
+        else:  # edge-tts → MP3
+            import soundfile as sf
+
+            return int(sf.info(path).duration * 1000)
+    except Exception:
+        return 0
+
+
+def _synth_and_time(tts_manager, text: str) -> tuple[int, int]:
+    """Returns (tts_ms, tts_audio_duration_ms)."""
+    import os
+    import tempfile
+
+    suffix = ".mp3" if tts_manager.backend_name == "edge-tts" else ".wav"
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as f:
+        tmp = f.name
+    try:
+        t0 = time.monotonic()
+        tts_manager.save_to_file(text, tmp)
+        tts_ms = int((time.monotonic() - t0) * 1000)
+        dur_ms = _audio_duration_ms(tmp, tts_manager.backend_name)
+        return tts_ms, dur_ms
+    finally:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -113,8 +159,21 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Loading STT model: {args.stt_model}")
     from talkbot.voice import transcribe_audio_file
 
-    # Set up LLM
+    # Set up TTS (optional)
     import os
+    tts_manager = None
+    use_tts = not args.no_tts
+    if use_tts:
+        from talkbot.tts import TTSManager
+
+        try:
+            tts_manager = TTSManager(backend=args.tts_backend)
+            print(f"TTS backend: {tts_manager.backend_name}")
+        except Exception as exc:
+            print(f"Warning: TTS init failed ({exc}), disabling TTS.")
+            use_tts = False
+
+    # Set up LLM
     api_key = args.api_key or os.environ.get("OPENROUTER_API_KEY", "")
     from talkbot.llm import create_llm_client, supports_tools
     from talkbot.tools import register_all_tools
@@ -175,6 +234,15 @@ def main(argv: list[str] | None = None) -> int:
             if tool_calls_made:
                 print(f"  Tools called: {tool_calls_made}")
 
+            # TTS
+            tts_ms = 0
+            tts_audio_duration_ms = 0
+            if use_tts and tts_manager and response:
+                tts_ms, tts_audio_duration_ms = _synth_and_time(tts_manager, response)
+                print(f"  TTS ({tts_ms}ms, audio={tts_audio_duration_ms}ms)")
+
+            round_trip_ms = stt_ms + llm_ms + tts_ms
+
             # Score
             expected_contains = prompt.get("expected_answer_contains") or []
             answer_ok = _fuzzy_match(response, expected_contains) if expected_contains else None
@@ -197,6 +265,9 @@ def main(argv: list[str] | None = None) -> int:
                 "stt_ms": stt_ms,
                 "llm_response": response,
                 "llm_ms": llm_ms,
+                "tts_ms": tts_ms,
+                "tts_audio_duration_ms": tts_audio_duration_ms,
+                "round_trip_ms": round_trip_ms,
                 "tool_calls_made": tool_calls_made,
                 "requires_tool": requires_tool,
                 "expected_answer_contains": expected_contains,
@@ -210,11 +281,21 @@ def main(argv: list[str] | None = None) -> int:
     tool_results = [r for r in results if r["tool_ok"] is not None]
     tool_ok_count = sum(1 for r in tool_results if r["tool_ok"])
 
+    def _avg_ms(key: str) -> int:
+        vals = [r[key] for r in results]
+        return int(sum(vals) / len(vals)) if vals else 0
+
+    avg_tts_ms = _avg_ms("tts_ms")
+    avg_round_trip_ms = _avg_ms("round_trip_ms")
+
     print(f"\n{'='*50}")
     print(f"Results: {len(results)} prompts")
-    print(f"  Answer OK:  {len(answered)}/{len(results)}")
+    print(f"  Answer OK:       {len(answered)}/{len(results)}")
     if tool_results:
-        print(f"  Tool OK:    {tool_ok_count}/{len(tool_results)}")
+        print(f"  Tool OK:         {tool_ok_count}/{len(tool_results)}")
+    if use_tts:
+        print(f"  avg_tts_ms:      {avg_tts_ms}")
+        print(f"  avg_round_trip:  {avg_round_trip_ms}ms")
 
     # Save
     out_path = Path(args.output) if args.output else (
@@ -226,6 +307,8 @@ def main(argv: list[str] | None = None) -> int:
         "model": args.model,
         "provider": args.provider,
         "stt_model": args.stt_model,
+        "tts_backend": tts_manager.backend_name if tts_manager else None,
+        "use_tts": use_tts,
         "take": args.take,
         "use_tools": use_tools,
         "ran_at": _now_iso(),
@@ -234,6 +317,8 @@ def main(argv: list[str] | None = None) -> int:
             "answer_ok": len(answered),
             "tool_ok": tool_ok_count,
             "tool_total": len(tool_results),
+            "avg_tts_ms": avg_tts_ms,
+            "avg_round_trip_ms": avg_round_trip_ms,
         },
         "results": results,
     }, indent=2), encoding="utf-8")
