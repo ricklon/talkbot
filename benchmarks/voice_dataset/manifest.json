@@ -8,7 +8,10 @@
       "category": "time",
       "notes": "",
       "expected_variants": [
-        "The train leaves at three oh five PM."
+        "The train leaves at three oh five PM.",
+        "The train leaves at 3:05 PM.",
+        "The train leaves at 3.05 pm.",
+        "The train leaves at 3.05pm."
       ],
       "speaker_id": "ricklon",
       "session_id": "20260227T224021Z",
@@ -25,7 +28,10 @@
       "category": "time",
       "notes": "",
       "expected_variants": [
-        "The train leaves at three oh five PM."
+        "The train leaves at three oh five PM.",
+        "The train leaves at 3:05 PM.",
+        "The train leaves at 3.05 pm.",
+        "The train leaves at 3.05pm."
       ],
       "speaker_id": "ricklon",
       "session_id": "20260227T224021Z",
@@ -42,7 +48,9 @@
       "category": "time",
       "notes": "",
       "expected_variants": [
-        "Maintenance starts at fifteen forty five."
+        "Maintenance starts at fifteen forty five.",
+        "Maintenance starts at 1545.",
+        "Maintenance starts at 15:45."
       ],
       "speaker_id": "ricklon",
       "session_id": "20260227T225033Z",
@@ -59,7 +67,8 @@
       "category": "year",
       "notes": "",
       "expected_variants": [
-        "The building was completed in nineteen oh five."
+        "The building was completed in nineteen oh five.",
+        "The building was completed in 1905."
       ],
       "speaker_id": "ricklon",
       "session_id": "20260227T225033Z",
@@ -76,7 +85,8 @@
       "category": "year",
       "notes": "",
       "expected_variants": [
-        "The mission launched in two thousand one."
+        "The mission launched in two thousand one.",
+        "The mission launched in 2001."
       ],
       "speaker_id": "ricklon",
       "session_id": "20260227T224021Z",
@@ -93,7 +103,8 @@
       "category": "year",
       "notes": "",
       "expected_variants": [
-        "The mission launched in two thousand one."
+        "The mission launched in two thousand one.",
+        "The mission launched in 2001."
       ],
       "speaker_id": "ricklon",
       "session_id": "20260227T224021Z",
@@ -110,7 +121,9 @@
       "category": "stem",
       "notes": "",
       "expected_variants": [
-        "Acceleration is nine point eight one meters per second squared."
+        "Acceleration is nine point eight one meters per second squared.",
+        "Acceleration is 9.81 meters per second squared.",
+        "Acceleration is 9.81 m per second squared."
       ],
       "speaker_id": "ricklon",
       "session_id": "20260227T224021Z",
@@ -127,7 +140,9 @@
       "category": "stem",
       "notes": "",
       "expected_variants": [
-        "Acceleration is nine point eight one meters per second squared."
+        "Acceleration is nine point eight one meters per second squared.",
+        "Acceleration is 9.81 meters per second squared.",
+        "Acceleration is 9.81 m per second squared."
       ],
       "speaker_id": "ricklon",
       "session_id": "20260227T224021Z",
@@ -144,7 +159,9 @@
       "category": "time",
       "notes": "",
       "expected_variants": [
-        "Deadline is seventeen thirty UTC."
+        "Deadline is seventeen thirty UTC.",
+        "Deadline is 1730 UTC.",
+        "Deadline is 17:30 UTC."
       ],
       "speaker_id": "ricklon",
       "session_id": "20260227T224021Z",
@@ -161,7 +178,9 @@
       "category": "time",
       "notes": "",
       "expected_variants": [
-        "Deadline is seventeen thirty UTC."
+        "Deadline is seventeen thirty UTC.",
+        "Deadline is 1730 UTC.",
+        "Deadline is 17:30 UTC."
       ],
       "speaker_id": "ricklon",
       "session_id": "20260227T224021Z",
@@ -212,7 +231,9 @@
       "category": "date",
       "notes": "Speak naturally; do not over-enunciate symbols.",
       "expected_variants": [
-        "The due date is February twenty sixth twenty twenty six."
+        "The due date is February twenty sixth twenty twenty six.",
+        "The due date is 2026-02-26.",
+        "The due date is 2026-0226."
       ],
       "speaker_id": "ricklon",
       "session_id": "20260227T225033Z",
@@ -229,7 +250,9 @@
       "category": "date",
       "notes": "Speak naturally; do not over-enunciate symbols.",
       "expected_variants": [
-        "The due date is February twenty sixth twenty twenty six."
+        "The due date is February twenty sixth twenty twenty six.",
+        "The due date is 2026-02-26.",
+        "The due date is 2026-0226."
       ],
       "speaker_id": "ricklon",
       "session_id": "20260227T225033Z",
@@ -246,7 +269,9 @@
       "category": "time",
       "notes": "",
       "expected_variants": [
-        "Maintenance starts at fifteen forty five."
+        "Maintenance starts at fifteen forty five.",
+        "Maintenance starts at 1545.",
+        "Maintenance starts at 15:45."
       ],
       "speaker_id": "ricklon",
       "session_id": "20260227T225033Z",
@@ -263,7 +288,8 @@
       "category": "year",
       "notes": "",
       "expected_variants": [
-        "The building was completed in nineteen oh five."
+        "The building was completed in nineteen oh five.",
+        "The building was completed in 1905."
       ],
       "speaker_id": "ricklon",
       "session_id": "20260227T225033Z",
@@ -280,7 +306,9 @@
       "category": "date",
       "notes": "",
       "expected_variants": [
-        "Meeting is on March seventh twenty twenty six."
+        "Meeting is on March seventh twenty twenty six.",
+        "Meeting is on 3/7/2026.",
+        "Meeting is on 3-7-2026."
       ],
       "speaker_id": "ricklon",
       "session_id": "20260227T230151Z",
@@ -297,7 +325,9 @@
       "category": "date",
       "notes": "",
       "expected_variants": [
-        "Meeting is on March seventh twenty twenty six."
+        "Meeting is on March seventh twenty twenty six.",
+        "Meeting is on 3/7/2026.",
+        "Meeting is on 3-7-2026."
       ],
       "speaker_id": "ricklon",
       "session_id": "20260227T230151Z",
@@ -314,7 +344,9 @@
       "category": "numeric",
       "notes": "",
       "expected_variants": [
-        "Revenue grew by twelve point five percent to four point two million dollars."
+        "Revenue grew by twelve point five percent to four point two million dollars.",
+        "Revenue grew by 12.5% to 4.2 million dollars.",
+        "Revenue grew by 12.5% to $4.2 million."
       ],
       "speaker_id": "ricklon",
       "session_id": "20260227T230151Z",
@@ -331,7 +363,9 @@
       "category": "numeric",
       "notes": "",
       "expected_variants": [
-        "Revenue grew by twelve point five percent to four point two million dollars."
+        "Revenue grew by twelve point five percent to four point two million dollars.",
+        "Revenue grew by 12.5% to 4.2 million dollars.",
+        "Revenue grew by 12.5% to $4.2 million."
       ],
       "speaker_id": "ricklon",
       "session_id": "20260227T230151Z",
@@ -348,7 +382,9 @@
       "category": "stem",
       "notes": "",
       "expected_variants": [
-        "The concentration is three point two times ten to the minus five molar."
+        "The concentration is three point two times ten to the minus five molar.",
+        "The concentration is 3.2 times 10 to the power of negative 5.",
+        "The concentration is 3.2 times 10 to the power of negative 5 molar."
       ],
       "speaker_id": "ricklon",
       "session_id": "20260227T230355Z",
@@ -365,7 +401,9 @@
       "category": "stem",
       "notes": "",
       "expected_variants": [
-        "The concentration is three point two times ten to the minus five molar."
+        "The concentration is three point two times ten to the minus five molar.",
+        "The concentration is 3.2 times 10 to the power of negative 5.",
+        "The concentration is 3.2 times 10 to the power of negative 5 molar."
       ],
       "speaker_id": "ricklon",
       "session_id": "20260227T230355Z",
@@ -382,7 +420,8 @@
       "category": "stem",
       "notes": "",
       "expected_variants": [
-        "Solve x two plus y two equals z two."
+        "Solve x two plus y two equals z two.",
+        "Solve x squared plus y squared equals z squared."
       ],
       "speaker_id": "ricklon",
       "session_id": "20260227T230501Z",
@@ -399,7 +438,8 @@
       "category": "stem",
       "notes": "",
       "expected_variants": [
-        "Solve x two plus y two equals z two."
+        "Solve x two plus y two equals z two.",
+        "Solve x squared plus y squared equals z squared."
       ],
       "speaker_id": "ricklon",
       "session_id": "20260227T230501Z",
