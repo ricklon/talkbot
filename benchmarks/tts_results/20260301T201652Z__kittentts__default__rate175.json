@@ -1,0 +1,215 @@
+{
+  "schema_version": "2026.tts.v1",
+  "backend": "kittentts",
+  "voice": "(default)",
+  "rate": 175,
+  "ran_at": "2026-03-01T20:16:52.902736+00:00",
+  "runner": {
+    "hostname": "mudmachine",
+    "os": "Windows 11",
+    "arch": "AMD64",
+    "python": "3.12.12"
+  },
+  "summary": {
+    "prompt_count": 15,
+    "avg_synthesis_ms": 1523.6,
+    "p95_synthesis_ms": 2562.8,
+    "avg_audio_duration_ms": 4565.6,
+    "avg_rtf": 0.337,
+    "init_ms": 9347.9
+  },
+  "by_category": {
+    "llm_conversion": {
+      "count": 1,
+      "avg_synthesis_ms": 1118.0,
+      "avg_rtf": 0.342
+    },
+    "llm_history": {
+      "count": 2,
+      "avg_synthesis_ms": 1390.7,
+      "avg_rtf": 0.332
+    },
+    "llm_math": {
+      "count": 1,
+      "avg_synthesis_ms": 1535.7,
+      "avg_rtf": 0.322
+    },
+    "llm_science": {
+      "count": 3,
+      "avg_synthesis_ms": 1782.3,
+      "avg_rtf": 0.333
+    },
+    "tool_calculator": {
+      "count": 2,
+      "avg_synthesis_ms": 1448.2,
+      "avg_rtf": 0.336
+    },
+    "tool_date": {
+      "count": 1,
+      "avg_synthesis_ms": 1524.3,
+      "avg_rtf": 0.336
+    },
+    "tool_time": {
+      "count": 2,
+      "avg_synthesis_ms": 1417.9,
+      "avg_rtf": 0.344
+    },
+    "ux": {
+      "count": 3,
+      "avg_synthesis_ms": 1605.2,
+      "avg_rtf": 0.342
+    }
+  },
+  "entries": [
+    {
+      "id": "time_spoken",
+      "category": "tool_time",
+      "text": "The current time is three forty five PM.",
+      "word_count": 8,
+      "synthesis_ms": 1355.8,
+      "audio_duration_ms": 3841.7,
+      "rtf": 0.353,
+      "words_per_sec": 5.9
+    },
+    {
+      "id": "date_spoken",
+      "category": "tool_date",
+      "text": "Today is February twenty seventh twenty twenty six.",
+      "word_count": 8,
+      "synthesis_ms": 1524.3,
+      "audio_duration_ms": 4541.7,
+      "rtf": 0.336,
+      "words_per_sec": 5.2
+    },
+    {
+      "id": "math_result",
+      "category": "tool_calculator",
+      "text": "One hundred and forty four divided by twelve equals twelve.",
+      "word_count": 10,
+      "synthesis_ms": 1623.9,
+      "audio_duration_ms": 4716.7,
+      "rtf": 0.344,
+      "words_per_sec": 6.2
+    },
+    {
+      "id": "percent_result",
+      "category": "tool_calculator",
+      "text": "Fifteen percent of two hundred is thirty.",
+      "word_count": 7,
+      "synthesis_ms": 1272.6,
+      "audio_duration_ms": 3891.7,
+      "rtf": 0.327,
+      "words_per_sec": 5.5
+    },
+    {
+      "id": "duration_spoken",
+      "category": "tool_time",
+      "text": "There are four hours and twelve minutes until midnight.",
+      "word_count": 9,
+      "synthesis_ms": 1480.0,
+      "audio_duration_ms": 4416.7,
+      "rtf": 0.335,
+      "words_per_sec": 6.1
+    },
+    {
+      "id": "year_apollo",
+      "category": "llm_history",
+      "text": "The Apollo eleven moon landing happened in nineteen sixty nine.",
+      "word_count": 10,
+      "synthesis_ms": 1614.8,
+      "audio_duration_ms": 4741.7,
+      "rtf": 0.341,
+      "words_per_sec": 6.2
+    },
+    {
+      "id": "year_ww2",
+      "category": "llm_history",
+      "text": "World War Two ended in nineteen forty five.",
+      "word_count": 8,
+      "synthesis_ms": 1166.6,
+      "audio_duration_ms": 3616.7,
+      "rtf": 0.323,
+      "words_per_sec": 6.9
+    },
+    {
+      "id": "formula_water",
+      "category": "llm_science",
+      "text": "The chemical formula for water is H two O.",
+      "word_count": 9,
+      "synthesis_ms": 1303.9,
+      "audio_duration_ms": 3941.7,
+      "rtf": 0.331,
+      "words_per_sec": 6.9
+    },
+    {
+      "id": "speed_of_light",
+      "category": "llm_science",
+      "text": "The speed of light is approximately two hundred ninety nine million seven hundred ninety two thousand four hundred fifty eight metres per second.",
+      "word_count": 23,
+      "synthesis_ms": 2530.9,
+      "audio_duration_ms": 7816.7,
+      "rtf": 0.324,
+      "words_per_sec": 9.1
+    },
+    {
+      "id": "seconds_in_hour",
+      "category": "llm_conversion",
+      "text": "There are three thousand six hundred seconds in an hour.",
+      "word_count": 10,
+      "synthesis_ms": 1118.0,
+      "audio_duration_ms": 3266.7,
+      "rtf": 0.342,
+      "words_per_sec": 8.9
+    },
+    {
+      "id": "dna_acronym",
+      "category": "llm_science",
+      "text": "DNA stands for deoxyribonucleic acid.",
+      "word_count": 5,
+      "synthesis_ms": 1512.2,
+      "audio_duration_ms": 4391.7,
+      "rtf": 0.344,
+      "words_per_sec": 3.3
+    },
+    {
+      "id": "pi_decimal",
+      "category": "llm_math",
+      "text": "Pi to two decimal places is three point one four.",
+      "word_count": 10,
+      "synthesis_ms": 1535.7,
+      "audio_duration_ms": 4766.7,
+      "rtf": 0.322,
+      "words_per_sec": 6.5
+    },
+    {
+      "id": "short_ack",
+      "category": "ux",
+      "text": "Got it.",
+      "word_count": 2,
+      "synthesis_ms": 542.5,
+      "audio_duration_ms": 1466.7,
+      "rtf": 0.37,
+      "words_per_sec": 3.7
+    },
+    {
+      "id": "long_sentence",
+      "category": "ux",
+      "text": "I've added milk and eggs to your groceries list. Is there anything else you'd like to add?",
+      "word_count": 17,
+      "synthesis_ms": 2371.5,
+      "audio_duration_ms": 7408.3,
+      "rtf": 0.32,
+      "words_per_sec": 7.2
+    },
+    {
+      "id": "tool_error",
+      "category": "ux",
+      "text": "Sorry, I couldn't complete that request. Please try again.",
+      "word_count": 9,
+      "synthesis_ms": 1901.6,
+      "audio_duration_ms": 5658.3,
+      "rtf": 0.336,
+      "words_per_sec": 4.7
+    }
+  ]
+}
