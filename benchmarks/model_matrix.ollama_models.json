@@ -73,6 +73,15 @@
       "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only."
     },
     {
+      "name": "ollama-qwen3-vl-8b",
+      "provider": "local_server",
+      "model": "qwen3-vl:8b",
+      "use_tools": true,
+      "max_tokens": 512,
+      "temperature": 0.0,
+      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only."
+    },
+    {
       "_disabled": "ministral-3b does not exist in the Ollama registry; OpenRouter equivalent is mistralai/ministral-3b-2512",
       "name": "ollama-ministral-3b",
       "provider": "local_server",
