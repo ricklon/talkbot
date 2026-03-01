@@ -486,6 +486,8 @@ def load_matrix_config(path: str | Path) -> dict[str, Any]:
     for entry in raw_profiles:
         if not isinstance(entry, dict):
             raise ValueError("Each matrix profile entry must be an object.")
+        if entry.get("_disabled"):
+            continue
         profiles.extend(_expand_profile_entry(entry))
 
     return {
@@ -661,13 +663,16 @@ def _evaluate_turn(
 
 
 def _default_client_factory(profile: BenchmarkProfile):
+    local_server_url = profile.local_server_url
+    if local_server_url is None and profile.provider == "local_server":
+        local_server_url = os.getenv("TALKBOT_LOCAL_SERVER_URL", "http://localhost:11434/v1")
     return create_llm_client(
         provider=profile.provider,
         model=profile.model,
         api_key=profile.api_key,
         local_model_path=profile.local_model_path,
         llamacpp_bin=profile.llamacpp_bin,
-        local_server_url=profile.local_server_url,
+        local_server_url=local_server_url,
         local_server_api_key=profile.local_server_api_key,
         enable_thinking=profile.enable_thinking,
     )
@@ -690,9 +695,22 @@ def _detect_raspberry_pi_model() -> str:
     return ""
 
 
+def _default_ollama_probe_url() -> str:
+    """Derive the Ollama health-check URL from TALKBOT_LOCAL_SERVER_URL.
+
+    Falls back to 127.0.0.1:11434 for native installs.  On Windows+WSL2 the
+    WSL2 IP differs from localhost so reading the env var ensures the probe
+    hits the same endpoint the benchmark will actually use.
+    """
+    base = os.getenv("TALKBOT_LOCAL_SERVER_URL", "http://127.0.0.1:11434/v1").rstrip("/")
+    if base.endswith("/v1"):
+        base = base[:-3]
+    return f"{base}/api/tags"
+
+
 _DEFAULT_PROBE_ENDPOINTS: list[tuple[str, str]] = [
     ("openrouter", "https://openrouter.ai/api/v1/models"),
-    ("ollama-local", "http://localhost:11434/api/tags"),
+    ("ollama-local", _default_ollama_probe_url()),
 ]
 
 
@@ -810,14 +828,54 @@ def _detect_network_type() -> str:
         return "unknown"
 
 
+def _detect_inference_env() -> str:
+    """Return a short string describing the inference compute environment.
+
+    Checks ``TALKBOT_INFERENCE_ENV`` first so users can declare their setup
+    explicitly (e.g. ``win32+wsl2``, ``macos-native``, ``linux-native``).
+    Falls back to platform auto-detection.
+
+    Known canonical values:
+      - ``macos-native``  — macOS, Ollama runs natively
+      - ``linux-native``  — Linux bare metal or VM, Ollama runs natively
+      - ``wsl2``          — running inside WSL2 (Linux layer on Windows)
+      - ``win32+wsl2``    — Windows host, Ollama/inference in WSL2
+      - ``win32-native``  — Windows host, native inference (no WSL2)
+    """
+    explicit = os.getenv("TALKBOT_INFERENCE_ENV", "").strip()
+    if explicit:
+        return explicit
+    system = platform.system()
+    if system == "Darwin":
+        return "macos-native"
+    if system == "Linux":
+        try:
+            with open("/proc/version") as f:
+                if "microsoft" in f.read().lower():
+                    return "wsl2"
+        except Exception:
+            pass
+        return "linux-native"
+    if system == "Windows":
+        # Cannot reliably distinguish native vs WSL2 Ollama from Windows Python.
+        # Set TALKBOT_INFERENCE_ENV=win32+wsl2 (or win32-native) in your .env.
+        return "win32"
+    return system.lower()
+
+
 def detect_runner_info(
     *,
     label: str | None = None,
     notes: str | None = None,
     network_type: str | None = None,
+    inference_env: str | None = None,
     probe_endpoints: list[tuple[str, str]] | None = None,
 ) -> dict[str, Any]:
     """Collect host metadata for benchmark comparability across machines.
+
+    *inference_env* documents the compute stack used for inference (e.g.
+    ``"win32+wsl2"``, ``"macos-native"``).  Falls back to
+    ``TALKBOT_INFERENCE_ENV`` env var, then auto-detection.
 
     *probe_endpoints* is a list of ``(label, url)`` pairs to TTFB-probe before
     the run. Defaults to :data:`_DEFAULT_PROBE_ENDPOINTS`. Pass ``[]`` to skip.
@@ -855,6 +913,7 @@ def detect_runner_info(
         "is_raspberry_pi": is_pi,
         "raspberry_pi_model": pi_model or None,
         "network_type": str(network_type or "").strip() or _detect_network_type(),
+        "inference_env": str(inference_env or "").strip() or _detect_inference_env(),
         "endpoint_probes": probes,
         "notes": str(notes or "").strip() or None,
     }
@@ -1596,6 +1655,7 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
     runner_python = str(runner.get("python_version") or "").strip()
     runner_pi_model = str(runner.get("raspberry_pi_model") or "").strip()
     runner_network = str(runner.get("network_type") or "").strip()
+    runner_inference_env = str(runner.get("inference_env") or "").strip()
     runner_notes = str(runner.get("notes") or "").strip()
     runner_probes: list[dict[str, Any]] = [
         p for p in (runner.get("endpoint_probes") or []) if isinstance(p, dict)
@@ -1720,7 +1780,9 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             f"- Latest run snapshot path: `{latest_run_text}`",
             f"- Archived run folders: `{main_output_root}/<run_name>/leaderboard.md`",
             (
-                f"- Runner: `{runner_name}` ({runner_os}, {runner_machine}, py {runner_python})"
+                f"- Runner: `{runner_name}` ({runner_os}, {runner_machine}, py {runner_python}"
+                + (f", {runner_inference_env}" if runner_inference_env else "")
+                + ")"
                 if runner_name and runner_os
                 else "- Runner: not provided"
             ),

@@ -39,7 +39,6 @@
       "name": "ollama-ministral-3b",
       "provider": "local_server",
       "model": "ministral-3b",
-      "local_server_url": "http://localhost:11434/v1",
       "use_tools": true,
       "max_tokens": 512,
       "temperature": 0.0
