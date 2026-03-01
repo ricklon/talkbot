@@ -1,0 +1,301 @@
+{
+  "model": "mistralai/mistral-small-3.1-24b-instruct",
+  "provider": "openrouter",
+  "stt_model": "small.en",
+  "take": 1,
+  "use_tools": true,
+  "ran_at": "2026-02-27T23:49:41Z",
+  "summary": {
+    "total": 12,
+    "answer_ok": 10,
+    "tool_ok": 5,
+    "tool_total": 5
+  },
+  "results": [
+    {
+      "prompt_id": "tool_current_time",
+      "category": "tool_time",
+      "take": 1,
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T231035Z__ricklon__tool_current_time__take01.wav",
+      "expected_question": "What time is it right now?",
+      "stt_transcript": "What time is it right now?",
+      "stt_ms": 4000,
+      "llm_response": "The current time is 6:45 PM Eastern Standard Time.",
+      "llm_ms": 1593,
+      "tool_calls_made": [
+        "get_current_time",
+        "get_current_date",
+        "calculator",
+        "calculator",
+        "time_until",
+        "calculator",
+        "calculator"
+      ],
+      "requires_tool": "get_current_time",
+      "expected_answer_contains": [
+        ":"
+      ],
+      "answer_ok": true,
+      "tool_ok": true,
+      "scored_at": "2026-02-27T23:45:35Z"
+    },
+    {
+      "prompt_id": "tool_current_date",
+      "category": "tool_date",
+      "take": 1,
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T231035Z__ricklon__tool_current_date__take01.wav",
+      "expected_question": "What is today's date?",
+      "stt_transcript": "What is today's date?",
+      "stt_ms": 2375,
+      "llm_response": "Today's date is February 27, 2026.",
+      "llm_ms": 1812,
+      "tool_calls_made": [
+        "get_current_date",
+        "calculator",
+        "calculator",
+        "time_until",
+        "calculator",
+        "calculator"
+      ],
+      "requires_tool": "get_current_date",
+      "expected_answer_contains": [
+        "2026"
+      ],
+      "answer_ok": true,
+      "tool_ok": true,
+      "scored_at": "2026-02-27T23:45:39Z"
+    },
+    {
+      "prompt_id": "tool_math_divide",
+      "category": "tool_calculator",
+      "take": 1,
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T231035Z__ricklon__tool_math_divide__take01.wav",
+      "expected_question": "What is 144 divided by 12?",
+      "stt_transcript": "What is 144 divided by 12?",
+      "stt_ms": 2422,
+      "llm_response": "The result of 144 divided by 12 is 12.",
+      "llm_ms": 2437,
+      "tool_calls_made": [
+        "calculator",
+        "calculator",
+        "time_until",
+        "calculator",
+        "calculator"
+      ],
+      "requires_tool": "calculator",
+      "expected_answer_contains": [
+        "12"
+      ],
+      "answer_ok": true,
+      "tool_ok": true,
+      "scored_at": "2026-02-27T23:45:44Z"
+    },
+    {
+      "prompt_id": "tool_math_percent",
+      "category": "tool_calculator",
+      "take": 1,
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T231035Z__ricklon__tool_math_percent__take01.wav",
+      "expected_question": "What is 15 percent of 200?",
+      "stt_transcript": "What is 15% of 200?",
+      "stt_ms": 2921,
+      "llm_response": "15% of 200 is 30.",
+      "llm_ms": 2093,
+      "tool_calls_made": [
+        "calculator",
+        "time_until",
+        "calculator",
+        "calculator"
+      ],
+      "requires_tool": "calculator",
+      "expected_answer_contains": [
+        "30"
+      ],
+      "answer_ok": true,
+      "tool_ok": true,
+      "scored_at": "2026-02-27T23:45:49Z"
+    },
+    {
+      "prompt_id": "tool_time_until",
+      "category": "tool_time",
+      "take": 1,
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T231035Z__ricklon__tool_time_until__take01.wav",
+      "expected_question": "How long until midnight?",
+      "stt_transcript": "How long until midnight?",
+      "stt_ms": 2937,
+      "llm_response": "I'm sorry, but I don't have the tools to determine the exact time until midnight. However, you can easily calculate it yourself by subtracting the current time from 12:00 AM (midnight). If you need help with that, just let me know!",
+      "llm_ms": 2812,
+      "tool_calls_made": [
+        "time_until",
+        "calculator",
+        "calculator"
+      ],
+      "requires_tool": "time_until",
+      "expected_answer_contains": [
+        "hour",
+        "minute"
+      ],
+      "answer_ok": false,
+      "tool_ok": true,
+      "scored_at": "2026-02-27T23:45:55Z"
+    },
+    {
+      "prompt_id": "llm_history_apollo",
+      "category": "llm_history",
+      "take": 1,
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T231035Z__ricklon__llm_history_apollo__take01.wav",
+      "expected_question": "What year did the Apollo 11 moon landing happen?",
+      "stt_transcript": "What year did the Apollo 11 moon landing happen?",
+      "stt_ms": 2968,
+      "llm_response": "The Apollo 11 moon landing happened in 1969.",
+      "llm_ms": 983,
+      "tool_calls_made": [
+        "calculator",
+        "calculator"
+      ],
+      "requires_tool": null,
+      "expected_answer_contains": [
+        "1969"
+      ],
+      "answer_ok": true,
+      "tool_ok": null,
+      "scored_at": "2026-02-27T23:45:59Z"
+    },
+    {
+      "prompt_id": "llm_history_ww2",
+      "category": "llm_history",
+      "take": 1,
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T231035Z__ricklon__llm_history_ww2__take01.wav",
+      "expected_question": "What year did World War Two end?",
+      "stt_transcript": "What year did World War II end?",
+      "stt_ms": 2922,
+      "llm_response": "Error: Internal Server Error",
+      "llm_ms": 180171,
+      "tool_calls_made": [
+        "calculator",
+        "calculator"
+      ],
+      "requires_tool": null,
+      "expected_answer_contains": [
+        "1945"
+      ],
+      "answer_ok": false,
+      "tool_ok": null,
+      "scored_at": "2026-02-27T23:49:02Z"
+    },
+    {
+      "prompt_id": "llm_science_formula",
+      "category": "llm_science",
+      "take": 1,
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T231035Z__ricklon__llm_science_formula__take01.wav",
+      "expected_question": "What is the chemical formula for water?",
+      "stt_transcript": "What is the chemical formula for water?",
+      "stt_ms": 3156,
+      "llm_response": "The chemical formula for water is \\( \\text{H}_2\\text{O} \\). This means each molecule of water is composed of two hydrogen atoms and one oxygen atom.",
+      "llm_ms": 3875,
+      "tool_calls_made": [
+        "calculator",
+        "calculator"
+      ],
+      "requires_tool": null,
+      "expected_answer_contains": [
+        "water",
+        "hydrogen",
+        "oxygen"
+      ],
+      "answer_ok": true,
+      "tool_ok": null,
+      "scored_at": "2026-02-27T23:49:09Z"
+    },
+    {
+      "prompt_id": "llm_science_speed_of_light",
+      "category": "llm_science",
+      "take": 1,
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T231035Z__ricklon__llm_science_speed_of_light__take01.wav",
+      "expected_question": "What is the speed of light in meters per second?",
+      "stt_transcript": "What is the speed of light in meters per second?",
+      "stt_ms": 2983,
+      "llm_response": "The speed of light in a vacuum is exactly 299,792,458 meters per second. This value is one of the fundamental physical constants and is used in various scientific calculations and theories.",
+      "llm_ms": 1797,
+      "tool_calls_made": [
+        "calculator",
+        "calculator"
+      ],
+      "requires_tool": null,
+      "expected_answer_contains": [
+        "299",
+        "792",
+        "458"
+      ],
+      "answer_ok": true,
+      "tool_ok": null,
+      "scored_at": "2026-02-27T23:49:14Z"
+    },
+    {
+      "prompt_id": "llm_conversion_seconds",
+      "category": "llm_conversion",
+      "take": 1,
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T231035Z__ricklon__llm_conversion_seconds__take01.wav",
+      "expected_question": "How many seconds are in an hour?",
+      "stt_transcript": "How many seconds are in an hour?",
+      "stt_ms": 2952,
+      "llm_response": "There are 3600 seconds in an hour. This is calculated by multiplying the number of minutes in an hour (60) by the number of seconds in a minute (60).",
+      "llm_ms": 1422,
+      "tool_calls_made": [
+        "calculator",
+        "calculator"
+      ],
+      "requires_tool": null,
+      "expected_answer_contains": [
+        "3600"
+      ],
+      "answer_ok": true,
+      "tool_ok": null,
+      "scored_at": "2026-02-27T23:49:18Z"
+    },
+    {
+      "prompt_id": "llm_acronym_dna",
+      "category": "llm_science",
+      "take": 1,
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T231035Z__ricklon__llm_acronym_dna__take01.wav",
+      "expected_question": "What does DNA stand for?",
+      "stt_transcript": "What does DNA stand for?",
+      "stt_ms": 2985,
+      "llm_response": "DNA stands for **Deoxyribonucleic Acid**. It is a molecule that carries the genetic instructions used in the growth, development, functioning, and reproduction of all known living organisms and many viruses. DNA is made up of four chemical bases: adenine (A), guanine (G), cytosine (C), and thymine (T). These bases pair up with each other (A with T, and G with C) to form units called base pairs, which are arranged in a double helix structure. The sequence of these base pairs encodes the genetic information.",
+      "llm_ms": 6858,
+      "tool_calls_made": [
+        "calculator",
+        "calculator"
+      ],
+      "requires_tool": null,
+      "expected_answer_contains": [
+        "deoxyribonucleic",
+        "Deoxyribonucleic"
+      ],
+      "answer_ok": true,
+      "tool_ok": null,
+      "scored_at": "2026-02-27T23:49:28Z"
+    },
+    {
+      "prompt_id": "llm_math_pi",
+      "category": "llm_math",
+      "take": 1,
+      "audio_path": "benchmarks/voice_dataset/raw/20260227T231035Z__ricklon__llm_math_pi__take01.wav",
+      "expected_question": "What is pi to two decimal places?",
+      "stt_transcript": "What is pi to two decimal places?",
+      "stt_ms": 3047,
+      "llm_response": "Pi to two decimal places is 3.14.",
+      "llm_ms": 10375,
+      "tool_calls_made": [
+        "calculator",
+        "calculator"
+      ],
+      "requires_tool": null,
+      "expected_answer_contains": [
+        "3.14"
+      ],
+      "answer_ok": true,
+      "tool_ok": null,
+      "scored_at": "2026-02-27T23:49:41Z"
+    }
+  ]
+}

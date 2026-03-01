@@ -273,6 +273,23 @@ class Pyttsx3TTS:
         ]
 
 
+# Per-voice base speeds for KittenTTS.
+# The nano-0.8 model applies internal speed_priors (0.8 for most voices, 0.9 for Hugo),
+# so passing speed=1.0 actually plays at 0.8×. These values compensate for that prior
+# and set a "fast default" (~1.2× effective). Override with KITTENTTS_DEFAULT_SPEED env var.
+_KITTENTTS_DEFAULT_SPEED = float(os.getenv("KITTENTTS_DEFAULT_SPEED", "1.5"))
+KITTENTTS_VOICE_SPEEDS: dict[str, float] = {
+    "Bella":  _KITTENTTS_DEFAULT_SPEED,
+    "Jasper": _KITTENTTS_DEFAULT_SPEED,
+    "Luna":   _KITTENTTS_DEFAULT_SPEED,
+    "Bruno":  _KITTENTTS_DEFAULT_SPEED,
+    "Rosie":  _KITTENTTS_DEFAULT_SPEED,
+    "Hugo":   _KITTENTTS_DEFAULT_SPEED * (0.8 / 0.9),  # Hugo's prior is 0.9, normalise
+    "Kiki":   _KITTENTTS_DEFAULT_SPEED,
+    "Leo":    _KITTENTTS_DEFAULT_SPEED,
+}
+
+
 class KittenTTSBackend:
     """KittenTTS backend (local, neural, no internet required)."""
 
@@ -344,10 +361,13 @@ class KittenTTSBackend:
             return [str(v) for v in voices]
         return []
 
-    def speak(self, text: str) -> None:
-        import wave
+    def voice_speed(self) -> float:
+        """Return the configured base speed for the current voice."""
+        return KITTENTTS_VOICE_SPEEDS.get(self.voice, _KITTENTTS_DEFAULT_SPEED)
 
-        audio = self._model.generate(text, voice=self.voice)
+    def speak(self, text: str, rate_multiplier: float = 1.0) -> None:
+        speed = self.voice_speed() * rate_multiplier
+        audio = self._model.generate(text, voice=self.voice, speed=speed)
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
             temp_path = f.name
         try:
@@ -381,8 +401,9 @@ class KittenTTSBackend:
             time.sleep(0.05)
         pygame.mixer.quit()
 
-    def save_to_file(self, text: str, filename: str) -> None:
-        audio = self._model.generate(text, voice=self.voice)
+    def save_to_file(self, text: str, filename: str, rate_multiplier: float = 1.0) -> None:
+        speed = self.voice_speed() * rate_multiplier
+        audio = self._model.generate(text, voice=self.voice, speed=speed)
         self._write_wav(filename, audio)
 
     @property
@@ -557,7 +578,7 @@ class TTSManager:
             vol_pct = f"{(self.volume - 1.0) * 100:+.0f}%"
             self.backend.speak(text, rate=rate_pct, volume=vol_pct)
         elif self.backend_name == "kittentts":
-            self.backend.speak(text)
+            self.backend.speak(text, rate_multiplier=self.rate / 175.0)
         else:
             # pyttsx3 uses rate as words per minute
             self.backend.speak(text, rate=self.rate, volume=self.volume)
@@ -616,6 +637,6 @@ class TTSManager:
             vol_pct = f"{(self.volume - 1.0) * 100:+.0f}%"
             self.backend.save_to_file(text, filename, rate=rate_pct, volume=vol_pct)
         elif self.backend_name == "kittentts":
-            self.backend.save_to_file(text, filename)
+            self.backend.save_to_file(text, filename, rate_multiplier=self.rate / 175.0)
         else:
             self.backend.save_to_file(text, filename, rate=self.rate)

@@ -1,0 +1,3788 @@
+{
+  "started_at": "2026-02-28T11:20:04-0500",
+  "finished_at": "2026-02-28T11:20:10-0500",
+  "runner": {
+    "label": null,
+    "hostname": "mudmachine",
+    "os": "Windows",
+    "os_release": "11",
+    "machine": "AMD64",
+    "processor": "AMD64 Family 25 Model 33 Stepping 0, AuthenticAMD",
+    "python_version": "3.12.12",
+    "cpu_count_logical": 16,
+    "cpu_count_physical": null,
+    "is_raspberry_pi": false,
+    "raspberry_pi_model": null,
+    "network_type": "unknown",
+    "endpoint_probes": [
+      {
+        "label": "openrouter",
+        "url": "https://openrouter.ai/api/v1/models",
+        "ttfb_ms_median": 104.9,
+        "ttfb_ms_min": 89.4,
+        "ttfb_ms_max": 193.8,
+        "samples": 3,
+        "http_status": 200,
+        "error": null
+      },
+      {
+        "label": "ollama-local",
+        "url": "http://localhost:11434/api/tags",
+        "ttfb_ms_median": 5038.7,
+        "ttfb_ms_min": 5034.8,
+        "ttfb_ms_max": 5046.3,
+        "samples": 3,
+        "http_status": 200,
+        "error": null
+      }
+    ],
+    "notes": null
+  },
+  "scenario_count": 10,
+  "run_count": 6,
+  "rubric": {
+    "version": "2026.full-suite.v1",
+    "weights": {
+      "task_success_rate": 0.35,
+      "tool_selection_accuracy": 0.2,
+      "argument_accuracy": 0.15,
+      "recovery_success_rate": 0.1,
+      "multistep_success_rate": 0.1,
+      "robustness_success_rate": 0.05,
+      "context_success_rate": 0.05
+    },
+    "penalties": {
+      "latency_ms_multiplier": 0.002,
+      "memory_mb_multiplier": 0.002,
+      "tool_error_rate_multiplier": 20.0,
+      "model_error_rate_multiplier": 30.0
+    }
+  },
+  "context_analysis": {
+    "near_peak_ratio": 0.95,
+    "dropoff_ratio": 0.9
+  },
+  "runs": [
+    {
+      "profile": {
+        "name": "ollama-gemma3-4b",
+        "provider": "local_server",
+        "model": "gemma3:4b",
+        "api_key": null,
+        "local_model_path": null,
+        "llamacpp_bin": null,
+        "local_server_url": null,
+        "local_server_api_key": null,
+        "enable_thinking": false,
+        "use_tools": true,
+        "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+        "max_tokens": 512,
+        "temperature": 0.0,
+        "env": {},
+        "tool_filter": null,
+        "tool_schema_variant": "standard"
+      },
+      "status": "ok",
+      "error": null,
+      "started_at": "2026-02-28T11:20:05-0500",
+      "duration_s": 0.947,
+      "aggregate": {
+        "scenario_count": 10,
+        "scenario_passed": 0,
+        "task_success_rate": 0.0,
+        "total_turns": 25,
+        "avg_turn_latency_ms": 36.76,
+        "p95_turn_latency_ms": 87.599,
+        "avg_turns_to_success": 0.0,
+        "expected_tool_calls": 0,
+        "matched_tool_names": 0,
+        "tool_selection_accuracy": 0.0,
+        "expected_arg_checks": 0,
+        "matched_arg_checks": 0,
+        "argument_accuracy": 0.0,
+        "actual_tool_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "max_history_messages": 4,
+        "max_history_chars": 641,
+        "cpu_time_s": 0.188,
+        "python_peak_mb": 0.368,
+        "process_rss_delta_mb": 0.0,
+        "memory_peak_mb": 0.368,
+        "avg_tool_latency_ms": 0.0,
+        "p95_tool_latency_ms": 0.0,
+        "tool_call_error_count": 0,
+        "tool_call_error_rate": 0.0,
+        "model_execution_error_count": 25,
+        "model_execution_error_rate": 1.0,
+        "first_turn_latency_ms": 41.843,
+        "tokens_per_second": 0.0,
+        "scenario_success_per_second": 0.0,
+        "tag_success": {
+          "calculator": 0.0,
+          "context": 0.0,
+          "core": 0.0,
+          "lists": 0.0,
+          "memory": 0.0,
+          "multistep": 0.0,
+          "practical": 0.0,
+          "recovery": 0.0,
+          "robustness": 0.0,
+          "timers": 0.0,
+          "tools": 0.0,
+          "utility": 0.0
+        }
+      },
+      "scenarios": [
+        {
+          "id": "calculator_basic",
+          "name": "Calculator: Basic Arithmetic",
+          "tags": [
+            "utility",
+            "tools",
+            "calculator"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What is 15 percent of 47 dollars?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 104.987,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 268
+            },
+            {
+              "index": 1,
+              "user": "Now divide that by 3.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 41.325,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 289
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "cross_tool_mix",
+          "name": "Cross-Tool Mix: Time, Timer, List",
+          "tags": [
+            "utility",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What time is it?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 38.795,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 251
+            },
+            {
+              "index": 1,
+              "user": "Set a timer for 5 minutes.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 36.517,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 277
+            },
+            {
+              "index": 2,
+              "user": "Add 'check the timer' to my reminders list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 32.942,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 320
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "list_basics",
+          "name": "List Basics",
+          "tags": [
+            "lists",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a grocery list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 47.026,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 257
+            },
+            {
+              "index": 1,
+              "user": "Add milk to the grocery list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 43.522,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 286
+            },
+            {
+              "index": 2,
+              "user": "What lists do you have?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 32.017,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 309
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "list_multistep_packing",
+          "name": "Multistep: Packing List Workflow",
+          "tags": [
+            "lists",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 32.798,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 257
+            },
+            {
+              "index": 1,
+              "user": "Add socks and charger to the packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 33.324,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 299
+            },
+            {
+              "index": 2,
+              "user": "Show me the packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 31.813,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 324
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_persistent_strict",
+          "name": "Memory Persistent (Strict)",
+          "tags": [
+            "memory",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 37.438,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 275
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 35.766,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 301
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_context_flexible",
+          "name": "Memory Context (Flexible)",
+          "tags": [
+            "memory",
+            "tools",
+            "practical"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 32.617,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 275
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 30.343,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 301
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_context_pressure",
+          "name": "Context: Long-Context Memory Retrieval",
+          "tags": [
+            "memory",
+            "tools",
+            "context",
+            "multistep"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that the launch codename is atlas.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 29.104,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 278
+            },
+            {
+              "index": 1,
+              "user": "Read this long note: project timeline, ownership, and milestone details repeated for context pressure. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 29.051,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 572
+            },
+            {
+              "index": 2,
+              "user": "After that long note, what launch codename did I ask you to remember?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 30.187,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 641
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "recovery_timer_retry",
+          "name": "Recovery: Cancel Nonexistent Timer",
+          "tags": [
+            "timers",
+            "tools",
+            "recovery",
+            "robustness"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Cancel timer 99.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 32.961,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 251
+            },
+            {
+              "index": 1,
+              "user": "List my timers so I can see what's actually running.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 30.175,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 303
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "timer_basics",
+          "name": "Timer Basics",
+          "tags": [
+            "timers",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Set a timer for 10 seconds.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 29.522,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 262
+            },
+            {
+              "index": 1,
+              "user": "List timers.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 27.997,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 274
+            },
+            {
+              "index": 2,
+              "user": "Cancel timer 1.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 31.829,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 289
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "utility_time_date",
+          "name": "Utility: Date and Time",
+          "tags": [
+            "utility",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What's today's date?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 33.181,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 255
+            },
+            {
+              "index": 1,
+              "user": "And what time is it right now?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 33.754,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 285
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        }
+      ],
+      "tool_traces": []
+    },
+    {
+      "profile": {
+        "name": "ollama-phi4-mini",
+        "provider": "local_server",
+        "model": "phi4-mini:latest",
+        "api_key": null,
+        "local_model_path": null,
+        "llamacpp_bin": null,
+        "local_server_url": null,
+        "local_server_api_key": null,
+        "enable_thinking": false,
+        "use_tools": true,
+        "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+        "max_tokens": 512,
+        "temperature": 0.0,
+        "env": {},
+        "tool_filter": null,
+        "tool_schema_variant": "standard"
+      },
+      "status": "ok",
+      "error": null,
+      "started_at": "2026-02-28T11:20:06-0500",
+      "duration_s": 0.947,
+      "aggregate": {
+        "scenario_count": 10,
+        "scenario_passed": 0,
+        "task_success_rate": 0.0,
+        "total_turns": 25,
+        "avg_turn_latency_ms": 37.027,
+        "p95_turn_latency_ms": 66.135,
+        "avg_turns_to_success": 0.0,
+        "expected_tool_calls": 0,
+        "matched_tool_names": 0,
+        "tool_selection_accuracy": 0.0,
+        "expected_arg_checks": 0,
+        "matched_arg_checks": 0,
+        "argument_accuracy": 0.0,
+        "actual_tool_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "max_history_messages": 4,
+        "max_history_chars": 641,
+        "cpu_time_s": 0.125,
+        "python_peak_mb": 0.356,
+        "process_rss_delta_mb": 0.0,
+        "memory_peak_mb": 0.356,
+        "avg_tool_latency_ms": 0.0,
+        "p95_tool_latency_ms": 0.0,
+        "tool_call_error_count": 0,
+        "tool_call_error_rate": 0.0,
+        "model_execution_error_count": 25,
+        "model_execution_error_rate": 1.0,
+        "first_turn_latency_ms": 39.113,
+        "tokens_per_second": 0.0,
+        "scenario_success_per_second": 0.0,
+        "tag_success": {
+          "calculator": 0.0,
+          "context": 0.0,
+          "core": 0.0,
+          "lists": 0.0,
+          "memory": 0.0,
+          "multistep": 0.0,
+          "practical": 0.0,
+          "recovery": 0.0,
+          "robustness": 0.0,
+          "timers": 0.0,
+          "tools": 0.0,
+          "utility": 0.0
+        }
+      },
+      "scenarios": [
+        {
+          "id": "calculator_basic",
+          "name": "Calculator: Basic Arithmetic",
+          "tags": [
+            "utility",
+            "tools",
+            "calculator"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What is 15 percent of 47 dollars?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 69.22,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 268
+            },
+            {
+              "index": 1,
+              "user": "Now divide that by 3.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 37.403,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 289
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "cross_tool_mix",
+          "name": "Cross-Tool Mix: Time, Timer, List",
+          "tags": [
+            "utility",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What time is it?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 28.03,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 251
+            },
+            {
+              "index": 1,
+              "user": "Set a timer for 5 minutes.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 35.208,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 277
+            },
+            {
+              "index": 2,
+              "user": "Add 'check the timer' to my reminders list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 32.387,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 320
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "list_basics",
+          "name": "List Basics",
+          "tags": [
+            "lists",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a grocery list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 58.938,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 257
+            },
+            {
+              "index": 1,
+              "user": "Add milk to the grocery list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 38.312,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 286
+            },
+            {
+              "index": 2,
+              "user": "What lists do you have?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 45.59,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 309
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "list_multistep_packing",
+          "name": "Multistep: Packing List Workflow",
+          "tags": [
+            "lists",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 31.431,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 257
+            },
+            {
+              "index": 1,
+              "user": "Add socks and charger to the packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 34.039,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 299
+            },
+            {
+              "index": 2,
+              "user": "Show me the packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 36.665,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 324
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_persistent_strict",
+          "name": "Memory Persistent (Strict)",
+          "tags": [
+            "memory",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 36.574,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 275
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 40.915,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 301
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_context_flexible",
+          "name": "Memory Context (Flexible)",
+          "tags": [
+            "memory",
+            "tools",
+            "practical"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 32.533,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 275
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 28.742,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 301
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_context_pressure",
+          "name": "Context: Long-Context Memory Retrieval",
+          "tags": [
+            "memory",
+            "tools",
+            "context",
+            "multistep"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that the launch codename is atlas.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 35.188,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 278
+            },
+            {
+              "index": 1,
+              "user": "Read this long note: project timeline, ownership, and milestone details repeated for context pressure. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 36.941,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 572
+            },
+            {
+              "index": 2,
+              "user": "After that long note, what launch codename did I ask you to remember?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 35.408,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 641
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "recovery_timer_retry",
+          "name": "Recovery: Cancel Nonexistent Timer",
+          "tags": [
+            "timers",
+            "tools",
+            "recovery",
+            "robustness"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Cancel timer 99.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 37.211,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 251
+            },
+            {
+              "index": 1,
+              "user": "List my timers so I can see what's actually running.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 32.969,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 303
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "timer_basics",
+          "name": "Timer Basics",
+          "tags": [
+            "timers",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Set a timer for 10 seconds.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 31.185,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 262
+            },
+            {
+              "index": 1,
+              "user": "List timers.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 34.284,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 274
+            },
+            {
+              "index": 2,
+              "user": "Cancel timer 1.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 35.698,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 289
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "utility_time_date",
+          "name": "Utility: Date and Time",
+          "tags": [
+            "utility",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What's today's date?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 30.824,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 255
+            },
+            {
+              "index": 1,
+              "user": "And what time is it right now?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 29.975,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 285
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        }
+      ],
+      "tool_traces": []
+    },
+    {
+      "profile": {
+        "name": "ollama-llama3.2-3b",
+        "provider": "local_server",
+        "model": "llama3.2:3b",
+        "api_key": null,
+        "local_model_path": null,
+        "llamacpp_bin": null,
+        "local_server_url": null,
+        "local_server_api_key": null,
+        "enable_thinking": false,
+        "use_tools": true,
+        "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+        "max_tokens": 512,
+        "temperature": 0.0,
+        "env": {},
+        "tool_filter": null,
+        "tool_schema_variant": "standard"
+      },
+      "status": "ok",
+      "error": null,
+      "started_at": "2026-02-28T11:20:07-0500",
+      "duration_s": 0.966,
+      "aggregate": {
+        "scenario_count": 10,
+        "scenario_passed": 0,
+        "task_success_rate": 0.0,
+        "total_turns": 25,
+        "avg_turn_latency_ms": 37.741,
+        "p95_turn_latency_ms": 59.54,
+        "avg_turns_to_success": 0.0,
+        "expected_tool_calls": 0,
+        "matched_tool_names": 0,
+        "tool_selection_accuracy": 0.0,
+        "expected_arg_checks": 0,
+        "matched_arg_checks": 0,
+        "argument_accuracy": 0.0,
+        "actual_tool_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "max_history_messages": 4,
+        "max_history_chars": 641,
+        "cpu_time_s": 0.078,
+        "python_peak_mb": 0.334,
+        "process_rss_delta_mb": 0.0,
+        "memory_peak_mb": 0.334,
+        "avg_tool_latency_ms": 0.0,
+        "p95_tool_latency_ms": 0.0,
+        "tool_call_error_count": 0,
+        "tool_call_error_rate": 0.0,
+        "model_execution_error_count": 25,
+        "model_execution_error_rate": 1.0,
+        "first_turn_latency_ms": 39.06,
+        "tokens_per_second": 0.0,
+        "scenario_success_per_second": 0.0,
+        "tag_success": {
+          "calculator": 0.0,
+          "context": 0.0,
+          "core": 0.0,
+          "lists": 0.0,
+          "memory": 0.0,
+          "multistep": 0.0,
+          "practical": 0.0,
+          "recovery": 0.0,
+          "robustness": 0.0,
+          "timers": 0.0,
+          "tools": 0.0,
+          "utility": 0.0
+        }
+      },
+      "scenarios": [
+        {
+          "id": "calculator_basic",
+          "name": "Calculator: Basic Arithmetic",
+          "tags": [
+            "utility",
+            "tools",
+            "calculator"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What is 15 percent of 47 dollars?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 64.178,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 268
+            },
+            {
+              "index": 1,
+              "user": "Now divide that by 3.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 31.823,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 289
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "cross_tool_mix",
+          "name": "Cross-Tool Mix: Time, Timer, List",
+          "tags": [
+            "utility",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What time is it?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 32.046,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 251
+            },
+            {
+              "index": 1,
+              "user": "Set a timer for 5 minutes.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 34.279,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 277
+            },
+            {
+              "index": 2,
+              "user": "Add 'check the timer' to my reminders list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 32.776,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 320
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "list_basics",
+          "name": "List Basics",
+          "tags": [
+            "lists",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a grocery list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 34.474,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 257
+            },
+            {
+              "index": 1,
+              "user": "Add milk to the grocery list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 30.07,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 286
+            },
+            {
+              "index": 2,
+              "user": "What lists do you have?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 36.557,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 309
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "list_multistep_packing",
+          "name": "Multistep: Packing List Workflow",
+          "tags": [
+            "lists",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 33.64,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 257
+            },
+            {
+              "index": 1,
+              "user": "Add socks and charger to the packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 32.106,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 299
+            },
+            {
+              "index": 2,
+              "user": "Show me the packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 37.06,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 324
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_persistent_strict",
+          "name": "Memory Persistent (Strict)",
+          "tags": [
+            "memory",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 26.682,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 275
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 34.822,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 301
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_context_flexible",
+          "name": "Memory Context (Flexible)",
+          "tags": [
+            "memory",
+            "tools",
+            "practical"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 38.909,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 275
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 31.166,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 301
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_context_pressure",
+          "name": "Context: Long-Context Memory Retrieval",
+          "tags": [
+            "memory",
+            "tools",
+            "context",
+            "multistep"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that the launch codename is atlas.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 44.739,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 278
+            },
+            {
+              "index": 1,
+              "user": "Read this long note: project timeline, ownership, and milestone details repeated for context pressure. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 48.717,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 572
+            },
+            {
+              "index": 2,
+              "user": "After that long note, what launch codename did I ask you to remember?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 44.197,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 641
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "recovery_timer_retry",
+          "name": "Recovery: Cancel Nonexistent Timer",
+          "tags": [
+            "timers",
+            "tools",
+            "recovery",
+            "robustness"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Cancel timer 99.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 29.384,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 251
+            },
+            {
+              "index": 1,
+              "user": "List my timers so I can see what's actually running.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 36.656,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 303
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "timer_basics",
+          "name": "Timer Basics",
+          "tags": [
+            "timers",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Set a timer for 10 seconds.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 44.524,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 262
+            },
+            {
+              "index": 1,
+              "user": "List timers.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 40.553,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 274
+            },
+            {
+              "index": 2,
+              "user": "Cancel timer 1.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 46.024,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 289
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "utility_time_date",
+          "name": "Utility: Date and Time",
+          "tags": [
+            "utility",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What's today's date?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 42.025,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 255
+            },
+            {
+              "index": 1,
+              "user": "And what time is it right now?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 36.117,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 285
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        }
+      ],
+      "tool_traces": []
+    },
+    {
+      "profile": {
+        "name": "ollama-deepseek-r1-1.5b",
+        "provider": "local_server",
+        "model": "deepseek-r1:1.5b",
+        "api_key": null,
+        "local_model_path": null,
+        "llamacpp_bin": null,
+        "local_server_url": null,
+        "local_server_api_key": null,
+        "enable_thinking": false,
+        "use_tools": true,
+        "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+        "max_tokens": 512,
+        "temperature": 0.0,
+        "env": {},
+        "tool_filter": null,
+        "tool_schema_variant": "standard"
+      },
+      "status": "ok",
+      "error": null,
+      "started_at": "2026-02-28T11:20:08-0500",
+      "duration_s": 0.904,
+      "aggregate": {
+        "scenario_count": 10,
+        "scenario_passed": 0,
+        "task_success_rate": 0.0,
+        "total_turns": 25,
+        "avg_turn_latency_ms": 35.265,
+        "p95_turn_latency_ms": 57.675,
+        "avg_turns_to_success": 0.0,
+        "expected_tool_calls": 0,
+        "matched_tool_names": 0,
+        "tool_selection_accuracy": 0.0,
+        "expected_arg_checks": 0,
+        "matched_arg_checks": 0,
+        "argument_accuracy": 0.0,
+        "actual_tool_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "max_history_messages": 4,
+        "max_history_chars": 641,
+        "cpu_time_s": 0.109,
+        "python_peak_mb": 0.354,
+        "process_rss_delta_mb": 0.0,
+        "memory_peak_mb": 0.354,
+        "avg_tool_latency_ms": 0.0,
+        "p95_tool_latency_ms": 0.0,
+        "tool_call_error_count": 0,
+        "tool_call_error_rate": 0.0,
+        "model_execution_error_count": 25,
+        "model_execution_error_rate": 1.0,
+        "first_turn_latency_ms": 37.477,
+        "tokens_per_second": 0.0,
+        "scenario_success_per_second": 0.0,
+        "tag_success": {
+          "calculator": 0.0,
+          "context": 0.0,
+          "core": 0.0,
+          "lists": 0.0,
+          "memory": 0.0,
+          "multistep": 0.0,
+          "practical": 0.0,
+          "recovery": 0.0,
+          "robustness": 0.0,
+          "timers": 0.0,
+          "tools": 0.0,
+          "utility": 0.0
+        }
+      },
+      "scenarios": [
+        {
+          "id": "calculator_basic",
+          "name": "Calculator: Basic Arithmetic",
+          "tags": [
+            "utility",
+            "tools",
+            "calculator"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What is 15 percent of 47 dollars?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 63.302,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 268
+            },
+            {
+              "index": 1,
+              "user": "Now divide that by 3.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 38.038,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 289
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "cross_tool_mix",
+          "name": "Cross-Tool Mix: Time, Timer, List",
+          "tags": [
+            "utility",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What time is it?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 36.107,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 251
+            },
+            {
+              "index": 1,
+              "user": "Set a timer for 5 minutes.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 42.658,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 277
+            },
+            {
+              "index": 2,
+              "user": "Add 'check the timer' to my reminders list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 32.291,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 320
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "list_basics",
+          "name": "List Basics",
+          "tags": [
+            "lists",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a grocery list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 37.148,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 257
+            },
+            {
+              "index": 1,
+              "user": "Add milk to the grocery list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 31.826,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 286
+            },
+            {
+              "index": 2,
+              "user": "What lists do you have?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 30.566,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 309
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "list_multistep_packing",
+          "name": "Multistep: Packing List Workflow",
+          "tags": [
+            "lists",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 31.884,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 257
+            },
+            {
+              "index": 1,
+              "user": "Add socks and charger to the packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 33.915,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 299
+            },
+            {
+              "index": 2,
+              "user": "Show me the packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 33.47,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 324
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_persistent_strict",
+          "name": "Memory Persistent (Strict)",
+          "tags": [
+            "memory",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 34.691,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 275
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 31.696,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 301
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_context_flexible",
+          "name": "Memory Context (Flexible)",
+          "tags": [
+            "memory",
+            "tools",
+            "practical"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 37.371,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 275
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 28.744,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 301
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_context_pressure",
+          "name": "Context: Long-Context Memory Retrieval",
+          "tags": [
+            "memory",
+            "tools",
+            "context",
+            "multistep"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that the launch codename is atlas.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 30.313,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 278
+            },
+            {
+              "index": 1,
+              "user": "Read this long note: project timeline, ownership, and milestone details repeated for context pressure. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 44.547,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 572
+            },
+            {
+              "index": 2,
+              "user": "After that long note, what launch codename did I ask you to remember?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 31.256,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 641
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "recovery_timer_retry",
+          "name": "Recovery: Cancel Nonexistent Timer",
+          "tags": [
+            "timers",
+            "tools",
+            "recovery",
+            "robustness"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Cancel timer 99.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 36.067,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 251
+            },
+            {
+              "index": 1,
+              "user": "List my timers so I can see what's actually running.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 37.415,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 303
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "timer_basics",
+          "name": "Timer Basics",
+          "tags": [
+            "timers",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Set a timer for 10 seconds.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 33.98,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 262
+            },
+            {
+              "index": 1,
+              "user": "List timers.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 27.392,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 274
+            },
+            {
+              "index": 2,
+              "user": "Cancel timer 1.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 29.571,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 289
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "utility_time_date",
+          "name": "Utility: Date and Time",
+          "tags": [
+            "utility",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What's today's date?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 33.907,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 255
+            },
+            {
+              "index": 1,
+              "user": "And what time is it right now?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 33.481,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 285
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        }
+      ],
+      "tool_traces": []
+    },
+    {
+      "profile": {
+        "name": "ollama-mistral-nemo-12b",
+        "provider": "local_server",
+        "model": "mistral-nemo:latest",
+        "api_key": null,
+        "local_model_path": null,
+        "llamacpp_bin": null,
+        "local_server_url": null,
+        "local_server_api_key": null,
+        "enable_thinking": false,
+        "use_tools": true,
+        "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+        "max_tokens": 512,
+        "temperature": 0.0,
+        "env": {},
+        "tool_filter": null,
+        "tool_schema_variant": "standard"
+      },
+      "status": "ok",
+      "error": null,
+      "started_at": "2026-02-28T11:20:09-0500",
+      "duration_s": 1.09,
+      "aggregate": {
+        "scenario_count": 10,
+        "scenario_passed": 0,
+        "task_success_rate": 0.0,
+        "total_turns": 25,
+        "avg_turn_latency_ms": 42.676,
+        "p95_turn_latency_ms": 89.329,
+        "avg_turns_to_success": 0.0,
+        "expected_tool_calls": 0,
+        "matched_tool_names": 0,
+        "tool_selection_accuracy": 0.0,
+        "expected_arg_checks": 0,
+        "matched_arg_checks": 0,
+        "argument_accuracy": 0.0,
+        "actual_tool_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "max_history_messages": 4,
+        "max_history_chars": 641,
+        "cpu_time_s": 0.094,
+        "python_peak_mb": 0.324,
+        "process_rss_delta_mb": 0.0,
+        "memory_peak_mb": 0.324,
+        "avg_tool_latency_ms": 0.0,
+        "p95_tool_latency_ms": 0.0,
+        "tool_call_error_count": 0,
+        "tool_call_error_rate": 0.0,
+        "model_execution_error_count": 25,
+        "model_execution_error_rate": 1.0,
+        "first_turn_latency_ms": 49.408,
+        "tokens_per_second": 0.0,
+        "scenario_success_per_second": 0.0,
+        "tag_success": {
+          "calculator": 0.0,
+          "context": 0.0,
+          "core": 0.0,
+          "lists": 0.0,
+          "memory": 0.0,
+          "multistep": 0.0,
+          "practical": 0.0,
+          "recovery": 0.0,
+          "robustness": 0.0,
+          "timers": 0.0,
+          "tools": 0.0,
+          "utility": 0.0
+        }
+      },
+      "scenarios": [
+        {
+          "id": "calculator_basic",
+          "name": "Calculator: Basic Arithmetic",
+          "tags": [
+            "utility",
+            "tools",
+            "calculator"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What is 15 percent of 47 dollars?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 65.105,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 268
+            },
+            {
+              "index": 1,
+              "user": "Now divide that by 3.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 29.262,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 289
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "cross_tool_mix",
+          "name": "Cross-Tool Mix: Time, Timer, List",
+          "tags": [
+            "utility",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What time is it?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 49.956,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 251
+            },
+            {
+              "index": 1,
+              "user": "Set a timer for 5 minutes.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 35.27,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 277
+            },
+            {
+              "index": 2,
+              "user": "Add 'check the timer' to my reminders list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 39.007,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 320
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "list_basics",
+          "name": "List Basics",
+          "tags": [
+            "lists",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a grocery list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 41.117,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 257
+            },
+            {
+              "index": 1,
+              "user": "Add milk to the grocery list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 38.186,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 286
+            },
+            {
+              "index": 2,
+              "user": "What lists do you have?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 37.078,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 309
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "list_multistep_packing",
+          "name": "Multistep: Packing List Workflow",
+          "tags": [
+            "lists",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 99.711,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 257
+            },
+            {
+              "index": 1,
+              "user": "Add socks and charger to the packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 38.182,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 299
+            },
+            {
+              "index": 2,
+              "user": "Show me the packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 41.814,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 324
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_persistent_strict",
+          "name": "Memory Persistent (Strict)",
+          "tags": [
+            "memory",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 36.395,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 275
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 45.384,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 301
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_context_flexible",
+          "name": "Memory Context (Flexible)",
+          "tags": [
+            "memory",
+            "tools",
+            "practical"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 41.921,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 275
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 36.436,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 301
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_context_pressure",
+          "name": "Context: Long-Context Memory Retrieval",
+          "tags": [
+            "memory",
+            "tools",
+            "context",
+            "multistep"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that the launch codename is atlas.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 51.612,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 278
+            },
+            {
+              "index": 1,
+              "user": "Read this long note: project timeline, ownership, and milestone details repeated for context pressure. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 40.975,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 572
+            },
+            {
+              "index": 2,
+              "user": "After that long note, what launch codename did I ask you to remember?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 42.365,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 641
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "recovery_timer_retry",
+          "name": "Recovery: Cancel Nonexistent Timer",
+          "tags": [
+            "timers",
+            "tools",
+            "recovery",
+            "robustness"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Cancel timer 99.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 38.079,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 251
+            },
+            {
+              "index": 1,
+              "user": "List my timers so I can see what's actually running.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 38.007,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 303
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "timer_basics",
+          "name": "Timer Basics",
+          "tags": [
+            "timers",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Set a timer for 10 seconds.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 34.171,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 262
+            },
+            {
+              "index": 1,
+              "user": "List timers.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 37.764,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 274
+            },
+            {
+              "index": 2,
+              "user": "Cancel timer 1.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 37.277,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 289
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "utility_time_date",
+          "name": "Utility: Date and Time",
+          "tags": [
+            "utility",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What's today's date?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 36.015,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 255
+            },
+            {
+              "index": 1,
+              "user": "And what time is it right now?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 35.801,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 285
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        }
+      ],
+      "tool_traces": []
+    },
+    {
+      "profile": {
+        "name": "ollama-ministral-3b",
+        "provider": "local_server",
+        "model": "ministral-3b",
+        "api_key": null,
+        "local_model_path": null,
+        "llamacpp_bin": null,
+        "local_server_url": null,
+        "local_server_api_key": null,
+        "enable_thinking": false,
+        "use_tools": true,
+        "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+        "max_tokens": 512,
+        "temperature": 0.0,
+        "env": {},
+        "tool_filter": null,
+        "tool_schema_variant": "standard"
+      },
+      "status": "ok",
+      "error": null,
+      "started_at": "2026-02-28T11:20:10-0500",
+      "duration_s": 0.969,
+      "aggregate": {
+        "scenario_count": 10,
+        "scenario_passed": 0,
+        "task_success_rate": 0.0,
+        "total_turns": 25,
+        "avg_turn_latency_ms": 37.855,
+        "p95_turn_latency_ms": 93.123,
+        "avg_turns_to_success": 0.0,
+        "expected_tool_calls": 0,
+        "matched_tool_names": 0,
+        "tool_selection_accuracy": 0.0,
+        "expected_arg_checks": 0,
+        "matched_arg_checks": 0,
+        "argument_accuracy": 0.0,
+        "actual_tool_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "max_history_messages": 4,
+        "max_history_chars": 641,
+        "cpu_time_s": 0.203,
+        "python_peak_mb": 0.357,
+        "process_rss_delta_mb": 0.0,
+        "memory_peak_mb": 0.357,
+        "avg_tool_latency_ms": 0.0,
+        "p95_tool_latency_ms": 0.0,
+        "tool_call_error_count": 0,
+        "tool_call_error_rate": 0.0,
+        "model_execution_error_count": 25,
+        "model_execution_error_rate": 1.0,
+        "first_turn_latency_ms": 40.241,
+        "tokens_per_second": 0.0,
+        "scenario_success_per_second": 0.0,
+        "tag_success": {
+          "calculator": 0.0,
+          "context": 0.0,
+          "core": 0.0,
+          "lists": 0.0,
+          "memory": 0.0,
+          "multistep": 0.0,
+          "practical": 0.0,
+          "recovery": 0.0,
+          "robustness": 0.0,
+          "timers": 0.0,
+          "tools": 0.0,
+          "utility": 0.0
+        }
+      },
+      "scenarios": [
+        {
+          "id": "calculator_basic",
+          "name": "Calculator: Basic Arithmetic",
+          "tags": [
+            "utility",
+            "tools",
+            "calculator"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What is 15 percent of 47 dollars?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 82.319,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 268
+            },
+            {
+              "index": 1,
+              "user": "Now divide that by 3.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 30.117,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 289
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "cross_tool_mix",
+          "name": "Cross-Tool Mix: Time, Timer, List",
+          "tags": [
+            "utility",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What time is it?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 39.809,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 251
+            },
+            {
+              "index": 1,
+              "user": "Set a timer for 5 minutes.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 31.01,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 277
+            },
+            {
+              "index": 2,
+              "user": "Add 'check the timer' to my reminders list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 32.552,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 320
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "list_basics",
+          "name": "List Basics",
+          "tags": [
+            "lists",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a grocery list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 34.611,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 257
+            },
+            {
+              "index": 1,
+              "user": "Add milk to the grocery list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 29.914,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 286
+            },
+            {
+              "index": 2,
+              "user": "What lists do you have?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 30.748,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 309
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "list_multistep_packing",
+          "name": "Multistep: Packing List Workflow",
+          "tags": [
+            "lists",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 27.253,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 257
+            },
+            {
+              "index": 1,
+              "user": "Add socks and charger to the packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 26.632,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 299
+            },
+            {
+              "index": 2,
+              "user": "Show me the packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 35.683,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 324
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_persistent_strict",
+          "name": "Memory Persistent (Strict)",
+          "tags": [
+            "memory",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 33.808,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 275
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 32.23,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 301
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_context_flexible",
+          "name": "Memory Context (Flexible)",
+          "tags": [
+            "memory",
+            "tools",
+            "practical"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 31.795,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 275
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 31.095,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 301
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_context_pressure",
+          "name": "Context: Long-Context Memory Retrieval",
+          "tags": [
+            "memory",
+            "tools",
+            "context",
+            "multistep"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that the launch codename is atlas.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 30.132,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 278
+            },
+            {
+              "index": 1,
+              "user": "Read this long note: project timeline, ownership, and milestone details repeated for context pressure. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 32.62,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 572
+            },
+            {
+              "index": 2,
+              "user": "After that long note, what launch codename did I ask you to remember?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 32.21,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 641
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "recovery_timer_retry",
+          "name": "Recovery: Cancel Nonexistent Timer",
+          "tags": [
+            "timers",
+            "tools",
+            "recovery",
+            "robustness"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Cancel timer 99.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 33.192,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 251
+            },
+            {
+              "index": 1,
+              "user": "List my timers so I can see what's actually running.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 33.556,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 303
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "timer_basics",
+          "name": "Timer Basics",
+          "tags": [
+            "timers",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Set a timer for 10 seconds.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 48.297,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 262
+            },
+            {
+              "index": 1,
+              "user": "List timers.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 34.439,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 274
+            },
+            {
+              "index": 2,
+              "user": "Cancel timer 1.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 97.753,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 289
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "utility_time_date",
+          "name": "Utility: Date and Time",
+          "tags": [
+            "utility",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What's today's date?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 41.19,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 255
+            },
+            {
+              "index": 1,
+              "user": "And what time is it right now?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Client error '404 Not Found' for url 'https://mudmachine.panthera-hamlet.ts.net/ollama/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404"
+              ],
+              "latency_ms": 33.413,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 285
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        }
+      ],
+      "tool_traces": []
+    }
+  ],
+  "meta": {
+    "main_output_root": "benchmark_results",
+    "latest_run": "D:\\Projects\\GitHub\\talkbot\\benchmark_results\\latest",
+    "run_name": "ollama_models-20260228-111949",
+    "runner_label": null,
+    "update_main": true
+  }
+}
