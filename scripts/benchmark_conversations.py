@@ -68,12 +68,18 @@ def _ollama_pull(base_url: str, model: str) -> None:
     try:
         with urllib.request.urlopen(req, timeout=3600) as resp:
             last_status = ""
+            final_status = ""
+            error_msg = ""
             while chunk := resp.readline():
                 try:
                     line = json.loads(chunk)
                 except json.JSONDecodeError:
                     continue
+                if line.get("error"):
+                    error_msg = line["error"]
+                    break
                 status = line.get("status", "")
+                final_status = status
                 completed = line.get("completed", 0)
                 total = line.get("total", 0)
                 if total:
@@ -85,6 +91,10 @@ def _ollama_pull(base_url: str, model: str) -> None:
                     print(f"    {status}", end="", flush=True)
                 last_status = status
             print()  # final newline
+            if error_msg:
+                raise RuntimeError(f"Ollama pull error: {error_msg}")
+            if final_status != "success":
+                raise RuntimeError(f"Ollama pull ended without success (last status: {final_status!r})")
     except urllib.error.URLError as e:
         print(f"\n  Pull failed: {e}", file=sys.stderr)
         raise
@@ -114,8 +124,12 @@ def ensure_ollama_models(profiles: list, server_url: str) -> None:
 
     for model in sorted(missing):
         print(f"  Pulling {model!r} ...")
-        _ollama_pull(base_url, model)
-        print(f"  Done: {model!r}")
+        try:
+            _ollama_pull(base_url, model)
+            print(f"  Done: {model!r}")
+        except Exception as e:
+            print(f"  WARNING: could not pull {model!r}: {e}", file=sys.stderr)
+            print(f"  Benchmark will run anyway — expect 404 errors for this model.", file=sys.stderr)
 
 
 # ---------------------------------------------------------------------------
@@ -241,6 +255,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
     parser.add_argument("--repeats", type=int, default=1, help="Repeat each profile N times")
     parser.add_argument(
+        "--only",
+        metavar="NAME",
+        action="append",
+        default=None,
+        help="Only run profiles whose name matches NAME (substring match, repeatable).",
+    )
+    parser.add_argument(
         "--pull-models",
         action="store_true",
         default=False,
@@ -255,6 +276,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--runner-notes",
         default=None,
         help="Optional free-form notes stored in report metadata.",
+    )
+    parser.add_argument(
+        "--inference-env",
+        default=os.getenv("TALKBOT_INFERENCE_ENV", None),
+        help="Inference compute environment label (e.g. 'win32+wsl2', 'macos-native', 'linux-native'). "
+        "Stored in report metadata for cross-machine comparison. Auto-detected when omitted.",
     )
     parser.add_argument(
         "--network-type",
@@ -324,6 +351,7 @@ def main(argv: list[str] | None = None) -> int:
         label=args.runner_label,
         notes=args.runner_notes,
         network_type=args.network_type,
+        inference_env=args.inference_env,
         probe_endpoints=[] if args.no_probe_endpoints else None,
     )
     scenarios = load_scenarios(args.scenarios)
@@ -336,6 +364,13 @@ def main(argv: list[str] | None = None) -> int:
         context_analysis = matrix_config.get("context_analysis")
     else:
         profiles = [_default_profile_from_args(args)]
+
+    if args.only:
+        filters = args.only
+        profiles = [p for p in profiles if any(f in p.name for f in filters)]
+        if not profiles:
+            print(f"[benchmark] ERROR: --only {filters!r} matched no profiles.", file=sys.stderr)
+            sys.exit(1)
 
     profiles = _expand_repeats(profiles, max(1, args.repeats))
 

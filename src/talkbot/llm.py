@@ -1276,7 +1276,7 @@ def create_llm_client(
                 _direct_routing = any(t in _path_lower for t in ("8b", "13b", "14b", "32b", "70b"))
             return LocalLlamaCppClient(
                 model_path=local_path,
-                binary=llamacpp_bin or os.getenv("TALKBOT_LLAMACPP_BIN", "llama-cli"),
+                binary=os.getenv("TALKBOT_LLAMACPP_BIN") or llamacpp_bin or "llama-cli",
                 n_ctx=n_ctx,
                 enable_thinking=enable_thinking,
                 direct_tool_routing=_direct_routing,
