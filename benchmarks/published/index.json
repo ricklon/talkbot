@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-03-01T01:02:52-0500",
-  "latest_run": "local-qwen-qwen3-8b-20260301-004137",
+  "updated_at": "2026-03-01T12:05:31-0500",
+  "latest_run": "ollama_models-20260301-115348",
   "runs": [
     "validated-20260227-v3-schemas",
     "validated-20260227-v3-fixed",
@@ -11,6 +11,7 @@
     "schema-variants-20260227",
     "openrouter_small3",
     "ollama_models-win32-native",
+    "ollama_models-20260301-115348",
     "ollama_models-20260228-122743",
     "ollama_models-20260228-122039",
     "ollama_models-20260228-120801",

@@ -1,0 +1,32 @@
+{
+  "id": "reminders_flow",
+  "name": "Reminder Set/List/Cancel Flow",
+  "description": "3-turn flow: set a reminder, list active timers/reminders, cancel using the ID from history.",
+  "tags": ["reminders", "tools", "multi-turn"],
+  "turns": [
+    {
+      "turn": 1,
+      "text": "Remind me to take my medication in 5 minutes.",
+      "expects": {
+        "tool_calls": ["set_reminder"],
+        "answer_contains": ["5"]
+      }
+    },
+    {
+      "turn": 2,
+      "text": "What timers or reminders are active?",
+      "expects": {
+        "tool_calls": ["list_timers"],
+        "answer_contains": ["medication"]
+      }
+    },
+    {
+      "turn": 3,
+      "text": "Cancel the medication reminder.",
+      "expects": {
+        "tool_calls": ["cancel_timer"],
+        "answer_contains": ["cancel"]
+      }
+    }
+  ]
+}
