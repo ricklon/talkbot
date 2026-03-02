@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """Pipeline TTFA Leaderboard Builder
 
-Reads accumulated STT and TTS result JSONs, reads LLM benchmark data from
-the published LLM leaderboard, and composes end-to-end TTFA estimates.
+Reads accumulated STT and TTS result JSONs, discovers LLM benchmark data from
+all published run directories, and composes end-to-end TTFA estimates.
 
 Output: benchmarks/published/pipeline_leaderboard.md
 
 Usage:
     uv run python scripts/build_pipeline_leaderboard.py
-    uv run python scripts/build_pipeline_leaderboard.py --llm-results benchmark_results/results.json
+    uv run python scripts/build_pipeline_leaderboard.py --llm-results benchmarks/published/runs/ollama_models-20260301-115348/results.json
 """
 
 from __future__ import annotations
@@ -53,16 +53,36 @@ def _load_tts_results(tts_dir: Path) -> list[dict]:
     return results
 
 
-def _load_llm_runs(llm_results_path: Path) -> list[dict]:
-    """Load LLM benchmark run aggregates from results.json."""
-    if not llm_results_path.exists():
+def _load_llm_runs(llm_source: Path) -> list[dict]:
+    """Load LLM benchmark run aggregates.
+
+    llm_source may be:
+    - A specific results.json file, or
+    - A directory containing run subdirectories (each with results.json).
+      Globs <llm_source>/*/results.json to discover all published runs.
+    """
+    if not llm_source.exists():
+        print(f"  [warn] LLM source not found: {llm_source}", file=sys.stderr)
         return []
-    try:
-        data = json.loads(llm_results_path.read_text(encoding="utf-8"))
-        return data.get("runs", [])
-    except Exception as exc:
-        print(f"  [warn] LLM: could not read {llm_results_path}: {exc}", file=sys.stderr)
-        return []
+
+    if llm_source.is_file():
+        paths = [llm_source]
+    else:
+        paths = sorted(llm_source.glob("*/results.json"))
+        if not paths:
+            print(f"  [warn] LLM: no results.json files found under {llm_source}", file=sys.stderr)
+            return []
+        print(f"  [llm] Discovered {len(paths)} run(s) under {llm_source.name}/")
+
+    runs: list[dict] = []
+    for path in paths:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            batch = data.get("runs", [])
+            runs.extend(batch)
+        except Exception as exc:
+            print(f"  [warn] LLM: could not read {path}: {exc}", file=sys.stderr)
+    return runs
 
 
 # ---------------------------------------------------------------------------
@@ -295,8 +315,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
                         help="STT results directory (default: benchmarks/stt_results)")
     parser.add_argument("--tts-dir", default="benchmarks/tts_results",
                         help="TTS results directory (default: benchmarks/tts_results)")
-    parser.add_argument("--llm-results", default="benchmark_results/results.json",
-                        help="LLM results.json path (default: benchmark_results/results.json)")
+    parser.add_argument("--llm-results", default="benchmarks/published/runs",
+                        help="LLM results.json file or published runs directory "
+                             "(default: benchmarks/published/runs)")
     parser.add_argument("--publish-dir", default="benchmarks/published",
                         help="Output directory (default: benchmarks/published)")
     return parser.parse_args(argv)
@@ -308,13 +329,13 @@ def main(argv: list[str] | None = None) -> int:
 
     stt_dir = repo_root / args.stt_dir
     tts_dir = repo_root / args.tts_dir
-    llm_path = repo_root / args.llm_results
+    llm_source = repo_root / args.llm_results
     publish_dir = repo_root / args.publish_dir
     publish_dir.mkdir(parents=True, exist_ok=True)
 
     stt_results = _load_stt_results(stt_dir)
     tts_results = _load_tts_results(tts_dir)
-    llm_runs = _load_llm_runs(llm_path)
+    llm_runs = _load_llm_runs(llm_source)
 
     print(f"Loaded: {len(stt_results)} STT runs, {len(tts_results)} TTS runs, {len(llm_runs)} LLM runs")
 
