@@ -496,6 +496,21 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ERROR: manifest not found: {missing}", file=sys.stderr)
         return 1
 
+    # Check that audio files are present
+    if not args.publish_only:
+        raw_dir = repo_root / "benchmarks/voice_dataset/raw"
+        if not raw_dir.exists() or not any(raw_dir.glob("*.wav")):
+            print(
+                "ERROR: No WAV files found in benchmarks/voice_dataset/raw/\n"
+                "\n"
+                "Download the voice dataset first:\n"
+                "  uv run python scripts/download_voice_dataset.py\n"
+                "\n"
+                "Requires HF_TOKEN and HF_DATASET_REPO in .env",
+                file=sys.stderr,
+            )
+            return 1
+
     output_dir = repo_root / args.output_dir
     publish_dir = repo_root / args.publish_dir
     output_dir.mkdir(parents=True, exist_ok=True)
