@@ -1,5 +1,11 @@
 # TalkBot
 
+Talkbot is a command line and tkinter GUI interface to a voice agent you can use on a single board computer or laptop.  The concept is that there are different ways to accomplish the goal of a tool using agent to be on your system. It needs to recognize what you say, think about what was said, use the correct tools to repsond to the appropriate action. Then it needs to speak the about the results or seek clarification. This is all the thinks we normally think a system like Alexa does but's it's on the local system.
+
+Local system can mean the LLMs are installed and run directly on the device. They can be run on the device over a local network. They can also can have access to models on your home network or lab and not need to pay the memory cost on your small devie.  So this project has configuration for on device, local server on device, and remote servers like the [OpenRouter.ai](https://openrouter.ai)  inference engine access.  The rest of the info below describes how to get up and running. The GUI is an all in one system where you can choose and try differnt confirations. The CLI is like isntalling the Talkbot on your device with new interface. Then finally as a way of discovering what is optimaly there is a benchmarking system which generates leadersboards for the best optons.  That is still under development but is providing insight on what is need to make a success tool using voice aganet pipleine. 
+
+Now on to the details:
+
 A talking AI assistant with local-first LLM + TTS defaults, plus optional OpenRouter Inference for remote models. Text To Speech (TTS) supports Microsoft edge-tts (online), KittenTTS (local neural), and pyttsx3.
 
 ## Features
