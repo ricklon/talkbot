@@ -1,6 +1,6 @@
 # TalkBot
 
-A talking AI assistant with local-first LLM + TTS defaults, plus optional OpenRouter for remote models. TTS supports edge-tts (online), KittenTTS (local neural), and pyttsx3.
+A talking AI assistant with local-first LLM + TTS defaults, plus optional [OpenRouter](https://openrouter.ai) for remote models. Text To Speech (TTS) supports edge-tts (online), KittenTTS (local neural), and pyttsx3 (Local).
 
 ## Features
 
