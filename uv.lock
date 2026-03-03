@@ -5110,6 +5110,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+benchmark = [
+    { name = "huggingface-hub" },
+]
 local = [
     { name = "llama-cpp-python" },
 ]
@@ -5131,6 +5134,7 @@ requires-dist = [
     { name = "edge-tts", specifier = ">=6.1" },
     { name = "faster-whisper", marker = "extra == 'voice'", specifier = ">=1.0" },
     { name = "httpx", specifier = ">=0.24" },
+    { name = "huggingface-hub", marker = "extra == 'benchmark'", specifier = ">=1.0" },
     { name = "kittentts", url = "https://github.com/KittenML/KittenTTS/releases/download/0.8.1/kittentts-0.8.1-py3-none-any.whl" },
     { name = "llama-cpp-python", marker = "extra == 'local'", specifier = ">=0.3.2" },
     { name = "pygame", specifier = ">=2.5" },
@@ -5140,7 +5144,7 @@ requires-dist = [
     { name = "sounddevice", marker = "extra == 'voice'", specifier = ">=0.4.6" },
     { name = "soundfile", marker = "extra == 'voice'", specifier = ">=0.12" },
 ]
-provides-extras = ["local", "voice"]
+provides-extras = ["local", "voice", "benchmark"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=8.0" }]
