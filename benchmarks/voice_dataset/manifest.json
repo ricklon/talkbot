@@ -191,40 +191,6 @@
       "recorded_at": "2026-02-27T22:46:41Z"
     },
     {
-      "id": "chemical_formula__take01",
-      "prompt_id": "chemical_formula",
-      "text": "The sample contains H2SO4.",
-      "category": "stem",
-      "notes": "",
-      "expected_variants": [
-        "The sample contains H two S O four."
-      ],
-      "speaker_id": "ricklon",
-      "session_id": "20260227T224021Z",
-      "audio_path": "benchmarks/voice_dataset/raw/20260227T224021Z__ricklon__chemical_formula__take01.wav",
-      "sample_rate_hz": 16000,
-      "channels": 1,
-      "duration_s": 2.132,
-      "recorded_at": "2026-02-27T22:46:51Z"
-    },
-    {
-      "id": "chemical_formula__take02",
-      "prompt_id": "chemical_formula",
-      "text": "The sample contains H2SO4.",
-      "category": "stem",
-      "notes": "",
-      "expected_variants": [
-        "The sample contains H two S O four."
-      ],
-      "speaker_id": "ricklon",
-      "session_id": "20260227T224021Z",
-      "audio_path": "benchmarks/voice_dataset/raw/20260227T224021Z__ricklon__chemical_formula__take02.wav",
-      "sample_rate_hz": 16000,
-      "channels": 1,
-      "duration_s": 2.444,
-      "recorded_at": "2026-02-27T22:47:00Z"
-    },
-    {
       "id": "date_iso__take01",
       "prompt_id": "date_iso",
       "text": "The due date is 2026-02-26.",
@@ -448,6 +414,42 @@
       "channels": 1,
       "duration_s": 3.77,
       "recorded_at": "2026-02-27T23:05:14Z"
+    },
+    {
+      "id": "chemical_formula__take01",
+      "prompt_id": "chemical_formula",
+      "text": "The sample contains H2SO4.",
+      "category": "stem",
+      "notes": "",
+      "expected_variants": [
+        "The sample contains H two S O four.",
+        "The sample contains H2SO4."
+      ],
+      "speaker_id": "ricklon",
+      "session_id": "20260307T221144Z",
+      "audio_path": "benchmarks/voice_dataset/raw/20260307T221144Z__ricklon__chemical_formula__take01.wav",
+      "sample_rate_hz": 16000,
+      "channels": 1,
+      "duration_s": 5.492,
+      "recorded_at": "2026-03-07T22:11:54Z"
+    },
+    {
+      "id": "chemical_formula__take02",
+      "prompt_id": "chemical_formula",
+      "text": "The sample contains H2SO4.",
+      "category": "stem",
+      "notes": "",
+      "expected_variants": [
+        "The sample contains H two S O four.",
+        "The sample contains H2SO4."
+      ],
+      "speaker_id": "ricklon",
+      "session_id": "20260307T221144Z",
+      "audio_path": "benchmarks/voice_dataset/raw/20260307T221144Z__ricklon__chemical_formula__take02.wav",
+      "sample_rate_hz": 16000,
+      "channels": 1,
+      "duration_s": 3.475,
+      "recorded_at": "2026-03-07T22:12:00Z"
     }
   ]
 }
