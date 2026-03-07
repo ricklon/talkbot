@@ -31,13 +31,21 @@ export TALKBOT_AGENT_PROMPT="You are a brief voice assistant. Always prefer tool
 uv run talkbot say --tools
 ```
 
-No test suite or linter is configured yet.
+## Running Tests
+
+```bash
+uv run pytest           # run all unit tests (68 tests)
+uv run pytest -m "not integration"  # skip real-hardware integration tests
+```
+
+Tests live in `tests/`. Integration tests (TTS synthesis, voice pipeline) are marked
+`@pytest.mark.integration` and require audio hardware.
 
 ## Dependency Note
 
-- As of 2026-02-24, `kittentts` is installed from PyPI (`kittentts>=0.1.0`) instead of a direct GitHub wheel URL.
-- This avoids `uv` lockfile parse failures caused by wheel filename/version mismatches.
-- `UV_SKIP_WHEEL_FILENAME_CHECK` is no longer required for normal `uv` commands in this repo.
+- `kittentts 0.8.1` is **not on PyPI** — pinned via direct GitHub release URL in
+  `pyproject.toml`. `uv sync` fetches it automatically.
+- `UV_SKIP_WHEEL_FILENAME_CHECK` is not required for normal `uv` commands in this repo.
 
 ## Architecture
 
