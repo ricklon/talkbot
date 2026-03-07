@@ -146,6 +146,23 @@ def _latest_user_text(messages: list[dict[str, Any]]) -> str:
     return ""
 
 
+def _latest_assistant_text(messages: list[dict[str, Any]]) -> str:
+    for message in reversed(messages):
+        if str(message.get("role", "")).strip().lower() == "assistant":
+            return str(message.get("content", "")).strip()
+    return ""
+
+
+def _extract_last_number(text: str) -> float | None:
+    matches = re.findall(r"[-+]?\d+(?:\.\d+)?", text or "")
+    if not matches:
+        return None
+    try:
+        return float(matches[-1])
+    except Exception:
+        return None
+
+
 def _filter_tool_args_for_callable(func: Callable[..., Any], args: dict[str, Any]) -> dict[str, Any]:
     """Drop kwargs that the target callable does not accept."""
     if not isinstance(args, dict):
@@ -747,6 +764,7 @@ class LocalLlamaCppClient:
                 break
         if not user_text:
             return []
+        assistant_text = _latest_assistant_text(messages)
 
         if "what time" in user_text or "current time" in user_text:
             return [{"id": "direct-time-0", "function": {"name": "get_current_time", "arguments": "{}"}}]
@@ -816,6 +834,38 @@ class LocalLlamaCppClient:
                     },
                 }
             ]
+        percent_match = re.search(
+            r"(\d+(?:\.\d+)?)\s*percent\s+of\s+(\d+(?:\.\d+)?)",
+            user_text,
+        )
+        if percent_match:
+            pct = percent_match.group(1)
+            val = percent_match.group(2)
+            expr = f"({pct}/100)*{val}"
+            return [
+                {
+                    "id": "direct-calc-percent-0",
+                    "function": {
+                        "name": "calculator",
+                        "arguments": json.dumps({"expression": expr}),
+                    },
+                }
+            ]
+        divide_match = re.search(r"\bdivide\s+that\s+by\s+(\d+(?:\.\d+)?)\b", user_text)
+        if divide_match:
+            denom = float(divide_match.group(1))
+            prior = _extract_last_number(assistant_text)
+            if prior is not None and denom != 0:
+                expr = f"({prior})/{denom}"
+                return [
+                    {
+                        "id": "direct-calc-divide-0",
+                        "function": {
+                            "name": "calculator",
+                            "arguments": json.dumps({"expression": expr}),
+                        },
+                    }
+                ]
 
         dm = re.search(r"\b(\d+)\s*d\s*(\d+)(?:s)?\b", user_text)
         if dm:
@@ -1305,6 +1355,13 @@ def create_llm_client(
             or os.getenv("TALKBOT_LOCAL_SERVER_URL")
             or "http://127.0.0.1:8000/v1"
         )
+        timeout_raw = (os.getenv("TALKBOT_LOCAL_SERVER_TIMEOUT") or "").strip()
+        try:
+            timeout = float(timeout_raw) if timeout_raw else 60.0
+        except Exception:
+            timeout = 60.0
+        if timeout <= 0:
+            timeout = 60.0
         # Explicit model param wins (GUI selection); fall back to env var, then local path
         server_model = model or (os.getenv("TALKBOT_LOCAL_SERVER_MODEL") or "").strip()
         if not server_model:
@@ -1315,6 +1372,7 @@ def create_llm_client(
             base_url=server_url,
             api_key=local_server_api_key,
             enable_thinking=enable_thinking,
+            timeout=timeout,
         )
 
     raise LLMProviderError(

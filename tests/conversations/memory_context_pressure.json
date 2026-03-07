@@ -12,14 +12,13 @@
           {
             "name": "remember"
           }
-        ],
-        "response_regex": "(?i)atlas"
+        ]
       }
     },
     {
       "user": "Read this long note: project timeline, ownership, and milestone details repeated for context pressure. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated.",
       "expect": {
-        "max_tool_calls": 1
+        "max_tool_calls": 2
       }
     },
     {

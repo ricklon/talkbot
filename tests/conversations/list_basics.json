@@ -33,9 +33,8 @@
             "name": "list_all_lists"
           }
         ],
-        "response_contains": ["grocery"]
+        "response_regex": "(?i)grocery"
       }
     }
   ]
 }
-

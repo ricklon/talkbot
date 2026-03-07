@@ -577,9 +577,10 @@ def _evaluate_turn(
 
     contains = expect.get("response_contains") or []
     if isinstance(contains, list):
+        response_folded = response.casefold()
         for part in contains:
             part_text = str(part)
-            if part_text not in response:
+            if part_text.casefold() not in response_folded:
                 assertions.append(f"Missing response text: {part_text!r}")
 
     regex = expect.get("response_regex")
@@ -676,6 +677,19 @@ def _default_client_factory(profile: BenchmarkProfile):
         local_server_api_key=profile.local_server_api_key,
         enable_thinking=profile.enable_thinking,
     )
+
+
+def _warmup_local_server_client(client: Any, profile_name: str) -> None:
+    """Best-effort warmup to avoid first-request cold-start timeouts."""
+    try:
+        client.chat_completion(
+            [{"role": "user", "content": "Reply with exactly: warm"}],
+            temperature=0.0,
+            max_tokens=8,
+        )
+        print(f"[warmup] local_server profile '{profile_name}' warmed.", flush=True)
+    except Exception as exc:
+        print(f"[warmup] local_server profile '{profile_name}' warmup failed: {exc}", flush=True)
 
 
 def _safe_name(value: str) -> str:
@@ -969,6 +983,8 @@ def run_benchmark(
                         )
                     elif profile.use_tools:
                         raise RuntimeError("Client does not support tool registration.")
+                    if profile.provider == "local_server":
+                        _warmup_local_server_client(client, profile.name)
 
                     for scenario in scenarios:
                         if scenario.get("reset_state", True):

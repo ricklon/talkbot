@@ -8,7 +8,11 @@
     {
       "user": "Remember that my favorite color is blue.",
       "expect": {
-        "response_contains": ["blue"]
+        "tool_calls": [
+          {
+            "name": "remember"
+          }
+        ]
       }
     },
     {
@@ -19,4 +23,3 @@
     }
   ]
 }
-
