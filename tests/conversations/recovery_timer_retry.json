@@ -6,7 +6,7 @@
   "reset_state": true,
   "turns": [
     {
-      "user": "Cancel timer 99.",
+      "user": "Cancel timer #99.",
       "expect": {
         "tool_calls": [
           {

@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-03-09T14:36:18-0500",
-  "latest_run": "baseline-llama-server-qwen35-0.8b-q8_0",
+  "updated_at": "2026-03-09T15:32:25-0500",
+  "latest_run": "fix-recovery-timer-qwen35-0.8b-q4km",
   "runs": [
     "validated-20260227-v3-schemas",
     "validated-20260227-v3-fixed",
@@ -28,6 +28,8 @@
     "full_remote-20260226-175045",
     "full_all-with-smalltoolcall-20260226-184414",
     "full_all-20260226-180616",
+    "fix-recovery-timer-qwen35-0.8b-q8_0",
+    "fix-recovery-timer-qwen35-0.8b-q4km",
     "directive-std-qwen35-0.8b",
     "directive-min-qwen35-0.8b",
     "directive-ex-qwen35-0.8b",
