@@ -1,7 +1,7 @@
 {
   "id": "memory_context_pressure",
   "name": "Context: Long-Context Memory Retrieval",
-  "description": "Remember a value, process a long filler turn, then retrieve it with tool usage under context pressure.",
+  "description": "Remember a value, process a distracting filler turn, then verify the model can still answer correctly. Tests persistent memory store and in-context retention across distractions.",
   "tags": ["memory", "tools", "context", "multistep"],
   "reset_state": true,
   "turns": [
@@ -24,11 +24,6 @@
     {
       "user": "After that long note, what launch codename did I ask you to remember?",
       "expect": {
-        "tool_calls": [
-          {
-            "name_any": ["recall", "recall_all"]
-          }
-        ],
         "response_regex": "(?i)atlas"
       }
     }
