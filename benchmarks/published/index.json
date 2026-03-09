@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-03-09T07:45:08-0500",
-  "latest_run": "baseline-clean-qwen35-2b-q4km",
+  "updated_at": "2026-03-09T14:36:18-0500",
+  "latest_run": "baseline-llama-server-qwen35-0.8b-q8_0",
   "runs": [
     "validated-20260227-v3-schemas",
     "validated-20260227-v3-fixed",
@@ -32,6 +32,8 @@
     "directive-min-qwen35-0.8b",
     "directive-ex-qwen35-0.8b",
     "baseline-merged-tools-qwen35-0.8b",
+    "baseline-llama-server-qwen35-0.8b-q8_0",
+    "baseline-llama-server-qwen35-0.8b-q4km",
     "baseline-fubarsream-qwen35-2b",
     "baseline-fubarsream-qwen35-0.8b-ollama",
     "baseline-fubarsream-qwen35-0.8b-nothink",

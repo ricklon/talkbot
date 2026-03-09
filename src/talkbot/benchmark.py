@@ -607,6 +607,14 @@ def _ollama_model_memory_mb(local_server_url: str, model_name: str) -> float | N
     return None
 
 
+def _gguf_file_size_mb(path: str) -> float | None:
+    """Return GGUF file size in MB as a conservative proxy for model memory usage."""
+    try:
+        return round(os.path.getsize(path) / (1024 * 1024), 1)
+    except OSError:
+        return None
+
+
 def _register_traced_tools(
     client: Any,
     recorder: ToolRecorder,
@@ -1209,6 +1217,10 @@ def run_benchmark(
             ollama_mb = _ollama_model_memory_mb(profile.local_server_url, profile.model)
             if ollama_mb is not None:
                 rss_peak = rss_started + ollama_mb
+            elif profile.local_model_path:
+                gguf_mb = _gguf_file_size_mb(profile.local_model_path)
+                if gguf_mb is not None:
+                    rss_peak = rss_started + gguf_mb
 
         aggregate: RunAggregate | None = None
         if status == "ok":

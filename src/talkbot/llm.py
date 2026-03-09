@@ -1017,7 +1017,13 @@ class LocalServerClient:
             )
             response.raise_for_status()
             data = response.json()
-            self.last_usage = data.get("usage") or {}
+            usage = data.get("usage") or {}
+            timings = data.get("timings") or {}
+            self.last_usage = {
+                **usage,
+                "x_prompt_eval_ms": round(float(timings.get("prompt_ms") or 0), 1),
+                "x_gen_ms": round(float(timings.get("predicted_ms") or 0), 1),
+            }
             return data
         except httpx.HTTPError as e:
             raise LLMProviderError(f"Local server request failed: {e}") from e
