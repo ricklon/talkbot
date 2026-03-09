@@ -191,6 +191,9 @@ def _default_profile_from_args(args: argparse.Namespace) -> BenchmarkProfile:
         max_tokens=args.max_tokens,
         temperature=args.temperature,
         env=env,
+        tool_schema_variant=args.tool_schema_variant,
+        tool_filter=args.tool_filter,
+        tool_use_directive="" if args.no_tool_directive else args.tool_use_directive,
     )
 
 
@@ -323,6 +326,32 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
     parser.add_argument("--thinking", action="store_true", help="Enable thinking mode")
     parser.add_argument("--no-tools", action="store_true", help="Disable tool mode")
+    parser.add_argument(
+        "--tool-use-directive",
+        default=None,
+        metavar="TEXT",
+        help="Custom system prompt directive telling the model to prefer tool calls. "
+             "Defaults to DEFAULT_TOOL_USE_DIRECTIVE when use_tools=True. "
+             "Pass empty string to suppress.",
+    )
+    parser.add_argument(
+        "--no-tool-directive",
+        action="store_true",
+        help="Suppress the default tool-use directive (sets tool_use_directive to empty string)",
+    )
+    parser.add_argument(
+        "--tool-schema-variant",
+        choices=["standard", "minimal", "examples"],
+        default="standard",
+        help="Tool description style: standard (default), minimal (fewest tokens), examples (worked examples)",
+    )
+    parser.add_argument(
+        "--tool-filter",
+        nargs="+",
+        metavar="TOOL",
+        default=None,
+        help="Whitelist of tool names to register (default: all 17 tools). E.g. --tool-filter get_current_time calculator set_timer",
+    )
     parser.add_argument(
         "--system-prompt",
         default=None,

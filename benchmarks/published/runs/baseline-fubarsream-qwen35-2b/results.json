@@ -1,0 +1,692 @@
+{
+  "started_at": "2026-03-07T21:31:22-0500",
+  "finished_at": "2026-03-07T21:31:22-0500",
+  "runner": {
+    "label": "fubarsream / i7-10610U / Linux",
+    "hostname": "fubarsream",
+    "os": "Linux",
+    "os_release": "6.8.0-101-generic",
+    "machine": "x86_64",
+    "processor": "x86_64",
+    "python_version": "3.12.3",
+    "cpu_count_logical": 8,
+    "cpu_count_physical": null,
+    "is_raspberry_pi": false,
+    "raspberry_pi_model": null,
+    "network_type": "unknown",
+    "inference_env": "linux-native",
+    "endpoint_probes": [
+      {
+        "label": "openrouter",
+        "url": "https://openrouter.ai/api/v1/models",
+        "ttfb_ms_median": 225.3,
+        "ttfb_ms_min": 186.2,
+        "ttfb_ms_max": 312.1,
+        "samples": 3,
+        "http_status": 200,
+        "error": null
+      },
+      {
+        "label": "ollama-local",
+        "url": "http://127.0.0.1:11434/api/tags",
+        "ttfb_ms_median": 30.4,
+        "ttfb_ms_min": 27.9,
+        "ttfb_ms_max": 61.9,
+        "samples": 3,
+        "http_status": 200,
+        "error": null
+      }
+    ],
+    "notes": null
+  },
+  "scenario_count": 10,
+  "run_count": 1,
+  "rubric": {
+    "version": "2026.1",
+    "weights": {
+      "task_success_rate": 0.35,
+      "tool_selection_accuracy": 0.2,
+      "argument_accuracy": 0.15,
+      "recovery_success_rate": 0.1,
+      "multistep_success_rate": 0.1,
+      "robustness_success_rate": 0.05,
+      "context_success_rate": 0.05
+    },
+    "penalties": {
+      "latency_ms_multiplier": 0.002,
+      "memory_mb_multiplier": 0.002,
+      "tool_error_rate_multiplier": 20.0,
+      "model_error_rate_multiplier": 30.0
+    }
+  },
+  "context_analysis": {
+    "near_peak_ratio": 0.95,
+    "dropoff_ratio": 0.9
+  },
+  "runs": [
+    {
+      "profile": {
+        "name": "local-qwen/qwen3.5-2b",
+        "provider": "local",
+        "model": "qwen/qwen3.5-2b",
+        "local_model_path": "models/qwen3.5-2b-q4_k_m.gguf",
+        "llamacpp_bin": "llama-cli",
+        "local_server_url": "http://127.0.0.1:8000/v1",
+        "enable_thinking": false,
+        "use_tools": true,
+        "system_prompt": null,
+        "max_tokens": 512,
+        "temperature": 0.0,
+        "env": {},
+        "tool_filter": null,
+        "tool_schema_variant": "standard"
+      },
+      "status": "ok",
+      "error": null,
+      "started_at": "2026-03-07T21:31:22-0500",
+      "duration_s": 0.397,
+      "aggregate": {
+        "scenario_count": 10,
+        "scenario_passed": 0,
+        "task_success_rate": 0.0,
+        "total_turns": 25,
+        "avg_turn_latency_ms": 0.945,
+        "p95_turn_latency_ms": 1.416,
+        "avg_turns_to_success": 0.0,
+        "expected_tool_calls": 0,
+        "matched_tool_names": 0,
+        "tool_selection_accuracy": 0.0,
+        "expected_arg_checks": 0,
+        "matched_arg_checks": 0,
+        "argument_accuracy": 0.0,
+        "actual_tool_calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "max_history_messages": 3,
+        "max_history_chars": 406,
+        "cpu_time_s": 0.394,
+        "python_peak_mb": 3.982,
+        "process_rss_delta_mb": 41.68,
+        "memory_peak_mb": 41.68,
+        "avg_tool_latency_ms": 0.0,
+        "p95_tool_latency_ms": 0.0,
+        "tool_call_error_count": 0,
+        "tool_call_error_rate": 0.0,
+        "model_execution_error_count": 25,
+        "model_execution_error_rate": 1.0,
+        "first_turn_latency_ms": 0.957,
+        "tokens_per_second": 0.0,
+        "scenario_success_per_second": 0.0,
+        "tag_success": {
+          "calculator": 0.0,
+          "context": 0.0,
+          "core": 0.0,
+          "lists": 0.0,
+          "memory": 0.0,
+          "multistep": 0.0,
+          "practical": 0.0,
+          "recovery": 0.0,
+          "robustness": 0.0,
+          "timers": 0.0,
+          "tools": 0.0,
+          "utility": 0.0
+        }
+      },
+      "scenarios": [
+        {
+          "id": "calculator_basic",
+          "name": "Calculator: Basic Arithmetic",
+          "tags": [
+            "utility",
+            "tools",
+            "calculator"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What is 15 percent of 47 dollars?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 1.054,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 1,
+              "history_chars": 33
+            },
+            {
+              "index": 1,
+              "user": "Now divide that by 3.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 0.888,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 54
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "cross_tool_mix",
+          "name": "Cross-Tool Mix: Time, Timer, List",
+          "tags": [
+            "utility",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What time is it?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 0.862,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 1,
+              "history_chars": 16
+            },
+            {
+              "index": 1,
+              "user": "Set a timer for 5 minutes.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 0.833,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 42
+            },
+            {
+              "index": 2,
+              "user": "Add 'check the timer' to my reminders list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 0.875,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 85
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "list_basics",
+          "name": "List Basics",
+          "tags": [
+            "lists",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a grocery list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 0.817,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 1,
+              "history_chars": 22
+            },
+            {
+              "index": 1,
+              "user": "Add milk to the grocery list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 0.818,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 51
+            },
+            {
+              "index": 2,
+              "user": "What lists do you have?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 0.939,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 74
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "list_multistep_packing",
+          "name": "Multistep: Packing List Workflow",
+          "tags": [
+            "lists",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 0.888,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 1,
+              "history_chars": 22
+            },
+            {
+              "index": 1,
+              "user": "Add socks and charger to the packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 0.851,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 64
+            },
+            {
+              "index": 2,
+              "user": "Show me the packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 0.828,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 89
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_persistent_strict",
+          "name": "Memory Persistent (Strict)",
+          "tags": [
+            "memory",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 0.858,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 1,
+              "history_chars": 40
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 0.867,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 66
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_context_flexible",
+          "name": "Memory Context (Flexible)",
+          "tags": [
+            "memory",
+            "tools",
+            "practical"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 0.87,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 1,
+              "history_chars": 40
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 0.9,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 66
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_context_pressure",
+          "name": "Context: Long-Context Memory Retrieval",
+          "tags": [
+            "memory",
+            "tools",
+            "context",
+            "multistep"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that the launch codename is atlas.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 0.922,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 1,
+              "history_chars": 43
+            },
+            {
+              "index": 1,
+              "user": "Read this long note: project timeline, ownership, and milestone details repeated for context pressure. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 0.925,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 337
+            },
+            {
+              "index": 2,
+              "user": "After that long note, what launch codename did I ask you to remember?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 0.945,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 406
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "recovery_timer_retry",
+          "name": "Recovery: Cancel Nonexistent Timer",
+          "tags": [
+            "timers",
+            "tools",
+            "recovery",
+            "robustness"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Cancel timer 99.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 0.939,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 1,
+              "history_chars": 16
+            },
+            {
+              "index": 1,
+              "user": "List my timers so I can see what's actually running.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 0.997,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 68
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "timer_basics",
+          "name": "Timer Basics",
+          "tags": [
+            "timers",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Set a timer for 10 seconds.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 1.426,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 1,
+              "history_chars": 27
+            },
+            {
+              "index": 1,
+              "user": "List timers.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 1.393,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 39
+            },
+            {
+              "index": 2,
+              "user": "Cancel timer 1.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 1.015,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 54
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "utility_time_date",
+          "name": "Utility: Date and Time",
+          "tags": [
+            "utility",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What's today's date?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 0.932,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 1,
+              "history_chars": 20
+            },
+            {
+              "index": 1,
+              "user": "And what time is it right now?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 0.971,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 50
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        }
+      ],
+      "tool_traces": []
+    }
+  ],
+  "meta": {
+    "main_output_root": "benchmark_results",
+    "latest_run": "/home/ra/Projects/talkbot/benchmark_results/latest",
+    "run_name": "baseline-fubarsream-qwen35-2b",
+    "runner_label": "fubarsream / i7-10610U / Linux",
+    "update_main": true
+  }
+}

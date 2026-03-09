@@ -35,6 +35,15 @@ except Exception:  # pragma: no cover - optional dependency
     psutil = None
 
 
+# Applied as the first system prompt component when use_tools=True and tool_use_directive is None.
+# Separates behavioral directive from tool descriptions so schema variants are fairly comparable.
+# Override per-profile with tool_use_directive="custom text" or suppress with tool_use_directive="".
+DEFAULT_TOOL_USE_DIRECTIVE = (
+    "When a request can be solved using an available tool, "
+    "call the tool rather than answering from context or reasoning alone."
+)
+
+
 @dataclass
 class BenchmarkProfile:
     """Single model/runtime configuration to benchmark."""
@@ -55,6 +64,10 @@ class BenchmarkProfile:
     env: dict[str, str] = field(default_factory=dict)
     tool_filter: list[str] | None = None  # None = all tools; list = only these tool names
     tool_schema_variant: str = "standard"  # "standard" | "minimal" | "examples"
+    # None = apply DEFAULT_TOOL_USE_DIRECTIVE when use_tools=True
+    # ""   = no directive (explicit suppression)
+    # str  = use this custom directive
+    tool_use_directive: str | None = None
 
 
 @dataclass
@@ -66,6 +79,8 @@ class ToolCallTrace:
     result: str
     error: str | None
     latency_ms: float
+    # "exception" | "error_result" | None (success)
+    failure_reason: str | None = None
 
 
 @dataclass
@@ -127,10 +142,13 @@ class RunAggregate:
     p95_tool_latency_ms: float
     tool_call_error_count: int
     tool_call_error_rate: float
+    tool_failure_summary: list[dict[str, Any]]
     model_execution_error_count: int
     model_execution_error_rate: float
     first_turn_latency_ms: float
     tokens_per_second: float
+    avg_prefill_tok_s: float
+    avg_gen_tok_s: float
     scenario_success_per_second: float
     tag_success: dict[str, float]
 
@@ -159,6 +177,7 @@ class ToolRecorder:
         def _wrapped(*args: Any, **kwargs: Any) -> Any:
             started = time.perf_counter()
             error: str | None = None
+            failure_reason: str | None = None
             result_text = ""
             named_args: dict[str, Any]
             if kwargs:
@@ -170,10 +189,13 @@ class ToolRecorder:
             try:
                 result = func(*args, **kwargs)
                 result_text = str(result)
+                if result_text.strip().lower().startswith("error:"):
+                    failure_reason = "error_result"
                 return result
             except Exception as exc:
                 error = str(exc)
                 result_text = f"Error: {exc}"
+                failure_reason = "exception"
                 raise
             finally:
                 latency_ms = (time.perf_counter() - started) * 1000.0
@@ -186,6 +208,7 @@ class ToolRecorder:
                         result=result_text,
                         error=error,
                         latency_ms=round(latency_ms, 3),
+                        failure_reason=failure_reason,
                     )
                 )
 
@@ -231,6 +254,13 @@ def _to_int(value: Any) -> int:
         return int(value)
     except Exception:
         return 0
+
+
+def _timing_ms(usage: dict[str, Any]) -> tuple[float, float]:
+    """Return (prompt_eval_ms, gen_ms) from a usage dict, or (0.0, 0.0) if unavailable."""
+    pe = float(usage.get("x_prompt_eval_ms") or 0)
+    gm = float(usage.get("x_gen_ms") or 0)
+    return pe, gm
 
 
 def _subset_match(actual: Any, expected: Any) -> bool:
@@ -538,6 +568,45 @@ def _current_rss_mb() -> float:
     return round(rss / (1024.0 * 1024.0), 3)
 
 
+def _ollama_model_memory_mb(local_server_url: str, model_name: str) -> float | None:
+    """Query ollama /api/ps for actual loaded model memory. Returns MB or None.
+
+    Tries the derived base URL first (works if pointing directly at ollama).
+    Falls back to the standard ollama port 11434 to handle proxy setups.
+    """
+    import urllib.request
+    import urllib.parse
+    import json as _json
+
+    base = local_server_url.rstrip("/")
+    if base.endswith("/v1"):
+        base = base[:-3]
+
+    # Build candidate URLs: derived base first, then standard ollama port as fallback
+    parsed = urllib.parse.urlparse(base)
+    fallback = f"{parsed.scheme}://{parsed.hostname}:11434"
+    candidates = [base] if base != fallback else []
+    candidates.append(fallback)
+
+    def _match(name: str) -> bool:
+        mn = model_name.split(":")[0]
+        nn = name.split(":")[0]
+        return mn in name or model_name in name or mn == nn
+
+    for candidate in candidates:
+        try:
+            req = urllib.request.Request(f"{candidate}/api/ps")
+            with urllib.request.urlopen(req, timeout=3) as r:
+                data = _json.loads(r.read())
+            for m in data.get("models", []):
+                if _match(m.get("name", "")):
+                    size_bytes = m.get("size", 0) or 0
+                    return round(size_bytes / (1024 * 1024), 1)
+        except Exception:
+            continue
+    return None
+
+
 def _register_traced_tools(
     client: Any,
     recorder: ToolRecorder,
@@ -680,12 +749,14 @@ def _default_client_factory(profile: BenchmarkProfile):
 
 
 def _warmup_local_server_client(client: Any, profile_name: str) -> None:
-    """Best-effort warmup to avoid first-request cold-start timeouts."""
+    """Best-effort warmup to avoid first-request cold-start timeouts.
+    Uses include_tools=False so the warmup prompt is tiny regardless of registered tools."""
     try:
         client.chat_completion(
             [{"role": "user", "content": "Reply with exactly: warm"}],
             temperature=0.0,
             max_tokens=8,
+            include_tools=False,
         )
         print(f"[warmup] local_server profile '{profile_name}' warmed.", flush=True)
     except Exception as exc:
@@ -991,6 +1062,14 @@ def run_benchmark(
                             reset_runtime_state(clear_persistent=True)
                         messages: list[dict[str, str]] = []
                         system_parts: list[str] = []
+                        if profile.use_tools:
+                            directive = (
+                                profile.tool_use_directive
+                                if profile.tool_use_directive is not None
+                                else DEFAULT_TOOL_USE_DIRECTIVE
+                            )
+                            if directive:
+                                system_parts.append(directive.strip())
                         if profile.system_prompt:
                             system_parts.append(str(profile.system_prompt).strip())
                         if scenario.get("system_prompt"):
@@ -1125,6 +1204,12 @@ def run_benchmark(
         run_duration = round(time.perf_counter() - run_started, 3)
         cpu_duration = round(time.process_time() - cpu_started, 3)
 
+        # Override RSS with actual ollama model memory if available
+        if profile.provider == "local_server" and profile.local_server_url:
+            ollama_mb = _ollama_model_memory_mb(profile.local_server_url, profile.model)
+            if ollama_mb is not None:
+                rss_peak = rss_started + ollama_mb
+
         aggregate: RunAggregate | None = None
         if status == "ok":
             aggregate = _build_aggregate(
@@ -1196,11 +1281,16 @@ def _build_aggregate(
     max_history_chars = 0
     model_execution_error_count = 0
     first_turn_latencies: list[float] = []
+    total_prompt_eval_ms = 0.0
+    total_gen_ms = 0.0
     for turn in all_turns:
         p, c, t = _token_usage(turn.usage)
         prompt_tokens += p
         completion_tokens += c
         total_tokens += t
+        pe_ms, gm_ms = _timing_ms(turn.usage)
+        total_prompt_eval_ms += pe_ms
+        total_gen_ms += gm_ms
         max_history_messages = max(max_history_messages, turn.history_messages)
         max_history_chars = max(max_history_chars, turn.history_chars)
         if turn.index == 0:
@@ -1216,10 +1306,18 @@ def _build_aggregate(
     else:
         p95_tool_latency = 0.0
     tool_call_error_count = sum(
-        1
-        for trace in tool_traces
-        if trace.error or str(trace.result).strip().lower().startswith("error:")
+        1 for trace in tool_traces if trace.failure_reason is not None
     )
+    # Build failure summary: [{tool, reason, count}] sorted by count desc
+    _failure_counts: dict[tuple[str, str], int] = {}
+    for trace in tool_traces:
+        if trace.failure_reason:
+            key = (trace.name, trace.failure_reason)
+            _failure_counts[key] = _failure_counts.get(key, 0) + 1
+    tool_failure_summary = [
+        {"tool": tool, "reason": reason, "count": count}
+        for (tool, reason), count in sorted(_failure_counts.items(), key=lambda x: -x[1])
+    ]
     tool_selection_accuracy = _percent(matched_tool_names, expected_tool_calls)
     argument_accuracy = _percent(matched_arg_checks, expected_arg_checks)
     # Avoid false-perfect metrics when execution errors prevent any tool assertions.
@@ -1249,6 +1347,16 @@ def _build_aggregate(
     )
     tokens_per_second = (
         round(total_tokens / total_turn_latency_s, 3) if total_turn_latency_s > 0 else 0.0
+    )
+    avg_prefill_tok_s = (
+        round(prompt_tokens / (total_prompt_eval_ms / 1000.0), 1)
+        if total_prompt_eval_ms > 0
+        else 0.0
+    )
+    avg_gen_tok_s = (
+        round(completion_tokens / (total_gen_ms / 1000.0), 1)
+        if total_gen_ms > 0
+        else 0.0
     )
     return RunAggregate(
         scenario_count=scenario_count,
@@ -1282,6 +1390,7 @@ def _build_aggregate(
         p95_tool_latency_ms=round(float(p95_tool_latency), 3),
         tool_call_error_count=tool_call_error_count,
         tool_call_error_rate=_percent(tool_call_error_count, max(1, len(tool_traces))),
+        tool_failure_summary=tool_failure_summary,
         model_execution_error_count=model_execution_error_count,
         model_execution_error_rate=_percent(
             model_execution_error_count,
@@ -1293,6 +1402,8 @@ def _build_aggregate(
             else 0.0
         ),
         tokens_per_second=tokens_per_second,
+        avg_prefill_tok_s=avg_prefill_tok_s,
+        avg_gen_tok_s=avg_gen_tok_s,
         scenario_success_per_second=scenario_success_per_second,
         tag_success=tag_success,
     )
@@ -1735,7 +1846,7 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
         runs,
         key=lambda run: (
             run["aggregate"]["task_success_rate"],
-            run["aggregate"].get("tokens_per_second", 0.0),
+            run["aggregate"].get("avg_gen_tok_s", 0.0),
             -run["aggregate"]["avg_turn_latency_ms"],
             -run["aggregate"]["memory_peak_mb"],
         ),
@@ -1776,7 +1887,8 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             f"{recovery:.2%} | {_coerce_float(agg.get('avg_turn_latency_ms'), 0.0):.1f} | "
             f"{_coerce_float(agg.get('memory_peak_mb'), 0.0):.1f} | "
             f"{_coerce_float(agg.get('tool_call_error_rate'), 0.0):.2%} | "
-            f"{_coerce_float(agg.get('tokens_per_second'), 0.0):.1f} | "
+            f"{_coerce_float(agg.get('avg_prefill_tok_s'), 0.0):.1f} | "
+            f"{_coerce_float(agg.get('avg_gen_tok_s'), 0.0):.1f} | "
             f"{int(_coerce_float(agg.get('total_tokens'), 0.0))} |"
         )
         if include_score:
@@ -1861,8 +1973,8 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             "",
             "## Quality Rank",
             "",
-            "| Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens |",
-            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            "| Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Pfill/s | Gen/s | Tokens |",
+            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     lines.extend(row(run) for run in quality_rank)
@@ -1872,8 +1984,8 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             "",
             "## Low-Memory Rank",
             "",
-            "| Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens |",
-            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            "| Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Pfill/s | Gen/s | Tokens |",
+            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     lines.extend(row(run) for run in low_mem_rank)
@@ -1883,8 +1995,8 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             "",
             "## Balanced Rank",
             "",
-            "| Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens | Score |",
-            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            "| Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Pfill/s | Gen/s | Tokens | Score |",
+            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     lines.extend(row(run, include_score=True) for run in balanced_rank)
@@ -1902,8 +2014,8 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
     if remote_rank:
         lines.extend(
             [
-                "| Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens | Score (Remote) |",
-                "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+                "| Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Pfill/s | Gen/s | Tokens | Score (Remote) |",
+                "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
             ]
         )
         lines.extend(
@@ -1922,8 +2034,8 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             "",
             "## Efficiency Rank",
             "",
-            "| Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens |",
-            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            "| Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Pfill/s | Gen/s | Tokens |",
+            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     lines.extend(row(run) for run in efficiency_rank)
@@ -1973,8 +2085,8 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             "",
             "## Pareto Frontier (Quality/Latency/Memory)",
             "",
-            "| Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Tok/s | Tokens | Score |",
-            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            "| Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Pfill/s | Gen/s | Tokens | Score |",
+            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     lines.extend(row(run, include_score=True) for run in pareto)
@@ -2073,7 +2185,7 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             f"- Best low-memory option: `{best_low_mem['profile']['name']}` "
             f"({best_low_mem['aggregate']['memory_peak_mb']:.1f} MB peak)",
             f"- Best throughput option: `{best_efficiency['profile']['name']}` "
-            f"({best_efficiency['aggregate']['tokens_per_second']:.1f} tokens/sec)",
+            f"({best_efficiency['aggregate'].get('avg_gen_tok_s', 0.0):.1f} gen tok/s)",
         ]
     )
     if remote_rank:

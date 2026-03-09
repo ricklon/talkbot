@@ -76,10 +76,10 @@ def test_list_tools_validate_and_parse_inputs(tmp_path, monkeypatch):
     monkeypatch.setattr(tools, "_data_dir", lambda: tmp_path)
 
     assert tools.create_list("   ") == "Error: list_name must not be empty."
-    assert tools.add_to_list("  ", "shopping") == "Error: item must not be empty."
+    assert tools.add_to_list("  ", "shopping") == "Error: items must not be empty."
 
     assert tools.create_list("shopping") == "Created 'shopping' list."
-    msg = tools.add_items_to_list("milk, eggs, bread", "shopping")
+    msg = tools.add_to_list("milk, eggs, bread", "shopping")
     assert "Added milk, eggs, bread to the shopping list." == msg
     got = tools.get_list("shopping")
     assert "- milk" in got and "- eggs" in got and "- bread" in got

@@ -73,3 +73,21 @@ def test_openrouter_provider_uses_env_api_key(monkeypatch):
     assert captured["api_key"] == "test-key"
     assert captured["model"] == "ibm-granite/granite-4.0-h-micro"
     assert getattr(client, "provider_name", "") == "openrouter"
+
+
+def test_normalize_add_to_list_item_list_alias():
+    """Model passes item_list=[...] to add_to_list — should remap to items."""
+    from talkbot.llm import _normalize_tool_args_for_call
+    result = _normalize_tool_args_for_call(
+        "add_to_list", {"item_list": ["milk"], "list_name": "grocery"}
+    )
+    assert result == {"items": ["milk"], "list_name": "grocery"}
+
+
+def test_normalize_add_to_list_item_alias():
+    """Model passes old singular 'item' param — should remap to items."""
+    from talkbot.llm import _normalize_tool_args_for_call
+    result = _normalize_tool_args_for_call(
+        "add_to_list", {"item": "eggs", "list_name": "grocery"}
+    )
+    assert result == {"items": "eggs", "list_name": "grocery"}

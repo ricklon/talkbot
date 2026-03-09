@@ -1,6 +1,6 @@
 # Benchmark Leaderboard
 
-- Generated: 2026-03-09T07:45:08-0500
+- Generated: 2026-03-08T21:30:06-0500
 - Runs: 1
 - Scenarios: 10
 - Rubric version: 2026.1
@@ -22,8 +22,8 @@
 
 | Endpoint | URL | Median ms | Min ms | Max ms | HTTP |
 |---|---|---:|---:|---:|---:|
-| openrouter | https://openrouter.ai/api/v1/models | 154.6 | 137.5 | 183.0 | 200 |
-| ollama-local | http://127.0.0.1:11434/api/tags | 30.6 | 26.2 | 53.2 | 200 |
+| openrouter | https://openrouter.ai/api/v1/models | 299.9 | 131.2 | 318.9 | 200 |
+| ollama-local | http://127.0.0.1:11434/api/tags | 29.8 | 25.6 | 60.2 | 200 |
 ## Rubric
 
 | Metric | Weight |
@@ -47,19 +47,19 @@
 
 | Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Pfill/s | Gen/s | Tokens |
 |---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| local_server-qwen3.5:2b-q4_k_m | local_server | qwen3.5:2b-q4_k_m | LLM | 0.0 | 30.00% | 56.52% | 100.00% | 100.00% | 94760.5 | 3031.4 | 0.00% | 41.5 | 8.3 | 53915 |
+| local_server-qwen3.5:4b | local_server | qwen3.5:4b | LLM | 0.0 | 70.00% | 82.61% | 100.00% | 0.00% | 282372.9 | 5497.0 | 0.00% | 16.2 | 3.7 | 49346 |
 
 ## Low-Memory Rank
 
 | Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Pfill/s | Gen/s | Tokens |
 |---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| local_server-qwen3.5:2b-q4_k_m | local_server | qwen3.5:2b-q4_k_m | LLM | 0.0 | 30.00% | 56.52% | 100.00% | 100.00% | 94760.5 | 3031.4 | 0.00% | 41.5 | 8.3 | 53915 |
+| local_server-qwen3.5:4b | local_server | qwen3.5:4b | LLM | 0.0 | 70.00% | 82.61% | 100.00% | 0.00% | 282372.9 | 5497.0 | 0.00% | 16.2 | 3.7 | 49346 |
 
 ## Balanced Rank
 
 | Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Pfill/s | Gen/s | Tokens | Score |
 |---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| local_server-qwen3.5:2b-q4_k_m | local_server | qwen3.5:2b-q4_k_m | LLM | 0.0 | 30.00% | 56.52% | 100.00% | 100.00% | 94760.5 | 3031.4 | 0.00% | 41.5 | 8.3 | 53915 | -140.447 |
+| local_server-qwen3.5:4b | local_server | qwen3.5:4b | LLM | 0.0 | 70.00% | 82.61% | 100.00% | 0.00% | 282372.9 | 5497.0 | 0.00% | 16.2 | 3.7 | 49346 | -508.051 |
 
 ## Remote Rank (No Memory Penalty)
 
@@ -72,7 +72,7 @@ No remote-provider runs found in this report.
 
 | Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Pfill/s | Gen/s | Tokens |
 |---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| local_server-qwen3.5:2b-q4_k_m | local_server | qwen3.5:2b-q4_k_m | LLM | 0.0 | 30.00% | 56.52% | 100.00% | 100.00% | 94760.5 | 3031.4 | 0.00% | 41.5 | 8.3 | 53915 |
+| local_server-qwen3.5:4b | local_server | qwen3.5:4b | LLM | 0.0 | 70.00% | 82.61% | 100.00% | 0.00% | 282372.9 | 5497.0 | 0.00% | 16.2 | 3.7 | 49346 |
 
 ## Latency Snapshot (Local vs Remote)
 
@@ -80,14 +80,14 @@ No remote-provider runs found in this report.
 
 | Group | Runs | Median Avg ms | Fastest Avg ms | Fastest Run |
 |---|---:|---:|---:|---|
-| Local | 1 | 94760.5 | 94760.5 | local_server-qwen3.5:2b-q4_k_m |
+| Local | 1 | 282372.9 | 282372.9 | local_server-qwen3.5:4b |
 | Remote | 0 | n/a | n/a | n/a |
 
 ## Pareto Frontier (Quality/Latency/Memory)
 
 | Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Pfill/s | Gen/s | Tokens | Score |
 |---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| local_server-qwen3.5:2b-q4_k_m | local_server | qwen3.5:2b-q4_k_m | LLM | 0.0 | 30.00% | 56.52% | 100.00% | 100.00% | 94760.5 | 3031.4 | 0.00% | 41.5 | 8.3 | 53915 | -140.447 |
+| local_server-qwen3.5:4b | local_server | qwen3.5:4b | LLM | 0.0 | 70.00% | 82.61% | 100.00% | 0.00% | 282372.9 | 5497.0 | 0.00% | 16.2 | 3.7 | 49346 | -508.051 |
 
 ## Tool Routing A/B (Will vs Can)
 
@@ -100,10 +100,10 @@ No matched LLM/Intent profile pairs found. Add profiles with the same model + co
 
 | Provider | Rank | Run | Model | Temp | Success | Score |
 |---|---:|---|---|---:|---:|---:|
-| local_server | 1 | local_server-qwen3.5:2b-q4_k_m | qwen3.5:2b-q4_k_m | 0.0 | 30.00% | -140.447 |
+| local_server | 1 | local_server-qwen3.5:4b | qwen3.5:4b | 0.0 | 70.00% | -508.051 |
 
 ## Recommendations
 
-- Best overall quality: `local_server-qwen3.5:2b-q4_k_m` (qwen3.5:2b-q4_k_m)
-- Best low-memory option: `local_server-qwen3.5:2b-q4_k_m` (3031.4 MB peak)
-- Best throughput option: `local_server-qwen3.5:2b-q4_k_m` (8.3 gen tok/s)
+- Best overall quality: `local_server-qwen3.5:4b` (qwen3.5:4b)
+- Best low-memory option: `local_server-qwen3.5:4b` (5497.0 MB peak)
+- Best throughput option: `local_server-qwen3.5:4b` (3.7 gen tok/s)

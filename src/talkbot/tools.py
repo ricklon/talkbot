@@ -103,11 +103,11 @@ def time_until(target: str) -> str:
 # Calculator
 # ---------------------------------------------------------------------------
 
-def calculator(expression: str) -> str:
+def calculator(formula: str) -> str:
     """Calculate a mathematical expression safely.
 
     Args:
-        expression: Mathematical expression to evaluate (e.g., "2 + 2", "sqrt(16)")
+        formula: Mathematical expression to evaluate (e.g., "2 + 2", "sqrt(16)")
     """
     allowed_names = {
         "sqrt": math.sqrt,
@@ -124,17 +124,17 @@ def calculator(expression: str) -> str:
 
     import re as _re
     # Pre-process "X% of Y" → "(X/100)*Y"
-    expression = _re.sub(
+    formula = _re.sub(
         r'(\d+(?:\.\d+)?)\s*%\s*of\s*(\d+(?:\.\d+)?)',
         lambda m: f"({m.group(1)}/100)*{m.group(2)}",
-        expression,
+        formula,
         flags=_re.IGNORECASE,
     )
     # Pre-process remaining "X%" → "(X/100)"
-    expression = _re.sub(r'(\d+(?:\.\d+)?)\s*%', r'(\1/100)', expression)
+    formula = _re.sub(r'(\d+(?:\.\d+)?)\s*%', r'(\1/100)', formula)
 
     try:
-        result = eval(expression, {"__builtins__": {}}, allowed_names)
+        result = eval(formula, {"__builtins__": {}}, allowed_names)
         return str(result)
     except Exception as e:
         return f"Error: {str(e)}"
@@ -466,34 +466,11 @@ def create_list(list_name: str) -> str:
     return f"Created '{list_name}' list."
 
 
-def add_to_list(item: str, list_name: str = "shopping") -> str:
-    """Add an item to a named list (default: shopping list).
+def add_to_list(items: "str | list", list_name: str = "shopping") -> str:
+    """Add one or more items to a named list (default: shopping list).
 
     Args:
-        item: The item to add
-        list_name: Which list to add to (default 'shopping')
-    """
-    list_name = _normalize_list_name(list_name, default="shopping")
-    if not list_name:
-        return "Error: list_name must not be empty."
-    item_text = _normalize_text(item)
-    if not item_text:
-        return "Error: item must not be empty."
-
-    data = _normalize_list_data(_load_json(_LISTS_FILE))
-    lst = data.setdefault(list_name, [])
-    if item_text in lst:
-        return f"'{item_text}' is already on the {list_name} list."
-    lst.append(item_text)
-    _save_json(_LISTS_FILE, data)
-    return f"Added '{item_text}' to the {list_name} list."
-
-
-def add_items_to_list(items: list, list_name: str = "shopping") -> str:
-    """Add multiple items to a named list at once.
-
-    Args:
-        items: List of items to add (e.g. ["lettuce", "tomato", "onion"])
+        items: One item (string) or multiple items (list of strings) to add
         list_name: Which list to add to (default 'shopping')
     """
     list_name = _normalize_list_name(list_name, default="shopping")
@@ -501,26 +478,31 @@ def add_items_to_list(items: list, list_name: str = "shopping") -> str:
         return "Error: list_name must not be empty."
 
     if isinstance(items, str):
-        parsed_items: list[Any] = [part for part in re.split(r"[,\n]", items) if part.strip()]
+        parsed_items: list[Any] = [p.strip() for p in re.split(r"[,\n]", items) if p.strip()]
     elif isinstance(items, (list, tuple, set)):
-        parsed_items = list(items)
+        parsed_items = [str(i).strip() for i in items if str(i).strip()]
     else:
-        return "Error: items must be a list of values."
+        return "Error: items must be a string or list of strings."
+
+    if not parsed_items:
+        return "Error: items must not be empty."
 
     data = _normalize_list_data(_load_json(_LISTS_FILE))
     lst = data.setdefault(list_name, [])
     added = []
     skipped = []
-    for item in parsed_items:
-        item = str(item).strip()
-        if not item:
-            continue
-        if item in lst:
-            skipped.append(item)
+    for item_text in parsed_items:
+        if item_text in lst:
+            skipped.append(item_text)
         else:
-            lst.append(item)
-            added.append(item)
+            lst.append(item_text)
+            added.append(item_text)
     _save_json(_LISTS_FILE, data)
+
+    if len(parsed_items) == 1:
+        if added:
+            return f"Added '{added[0]}' to the {list_name} list."
+        return f"'{skipped[0]}' is already on the {list_name} list."
     parts = []
     if added:
         parts.append(f"Added {', '.join(added)} to the {list_name} list.")
@@ -677,12 +659,12 @@ TOOL_DEFINITIONS = {
         "parameters": {
             "type": "object",
             "properties": {
-                "expression": {
+                "formula": {
                     "type": "string",
                     "description": "A valid arithmetic expression using operators and numbers. Translate natural language to math before calling. Examples: '0.15 * 47', '(3 + 4) * 2', 'sqrt(16)', '15 / 100 * 47', '7.05 / 3'",
                 }
             },
-            "required": ["expression"],
+            "required": ["formula"],
         },
     },
     "roll_dice": {
@@ -806,29 +788,16 @@ TOOL_DEFINITIONS = {
         },
     },
     "add_to_list": {
-        "description": "Add an item to a named list (default: shopping list)",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "item": {"type": "string", "description": "The item to add"},
-                "list_name": {
-                    "type": "string",
-                    "description": "The exact list name — must match the name used when the list was created. Examples: 'grocery', 'todo', 'shopping'",
-                    "default": "shopping",
-                },
-            },
-            "required": ["item"],
-        },
-    },
-    "add_items_to_list": {
-        "description": "Add multiple items to a named list at once. Use when the user names more than one item. REQUIRED: items must always be provided as an array of strings.",
+        "description": "Add one or more items to a named list. Always call this tool — do not track list contents in conversation context.",
         "parameters": {
             "type": "object",
             "properties": {
                 "items": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Items to add — REQUIRED, must be a non-empty array (e.g. [\"lettuce\", \"tomato\", \"onion\"])",
+                    "oneOf": [
+                        {"type": "string"},
+                        {"type": "array", "items": {"type": "string"}},
+                    ],
+                    "description": "Item or items to add. Single item: \"milk\". Multiple items: [\"milk\", \"eggs\", \"bread\"].",
                 },
                 "list_name": {
                     "type": "string",
@@ -928,7 +897,7 @@ TOOL_CATEGORIES: dict[str, list[str]] = {
     "utility":  ["get_current_time", "get_current_date", "calculator",
                  "roll_dice", "flip_coin", "random_number", "web_search"],
     "timer":    ["set_timer", "set_reminder", "cancel_timer", "list_timers"],
-    "list":     ["create_list", "add_to_list", "add_items_to_list", "get_list",
+    "list":     ["create_list", "add_to_list", "get_list",
                  "remove_from_list", "clear_list", "list_all_lists"],
     "memory":   ["remember", "recall", "recall_all"],
 }
@@ -964,7 +933,7 @@ TOOL_DEFINITION_VARIANTS: dict[str, dict[str, dict]] = {
                                "parameters": TOOL_DEFINITIONS["cancel_timer"]["parameters"]},
         "list_timers":        {"description": "List active timers.",
                                "parameters": TOOL_DEFINITIONS["list_timers"]["parameters"]},
-        "add_to_list":        {"description": "Add an item to a named list.",
+        "add_to_list":        {"description": "Add item(s) to a named list. items: string or array of strings.",
                                "parameters": TOOL_DEFINITIONS["add_to_list"]["parameters"]},
         "get_list":           {"description": "Get all items on a named list.",
                                "parameters": TOOL_DEFINITIONS["get_list"]["parameters"]},
@@ -978,7 +947,7 @@ TOOL_DEFINITION_VARIANTS: dict[str, dict[str, dict]] = {
                                "parameters": TOOL_DEFINITIONS["get_current_time"]["parameters"]},
         "get_current_date":   {"description": 'Returns e.g. "2026-02-27". Call when user asks today\'s date.',
                                "parameters": TOOL_DEFINITIONS["get_current_date"]["parameters"]},
-        "calculator":         {"description": 'Call with expression="0.15*47" or "7.05/3" or "sqrt(16)". Translate: "15% of 47" → "0.15*47".',
+        "calculator":         {"description": 'Call with formula="0.15*47" or "7.05/3" or "sqrt(16)". Translate: "15% of 47" → "0.15*47".',
                                "parameters": TOOL_DEFINITIONS["calculator"]["parameters"]},
         "remember":           {"description": 'Call with key="favorite_color", value="blue". Key: lowercase_underscore.',
                                "parameters": TOOL_DEFINITIONS["remember"]["parameters"]},
@@ -992,7 +961,7 @@ TOOL_DEFINITION_VARIANTS: dict[str, dict[str, dict]] = {
                                "parameters": TOOL_DEFINITIONS["cancel_timer"]["parameters"]},
         "list_timers":        {"description": 'Returns list of active timers with IDs and remaining seconds.',
                                "parameters": TOOL_DEFINITIONS["list_timers"]["parameters"]},
-        "add_to_list":        {"description": 'Call with item="milk", list_name="grocery". list_name must match create_list name exactly.',
+        "add_to_list":        {"description": 'Call with items="milk", list_name="grocery" or items=["milk","eggs"], list_name="grocery".',
                                "parameters": TOOL_DEFINITIONS["add_to_list"]["parameters"]},
         "get_list":           {"description": 'Call with list_name="grocery". Returns items as array. list_name must match exactly.',
                                "parameters": TOOL_DEFINITIONS["get_list"]["parameters"]},
@@ -1106,7 +1075,6 @@ TOOLS = {
     "web_search": web_search,
     "create_list": create_list,
     "add_to_list": add_to_list,
-    "add_items_to_list": add_items_to_list,
     "get_list": get_list,
     "remove_from_list": remove_from_list,
     "clear_list": clear_list,
