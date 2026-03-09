@@ -25,73 +25,60 @@
       "dropoff_ratio": 0.9
     }
   },
+  "_comment_backends": "Primary backend: llama-server b8248+. Start: llama-server -m <path> --port 8000 --ctx-size 4096 --n-predict 512 --no-mmap -t 4 --reasoning-budget 0. Ollama profiles retained as comparison baseline only — see benchmarks/decision_strategy.md.",
   "profiles": [
     {
-      "name": "local-qwen3-1.7b-llm",
-      "provider": "local",
-      "model": "qwen/qwen3-1.7b",
-      "local_model_path": "models/qwen3-1.7b-q4_k_m.gguf",
-      "llamacpp_bin": "llama-cli",
+      "_comment": "--- llama-server profiles (PRIMARY) ---",
+      "name": "llama-server-qwen35-0.8b-q8_0",
+      "provider": "local_server",
+      "local_server_url": "http://127.0.0.1:8000/v1",
+      "local_model_path": "models/qwen3.5-0.8b-q8_0.gguf",
+      "model": "qwen3.5-0.8b-q8_0",
       "enable_thinking": false,
       "use_tools": true,
-      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
-      "max_tokens": 256,
-      "temperature": 0.0,
-      "context_windows": [2048, 4096],
-      "env": {
-        "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "0"
-      }
+      "tool_schema_variant": "standard",
+      "max_tokens": 512,
+      "temperature": 0.0
     },
     {
-      "name": "local-qwen3-1.7b-intent",
-      "provider": "local",
-      "model": "qwen/qwen3-1.7b",
-      "local_model_path": "models/qwen3-1.7b-q4_k_m.gguf",
-      "llamacpp_bin": "llama-cli",
+      "name": "llama-server-qwen35-0.8b-q4km",
+      "provider": "local_server",
+      "local_server_url": "http://127.0.0.1:8000/v1",
+      "local_model_path": "models/qwen3.5-0.8b-q4_k_m.gguf",
+      "model": "qwen3.5-0.8b-q4_k_m",
       "enable_thinking": false,
       "use_tools": true,
-      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
-      "max_tokens": 256,
-      "temperature": 0.0,
-      "context_windows": [2048, 4096],
-      "env": {
-        "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "1"
-      }
+      "tool_schema_variant": "standard",
+      "max_tokens": 512,
+      "temperature": 0.0
     },
     {
-      "name": "local-qwen3-8b-llm",
-      "provider": "local",
-      "model": "qwen/qwen3-8b",
-      "local_model_path": "models/qwen3-8b-q4_k_m.gguf",
-      "llamacpp_bin": "llama-cli",
+      "name": "llama-server-qwen35-2b-q4km",
+      "provider": "local_server",
+      "local_server_url": "http://127.0.0.1:8000/v1",
+      "local_model_path": "models/qwen3.5-2b-q4_k_m.gguf",
+      "model": "qwen3.5-2b-q4_k_m",
       "enable_thinking": false,
       "use_tools": true,
-      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
-      "max_tokens": 256,
-      "temperature": 0.0,
-      "context_windows": [4096, 8192],
-      "env": {
-        "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "0"
-      }
+      "tool_schema_variant": "standard",
+      "max_tokens": 512,
+      "temperature": 0.0
     },
     {
-      "name": "local-qwen3-8b-intent",
-      "provider": "local",
-      "model": "qwen/qwen3-8b",
-      "local_model_path": "models/qwen3-8b-q4_k_m.gguf",
-      "llamacpp_bin": "llama-cli",
+      "_comment": "4b requires ~2.5 GB GGUF — download from https://huggingface.co/bartowski/Qwen_Qwen3.5-4B-GGUF. Estimated ~3.7 tok/s gen on i7-10610U; borderline for voice use.",
+      "name": "llama-server-qwen35-4b-q4km",
+      "provider": "local_server",
+      "local_server_url": "http://127.0.0.1:8000/v1",
+      "local_model_path": "models/qwen3.5-4b-q4_k_m.gguf",
+      "model": "qwen3.5-4b-q4_k_m",
       "enable_thinking": false,
       "use_tools": true,
-      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
-      "max_tokens": 256,
-      "temperature": 0.0,
-      "context_windows": [4096, 8192],
-      "env": {
-        "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "1"
-      }
+      "tool_schema_variant": "standard",
+      "max_tokens": 512,
+      "temperature": 0.0
     },
     {
-      "_comment": "Ollama profiles — requires ollama running + nothink proxy on port 11435. Start proxy: uv run python scripts/ollama_nothink_proxy.py --port 11435 &",
+      "_comment": "--- Ollama profiles (LEGACY — comparison baseline only) --- Requires ollama + nothink proxy on port 11435. Start: uv run python scripts/ollama_nothink_proxy.py --port 11435 &",
       "name": "ollama-qwen35-0.8b-std",
       "provider": "local_server",
       "local_server_url": "http://127.0.0.1:11435/v1",
@@ -115,17 +102,6 @@
         "set_timer", "cancel_timer", "list_timers",
         "add_to_list", "get_list", "remember", "recall", "recall_all"
       ],
-      "max_tokens": 512,
-      "temperature": 0.0
-    },
-    {
-      "name": "ollama-qwen35-2b-std",
-      "provider": "local_server",
-      "local_server_url": "http://127.0.0.1:11435/v1",
-      "model": "qwen3.5:2b",
-      "enable_thinking": false,
-      "use_tools": true,
-      "tool_schema_variant": "standard",
       "max_tokens": 512,
       "temperature": 0.0
     }
