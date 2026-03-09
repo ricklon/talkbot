@@ -67,6 +67,7 @@ def _normalize_tool_args_for_call(function_name: str, function_args: Any) -> dic
         args.pop("faces", None)
 
     alias_map: dict[str, dict[str, str]] = {
+        "calculator": {"expression": "formula", "query": "formula", "input": "formula", "equation": "formula"},
         "set_timer": {
             "duration": "seconds",
             "time": "seconds",
@@ -90,8 +91,7 @@ def _normalize_tool_args_for_call(function_name: str, function_args: Any) -> dic
         "create_list": {"name": "list_name", "list": "list_name"},
         "get_list": {"name": "list_name", "list": "list_name"},
         "clear_list": {"name": "list_name", "list": "list_name"},
-        "add_to_list": {"name": "list_name", "list": "list_name", "value": "item"},
-        "add_items_to_list": {"name": "list_name", "list": "list_name"},
+        "add_to_list": {"name": "list_name", "list": "list_name", "value": "items", "item": "items", "item_list": "items"},
         "remove_from_list": {"name": "list_name", "list": "list_name", "value": "item"},
         "remember": {"name": "key", "field": "key", "text": "value"},
         "recall": {"name": "key", "field": "key"},
@@ -105,6 +105,7 @@ def _normalize_tool_args_for_call(function_name: str, function_args: Any) -> dic
     for alias, canonical in alias_map.get(function_name, {}).items():
         if canonical in args and alias in args:
             args.pop(alias, None)
+
     return args
 
 
@@ -406,7 +407,13 @@ class LocalLlamaCppClient:
                 ) from e
             content = _response_content(response)
             content = self._clean_output(content)
-            self.last_usage = response.get("usage") or {}
+            usage = response.get("usage") or {}
+            timings = response.get("timings") or {}
+            self.last_usage = {
+                **usage,
+                "x_prompt_eval_ms": round(float(timings.get("prompt_ms") or 0), 1),
+                "x_gen_ms": round(float(timings.get("predict_ms") or 0), 1),
+            }
             return {"choices": [{"message": {"content": content}}], "usage": self.last_usage}
 
         prompt = self._messages_to_prompt(prepared_messages)
@@ -847,7 +854,7 @@ class LocalLlamaCppClient:
                     "id": "direct-calc-percent-0",
                     "function": {
                         "name": "calculator",
-                        "arguments": json.dumps({"expression": expr}),
+                        "arguments": json.dumps({"formula": expr}),
                     },
                 }
             ]
@@ -862,7 +869,7 @@ class LocalLlamaCppClient:
                         "id": "direct-calc-divide-0",
                         "function": {
                             "name": "calculator",
-                            "arguments": json.dumps({"expression": expr}),
+                            "arguments": json.dumps({"formula": expr}),
                         },
                     }
                 ]
@@ -1010,7 +1017,13 @@ class LocalServerClient:
             )
             response.raise_for_status()
             data = response.json()
-            self.last_usage = data.get("usage") or {}
+            usage = data.get("usage") or {}
+            timings = data.get("timings") or {}
+            self.last_usage = {
+                **usage,
+                "x_prompt_eval_ms": round(float(timings.get("prompt_ms") or 0), 1),
+                "x_gen_ms": round(float(timings.get("predicted_ms") or 0), 1),
+            }
             return data
         except httpx.HTTPError as e:
             raise LLMProviderError(f"Local server request failed: {e}") from e
@@ -1357,11 +1370,11 @@ def create_llm_client(
         )
         timeout_raw = (os.getenv("TALKBOT_LOCAL_SERVER_TIMEOUT") or "").strip()
         try:
-            timeout = float(timeout_raw) if timeout_raw else 60.0
+            timeout = float(timeout_raw) if timeout_raw else 300.0
         except Exception:
-            timeout = 60.0
+            timeout = 300.0
         if timeout <= 0:
-            timeout = 60.0
+            timeout = 300.0
         # Explicit model param wins (GUI selection); fall back to env var, then local path
         server_model = model or (os.getenv("TALKBOT_LOCAL_SERVER_MODEL") or "").strip()
         if not server_model:

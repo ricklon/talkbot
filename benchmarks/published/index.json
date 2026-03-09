@@ -1,12 +1,13 @@
 {
-  "updated_at": "2026-03-01T12:05:31-0500",
-  "latest_run": "ollama_models-20260301-115348",
+  "updated_at": "2026-03-09T14:36:18-0500",
+  "latest_run": "baseline-llama-server-qwen35-0.8b-q8_0",
   "runs": [
     "validated-20260227-v3-schemas",
     "validated-20260227-v3-fixed",
     "validated-20260227-v3",
     "validated-20260227-v2",
     "validated-20260227",
+    "validate-timing-qwen35-0.8b",
     "tool-profiles-20260227",
     "schema-variants-20260227",
     "openrouter_small3",
@@ -26,6 +27,23 @@
     "latest",
     "full_remote-20260226-175045",
     "full_all-with-smalltoolcall-20260226-184414",
-    "full_all-20260226-180616"
+    "full_all-20260226-180616",
+    "directive-std-qwen35-0.8b",
+    "directive-min-qwen35-0.8b",
+    "directive-ex-qwen35-0.8b",
+    "baseline-merged-tools-qwen35-0.8b",
+    "baseline-llama-server-qwen35-0.8b-q8_0",
+    "baseline-llama-server-qwen35-0.8b-q4km",
+    "baseline-fubarsream-qwen35-2b",
+    "baseline-fubarsream-qwen35-0.8b-ollama",
+    "baseline-fubarsream-qwen35-0.8b-nothink",
+    "baseline-fubarsream-qwen35-0.8b-minimal",
+    "baseline-fubarsream-qwen35-0.8b",
+    "baseline-fubarsream-8b-20260307",
+    "baseline-fubarsream-20260307",
+    "baseline-clean-qwen35-4b",
+    "baseline-clean-qwen35-2b-q4km",
+    "baseline-clean-qwen35-2b",
+    "baseline-clean-qwen35-0.8b"
   ]
 }

@@ -1,0 +1,979 @@
+{
+  "started_at": "2026-03-07T21:11:14-0500",
+  "finished_at": "2026-03-07T21:11:15-0500",
+  "runner": {
+    "label": "fubarsream / i7-10610U / Linux",
+    "hostname": "fubarsream",
+    "os": "Linux",
+    "os_release": "6.8.0-101-generic",
+    "machine": "x86_64",
+    "processor": "x86_64",
+    "python_version": "3.12.3",
+    "cpu_count_logical": 8,
+    "cpu_count_physical": null,
+    "is_raspberry_pi": false,
+    "raspberry_pi_model": null,
+    "network_type": "unknown",
+    "inference_env": "linux-native",
+    "endpoint_probes": [
+      {
+        "label": "openrouter",
+        "url": "https://openrouter.ai/api/v1/models",
+        "ttfb_ms_median": 522.5,
+        "ttfb_ms_min": 323.0,
+        "ttfb_ms_max": 718.6,
+        "samples": 3,
+        "http_status": 200,
+        "error": null
+      },
+      {
+        "label": "ollama-local",
+        "url": "http://127.0.0.1:11434/api/tags",
+        "ttfb_ms_median": 30.2,
+        "ttfb_ms_min": 26.4,
+        "ttfb_ms_max": 62.3,
+        "samples": 3,
+        "http_status": 200,
+        "error": null
+      }
+    ],
+    "notes": null
+  },
+  "scenario_count": 10,
+  "run_count": 1,
+  "rubric": {
+    "version": "2026.1",
+    "weights": {
+      "task_success_rate": 0.35,
+      "tool_selection_accuracy": 0.2,
+      "argument_accuracy": 0.15,
+      "recovery_success_rate": 0.1,
+      "multistep_success_rate": 0.1,
+      "robustness_success_rate": 0.05,
+      "context_success_rate": 0.05
+    },
+    "penalties": {
+      "latency_ms_multiplier": 0.002,
+      "memory_mb_multiplier": 0.002,
+      "tool_error_rate_multiplier": 20.0,
+      "model_error_rate_multiplier": 30.0
+    }
+  },
+  "context_analysis": {
+    "near_peak_ratio": 0.95,
+    "dropoff_ratio": 0.9
+  },
+  "runs": [
+    {
+      "profile": {
+        "name": "local-qwen/qwen3.5-0.8b",
+        "provider": "local",
+        "model": "qwen/qwen3.5-0.8b",
+        "local_model_path": "models/qwen3.5-0.8b-q4_k_m.gguf",
+        "llamacpp_bin": "llama-cli",
+        "local_server_url": "http://127.0.0.1:8000/v1",
+        "enable_thinking": false,
+        "use_tools": true,
+        "system_prompt": null,
+        "max_tokens": 512,
+        "temperature": 0.0,
+        "env": {},
+        "tool_filter": null,
+        "tool_schema_variant": "standard"
+      },
+      "status": "ok",
+      "error": null,
+      "started_at": "2026-03-07T21:11:15-0500",
+      "duration_s": 0.437,
+      "aggregate": {
+        "scenario_count": 10,
+        "scenario_passed": 4,
+        "task_success_rate": 0.4,
+        "total_turns": 25,
+        "avg_turn_latency_ms": 1.137,
+        "p95_turn_latency_ms": 6.535,
+        "avg_turns_to_success": 2.25,
+        "expected_tool_calls": 13,
+        "matched_tool_names": 13,
+        "tool_selection_accuracy": 1.0,
+        "expected_arg_checks": 2,
+        "matched_arg_checks": 2,
+        "argument_accuracy": 1.0,
+        "actual_tool_calls": 14,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "max_history_messages": 6,
+        "max_history_chars": 445,
+        "cpu_time_s": 0.429,
+        "python_peak_mb": 3.991,
+        "process_rss_delta_mb": 41.563,
+        "memory_peak_mb": 41.563,
+        "avg_tool_latency_ms": 0.26,
+        "p95_tool_latency_ms": 1.36,
+        "tool_call_error_count": 0,
+        "tool_call_error_rate": 0.0,
+        "model_execution_error_count": 11,
+        "model_execution_error_rate": 0.44,
+        "first_turn_latency_ms": 1.525,
+        "tokens_per_second": 0.0,
+        "scenario_success_per_second": 140.7311,
+        "tag_success": {
+          "calculator": 1.0,
+          "context": 0.0,
+          "core": 0.3333,
+          "lists": 0.0,
+          "memory": 0.6667,
+          "multistep": 0.0,
+          "practical": 1.0,
+          "recovery": 0.0,
+          "robustness": 0.0,
+          "timers": 0.5,
+          "tools": 0.4,
+          "utility": 0.3333
+        }
+      },
+      "scenarios": [
+        {
+          "id": "calculator_basic",
+          "name": "Calculator: Basic Arithmetic",
+          "tags": [
+            "utility",
+            "tools",
+            "calculator"
+          ],
+          "passed": true,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What is 15 percent of 47 dollars?",
+              "response": "7.05",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 8.473,
+              "tool_calls": [
+                {
+                  "scenario_id": "calculator_basic",
+                  "turn_index": 0,
+                  "name": "calculator",
+                  "args": {
+                    "expression": "(15/100)*47"
+                  },
+                  "result": "7.05",
+                  "error": null,
+                  "latency_ms": 1.203
+                }
+              ],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 37
+            },
+            {
+              "index": 1,
+              "user": "Now divide that by 3.",
+              "response": "2.35",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 1.278,
+              "tool_calls": [
+                {
+                  "scenario_id": "calculator_basic",
+                  "turn_index": 1,
+                  "name": "calculator",
+                  "args": {
+                    "expression": "(7.05)/3.0"
+                  },
+                  "result": "2.35",
+                  "error": null,
+                  "latency_ms": 0.095
+                }
+              ],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 62
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 2,
+          "expected_tool_calls": 2,
+          "matched_tool_names": 2,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 2
+        },
+        {
+          "id": "cross_tool_mix",
+          "name": "Cross-Tool Mix: Time, Timer, List",
+          "tags": [
+            "utility",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What time is it?",
+              "response": "2026-03-07 21:11:15 EST",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 0.22,
+              "tool_calls": [
+                {
+                  "scenario_id": "cross_tool_mix",
+                  "turn_index": 0,
+                  "name": "get_current_time",
+                  "args": {},
+                  "result": "2026-03-07 21:11:15 EST",
+                  "error": null,
+                  "latency_ms": 0.043
+                }
+              ],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 39
+            },
+            {
+              "index": 1,
+              "user": "Set a timer for 5 minutes.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 2.013,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 65
+            },
+            {
+              "index": 2,
+              "user": "Add 'check the timer' to my reminders list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 1.119,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 108
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 1,
+          "expected_tool_calls": 1,
+          "matched_tool_names": 1,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 1
+        },
+        {
+          "id": "list_basics",
+          "name": "List Basics",
+          "tags": [
+            "lists",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a grocery list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 1.061,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 1,
+              "history_chars": 22
+            },
+            {
+              "index": 1,
+              "user": "Add milk to the grocery list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 1.021,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 51
+            },
+            {
+              "index": 2,
+              "user": "What lists do you have?",
+              "response": "No lists found.",
+              "passed": false,
+              "assertions": [
+                "Response does not match regex: '(?i)grocery'"
+              ],
+              "latency_ms": 0.413,
+              "tool_calls": [
+                {
+                  "scenario_id": "list_basics",
+                  "turn_index": 2,
+                  "name": "list_all_lists",
+                  "args": {},
+                  "result": "No lists found.",
+                  "error": null,
+                  "latency_ms": 0.16
+                }
+              ],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 89
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 1,
+          "matched_tool_names": 1,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 1
+        },
+        {
+          "id": "list_multistep_packing",
+          "name": "Multistep: Packing List Workflow",
+          "tags": [
+            "lists",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 0.928,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 1,
+              "history_chars": 22
+            },
+            {
+              "index": 1,
+              "user": "Add socks and charger to the packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 0.998,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 64
+            },
+            {
+              "index": 2,
+              "user": "Show me the packing list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 1.067,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 89
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 0,
+          "expected_tool_calls": 0,
+          "matched_tool_names": 0,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 0
+        },
+        {
+          "id": "memory_persistent_strict",
+          "name": "Memory Persistent (Strict)",
+          "tags": [
+            "memory",
+            "tools",
+            "core"
+          ],
+          "passed": true,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "Remembered: favorite_color = blue",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 1.013,
+              "tool_calls": [
+                {
+                  "scenario_id": "memory_persistent_strict",
+                  "turn_index": 0,
+                  "name": "remember",
+                  "args": {
+                    "key": "favorite_color",
+                    "value": "blue"
+                  },
+                  "result": "Remembered: favorite_color = blue",
+                  "error": null,
+                  "latency_ms": 0.576
+                }
+              ],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 73
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "favorite_color: blue",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 0.645,
+              "tool_calls": [
+                {
+                  "scenario_id": "memory_persistent_strict",
+                  "turn_index": 1,
+                  "name": "recall",
+                  "args": {
+                    "key": "favorite_color"
+                  },
+                  "result": "favorite_color: blue",
+                  "error": null,
+                  "latency_ms": 0.221
+                }
+              ],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 119
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 2,
+          "expected_tool_calls": 2,
+          "matched_tool_names": 2,
+          "expected_arg_checks": 1,
+          "matched_arg_checks": 1,
+          "actual_tool_calls": 2
+        },
+        {
+          "id": "memory_context_flexible",
+          "name": "Memory Context (Flexible)",
+          "tags": [
+            "memory",
+            "tools",
+            "practical"
+          ],
+          "passed": true,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "Remembered: favorite_color = blue",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 0.706,
+              "tool_calls": [
+                {
+                  "scenario_id": "memory_context_flexible",
+                  "turn_index": 0,
+                  "name": "remember",
+                  "args": {
+                    "key": "favorite_color",
+                    "value": "blue"
+                  },
+                  "result": "Remembered: favorite_color = blue",
+                  "error": null,
+                  "latency_ms": 0.358
+                }
+              ],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 73
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "favorite_color: blue",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 0.518,
+              "tool_calls": [
+                {
+                  "scenario_id": "memory_context_flexible",
+                  "turn_index": 1,
+                  "name": "recall",
+                  "args": {
+                    "key": "favorite_color"
+                  },
+                  "result": "favorite_color: blue",
+                  "error": null,
+                  "latency_ms": 0.191
+                }
+              ],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 119
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 2,
+          "expected_tool_calls": 1,
+          "matched_tool_names": 1,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 2
+        },
+        {
+          "id": "memory_context_pressure",
+          "name": "Context: Long-Context Memory Retrieval",
+          "tags": [
+            "memory",
+            "tools",
+            "context",
+            "multistep"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that the launch codename is atlas.",
+              "response": "Remembered: the_launch_codename = atlas",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 0.776,
+              "tool_calls": [
+                {
+                  "scenario_id": "memory_context_pressure",
+                  "turn_index": 0,
+                  "name": "remember",
+                  "args": {
+                    "key": "the_launch_codename",
+                    "value": "atlas"
+                  },
+                  "result": "Remembered: the_launch_codename = atlas",
+                  "error": null,
+                  "latency_ms": 0.447
+                }
+              ],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 82
+            },
+            {
+              "index": 1,
+              "user": "Read this long note: project timeline, ownership, and milestone details repeated for context pressure. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 1.247,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 376
+            },
+            {
+              "index": 2,
+              "user": "After that long note, what launch codename did I ask you to remember?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 1.053,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 445
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 1,
+          "expected_tool_calls": 1,
+          "matched_tool_names": 1,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 1
+        },
+        {
+          "id": "recovery_timer_retry",
+          "name": "Recovery: Cancel Nonexistent Timer",
+          "tags": [
+            "timers",
+            "tools",
+            "recovery",
+            "robustness"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Cancel timer 99.",
+              "response": "No active timer with ID '99'. Use list_timers to see active timers.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 0.276,
+              "tool_calls": [
+                {
+                  "scenario_id": "recovery_timer_retry",
+                  "turn_index": 0,
+                  "name": "cancel_timer",
+                  "args": {
+                    "timer_id": "99"
+                  },
+                  "result": "No active timer with ID '99'. Use list_timers to see active timers.",
+                  "error": null,
+                  "latency_ms": 0.009
+                }
+              ],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 83
+            },
+            {
+              "index": 1,
+              "user": "List my timers so I can see what's actually running.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 1.014,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 135
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 1,
+          "expected_tool_calls": 1,
+          "matched_tool_names": 1,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 1
+        },
+        {
+          "id": "timer_basics",
+          "name": "Timer Basics",
+          "tags": [
+            "timers",
+            "tools",
+            "core"
+          ],
+          "passed": true,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Set a timer for 10 seconds.",
+              "response": "Timer #1 set. '10-second timer' will fire in 10 seconds.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 0.52,
+              "tool_calls": [
+                {
+                  "scenario_id": "timer_basics",
+                  "turn_index": 0,
+                  "name": "set_timer",
+                  "args": {
+                    "seconds": 10
+                  },
+                  "result": "Timer #1 set. '10-second timer' will fire in 10 seconds.",
+                  "error": null,
+                  "latency_ms": 0.242
+                }
+              ],
+              "usage": {},
+              "history_messages": 2,
+              "history_chars": 83
+            },
+            {
+              "index": 1,
+              "user": "List timers.",
+              "response": "#1: '10-second timer' \u2014 9s remaining",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 0.229,
+              "tool_calls": [
+                {
+                  "scenario_id": "timer_basics",
+                  "turn_index": 1,
+                  "name": "list_timers",
+                  "args": {},
+                  "result": "#1: '10-second timer' \u2014 9s remaining",
+                  "error": null,
+                  "latency_ms": 0.021
+                }
+              ],
+              "usage": {},
+              "history_messages": 4,
+              "history_chars": 131
+            },
+            {
+              "index": 2,
+              "user": "Cancel timer 1.",
+              "response": "Timer #1 ('10-second timer') cancelled.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 0.264,
+              "tool_calls": [
+                {
+                  "scenario_id": "timer_basics",
+                  "turn_index": 2,
+                  "name": "cancel_timer",
+                  "args": {
+                    "timer_id": "1"
+                  },
+                  "result": "Timer #1 ('10-second timer') cancelled.",
+                  "error": null,
+                  "latency_ms": 0.018
+                }
+              ],
+              "usage": {},
+              "history_messages": 6,
+              "history_chars": 185
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 3,
+          "expected_tool_calls": 3,
+          "matched_tool_names": 3,
+          "expected_arg_checks": 1,
+          "matched_arg_checks": 1,
+          "actual_tool_calls": 3
+        },
+        {
+          "id": "utility_time_date",
+          "name": "Utility: Date and Time",
+          "tags": [
+            "utility",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What's today's date?",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: llama.cpp binary 'llama-cli' not found (also tried common aliases), and llama-cpp-python is unavailable. Set TALKBOT_LLAMACPP_BIN to the executable path, or install one of: `uv tool install talkbot --with llama-cpp-python` or system llama.cpp (`llama-cli` / `llama`)."
+              ],
+              "latency_ms": 1.276,
+              "tool_calls": [],
+              "usage": {},
+              "history_messages": 1,
+              "history_chars": 20
+            },
+            {
+              "index": 1,
+              "user": "And what time is it right now?",
+              "response": "2026-03-07 21:11:15 EST",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 0.295,
+              "tool_calls": [
+                {
+                  "scenario_id": "utility_time_date",
+                  "turn_index": 1,
+                  "name": "get_current_time",
+                  "args": {},
+                  "result": "2026-03-07 21:11:15 EST",
+                  "error": null,
+                  "latency_ms": 0.054
+                }
+              ],
+              "usage": {},
+              "history_messages": 3,
+              "history_chars": 73
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 1,
+          "expected_tool_calls": 1,
+          "matched_tool_names": 1,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 1
+        }
+      ],
+      "tool_traces": [
+        {
+          "scenario_id": "calculator_basic",
+          "turn_index": 0,
+          "name": "calculator",
+          "args": {
+            "expression": "(15/100)*47"
+          },
+          "result": "7.05",
+          "error": null,
+          "latency_ms": 1.203
+        },
+        {
+          "scenario_id": "calculator_basic",
+          "turn_index": 1,
+          "name": "calculator",
+          "args": {
+            "expression": "(7.05)/3.0"
+          },
+          "result": "2.35",
+          "error": null,
+          "latency_ms": 0.095
+        },
+        {
+          "scenario_id": "cross_tool_mix",
+          "turn_index": 0,
+          "name": "get_current_time",
+          "args": {},
+          "result": "2026-03-07 21:11:15 EST",
+          "error": null,
+          "latency_ms": 0.043
+        },
+        {
+          "scenario_id": "list_basics",
+          "turn_index": 2,
+          "name": "list_all_lists",
+          "args": {},
+          "result": "No lists found.",
+          "error": null,
+          "latency_ms": 0.16
+        },
+        {
+          "scenario_id": "memory_persistent_strict",
+          "turn_index": 0,
+          "name": "remember",
+          "args": {
+            "key": "favorite_color",
+            "value": "blue"
+          },
+          "result": "Remembered: favorite_color = blue",
+          "error": null,
+          "latency_ms": 0.576
+        },
+        {
+          "scenario_id": "memory_persistent_strict",
+          "turn_index": 1,
+          "name": "recall",
+          "args": {
+            "key": "favorite_color"
+          },
+          "result": "favorite_color: blue",
+          "error": null,
+          "latency_ms": 0.221
+        },
+        {
+          "scenario_id": "memory_context_flexible",
+          "turn_index": 0,
+          "name": "remember",
+          "args": {
+            "key": "favorite_color",
+            "value": "blue"
+          },
+          "result": "Remembered: favorite_color = blue",
+          "error": null,
+          "latency_ms": 0.358
+        },
+        {
+          "scenario_id": "memory_context_flexible",
+          "turn_index": 1,
+          "name": "recall",
+          "args": {
+            "key": "favorite_color"
+          },
+          "result": "favorite_color: blue",
+          "error": null,
+          "latency_ms": 0.191
+        },
+        {
+          "scenario_id": "memory_context_pressure",
+          "turn_index": 0,
+          "name": "remember",
+          "args": {
+            "key": "the_launch_codename",
+            "value": "atlas"
+          },
+          "result": "Remembered: the_launch_codename = atlas",
+          "error": null,
+          "latency_ms": 0.447
+        },
+        {
+          "scenario_id": "recovery_timer_retry",
+          "turn_index": 0,
+          "name": "cancel_timer",
+          "args": {
+            "timer_id": "99"
+          },
+          "result": "No active timer with ID '99'. Use list_timers to see active timers.",
+          "error": null,
+          "latency_ms": 0.009
+        },
+        {
+          "scenario_id": "timer_basics",
+          "turn_index": 0,
+          "name": "set_timer",
+          "args": {
+            "seconds": 10
+          },
+          "result": "Timer #1 set. '10-second timer' will fire in 10 seconds.",
+          "error": null,
+          "latency_ms": 0.242
+        },
+        {
+          "scenario_id": "timer_basics",
+          "turn_index": 1,
+          "name": "list_timers",
+          "args": {},
+          "result": "#1: '10-second timer' \u2014 9s remaining",
+          "error": null,
+          "latency_ms": 0.021
+        },
+        {
+          "scenario_id": "timer_basics",
+          "turn_index": 2,
+          "name": "cancel_timer",
+          "args": {
+            "timer_id": "1"
+          },
+          "result": "Timer #1 ('10-second timer') cancelled.",
+          "error": null,
+          "latency_ms": 0.018
+        },
+        {
+          "scenario_id": "utility_time_date",
+          "turn_index": 1,
+          "name": "get_current_time",
+          "args": {},
+          "result": "2026-03-07 21:11:15 EST",
+          "error": null,
+          "latency_ms": 0.054
+        }
+      ]
+    }
+  ],
+  "meta": {
+    "main_output_root": "benchmark_results",
+    "latest_run": "/home/ra/Projects/talkbot/benchmark_results/latest",
+    "run_name": "baseline-fubarsream-qwen35-0.8b",
+    "runner_label": "fubarsream / i7-10610U / Linux",
+    "update_main": true
+  }
+}

@@ -1,7 +1,7 @@
 # TTS Benchmark Leaderboard
 
-- Generated: 2026-03-02T23:09:31Z
-- Configs: 2
+- Generated: 2026-03-07T23:34:31Z
+- Configs: 3
 
 RTF = synthesis time / audio duration. < 1.0 means faster than realtime.
 Avg synthesis ms is the time from `save_to_file()` call to file written — this is the TTS contribution to TTFA.
@@ -12,6 +12,7 @@ Avg synthesis ms is the time from `save_to_file()` call to file written — this
 |---|---:|---:|---:|---:|---:|---:|
 | pyttsx3 / (default) / rate=175 | 15 | 14 | 32 | 3313 | 0.01x | 20 |
 | kittentts / (default) / rate=175 | 15 | 1524 | 2563 | 4566 | 0.34x | 9348 |
+| kittentts / Bella / rate=175 | 15 | 2297 | 4238 | 4566 | 0.50x | 4250 |
 
 ## Category Breakdown — pyttsx3 / (default) / rate=175
 

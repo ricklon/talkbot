@@ -16,7 +16,7 @@
       "turn": 2,
       "text": "Add milk and eggs to my groceries list.",
       "expects": {
-        "tool_calls": ["add_items_to_list"],
+        "tool_calls": ["add_to_list"],
         "answer_contains": []
       }
     },

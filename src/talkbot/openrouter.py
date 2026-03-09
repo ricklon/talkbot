@@ -41,6 +41,7 @@ def _normalize_tool_args_for_call(function_name: str, function_args: Any) -> dic
         return {}
     args = dict(function_args)
     alias_map: dict[str, dict[str, str]] = {
+        "calculator": {"expression": "formula", "query": "formula", "input": "formula", "equation": "formula"},
         "set_timer": {
             "duration": "seconds",
             "time": "seconds",
@@ -64,8 +65,7 @@ def _normalize_tool_args_for_call(function_name: str, function_args: Any) -> dic
         "create_list": {"name": "list_name", "list": "list_name"},
         "get_list": {"name": "list_name", "list": "list_name"},
         "clear_list": {"name": "list_name", "list": "list_name"},
-        "add_to_list": {"name": "list_name", "list": "list_name", "value": "item"},
-        "add_items_to_list": {"name": "list_name", "list": "list_name"},
+        "add_to_list": {"name": "list_name", "list": "list_name", "value": "items", "item": "items", "item_list": "items"},
         "remove_from_list": {"name": "list_name", "list": "list_name", "value": "item"},
         "remember": {"name": "key", "field": "key", "text": "value"},
         "recall": {"name": "key", "field": "key"},

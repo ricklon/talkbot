@@ -60,7 +60,7 @@ class FakeBenchClient:
         if "create a packing list" in lower:
             return self.tools["create_list"](list_name="packing")
         if "add socks and charger to the packing list" in lower:
-            return self.tools["add_items_to_list"](
+            return self.tools["add_to_list"](
                 items=["socks", "charger"],
                 list_name="packing",
             )
@@ -69,7 +69,7 @@ class FakeBenchClient:
         if "create a grocery list" in lower:
             return self.tools["create_list"](list_name="grocery")
         if "add milk to the grocery list" in lower:
-            return self.tools["add_to_list"](item="milk", list_name="grocery")
+            return self.tools["add_to_list"](items="milk", list_name="grocery")
         if "what lists do you have" in lower:
             return self.tools["list_all_lists"]()
         if "remember that the launch codename is atlas" in lower:
@@ -90,7 +90,7 @@ class FakeBenchClient:
             return self.tools["set_timer"](seconds=300)
         if "add 'check the timer' to my reminders list" in lower:
             self.tools["create_list"](list_name="reminders")
-            return self.tools["add_to_list"](item="check the timer", list_name="reminders")
+            return self.tools["add_to_list"](items="check the timer", list_name="reminders")
         if "what's today's date" in lower:
             return self.tools["get_current_date"]()
         if "cancel timer 99" in lower:

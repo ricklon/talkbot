@@ -20,7 +20,7 @@
       "expect": {
         "tool_calls": [
           {
-            "name_any": ["add_to_list", "add_items_to_list"]
+            "name": "add_to_list"
           }
         ]
       }

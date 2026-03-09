@@ -89,6 +89,45 @@
       "env": {
         "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "1"
       }
+    },
+    {
+      "_comment": "Ollama profiles — requires ollama running + nothink proxy on port 11435. Start proxy: uv run python scripts/ollama_nothink_proxy.py --port 11435 &",
+      "name": "ollama-qwen35-0.8b-std",
+      "provider": "local_server",
+      "local_server_url": "http://127.0.0.1:11435/v1",
+      "model": "qwen3.5:0.8b",
+      "enable_thinking": false,
+      "use_tools": true,
+      "tool_schema_variant": "standard",
+      "max_tokens": 512,
+      "temperature": 0.0
+    },
+    {
+      "name": "ollama-qwen35-0.8b-minimal",
+      "provider": "local_server",
+      "local_server_url": "http://127.0.0.1:11435/v1",
+      "model": "qwen3.5:0.8b",
+      "enable_thinking": false,
+      "use_tools": true,
+      "tool_schema_variant": "minimal",
+      "tool_filter": [
+        "get_current_time", "get_current_date", "calculator",
+        "set_timer", "cancel_timer", "list_timers",
+        "add_to_list", "get_list", "remember", "recall", "recall_all"
+      ],
+      "max_tokens": 512,
+      "temperature": 0.0
+    },
+    {
+      "name": "ollama-qwen35-2b-std",
+      "provider": "local_server",
+      "local_server_url": "http://127.0.0.1:11435/v1",
+      "model": "qwen3.5:2b",
+      "enable_thinking": false,
+      "use_tools": true,
+      "tool_schema_variant": "standard",
+      "max_tokens": 512,
+      "temperature": 0.0
     }
   ]
 }
