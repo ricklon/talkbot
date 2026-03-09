@@ -1,0 +1,374 @@
+{
+  "started_at": "2026-03-09T19:12:01-0500",
+  "finished_at": "2026-03-09T19:14:43-0500",
+  "runner": {
+    "label": "fubarsream / i7-10610U / llama-server b8248",
+    "hostname": "fubarsream",
+    "os": "Linux",
+    "os_release": "6.8.0-101-generic",
+    "machine": "x86_64",
+    "processor": "x86_64",
+    "python_version": "3.12.3",
+    "cpu_count_logical": 8,
+    "cpu_count_physical": null,
+    "is_raspberry_pi": false,
+    "raspberry_pi_model": null,
+    "network_type": "unknown",
+    "inference_env": "linux-native",
+    "endpoint_probes": [
+      {
+        "label": "openrouter",
+        "url": "https://openrouter.ai/api/v1/models",
+        "ttfb_ms_median": 214.8,
+        "ttfb_ms_min": 211.5,
+        "ttfb_ms_max": 269.7,
+        "samples": 3,
+        "http_status": 200,
+        "error": null
+      },
+      {
+        "label": "ollama-local",
+        "url": "http://127.0.0.1:11434/api/tags",
+        "ttfb_ms_median": 54.2,
+        "ttfb_ms_min": 46.6,
+        "ttfb_ms_max": 123.4,
+        "samples": 3,
+        "http_status": 200,
+        "error": null
+      }
+    ],
+    "notes": null
+  },
+  "scenario_count": 1,
+  "run_count": 1,
+  "rubric": {
+    "version": "2026.1",
+    "weights": {
+      "task_success_rate": 0.35,
+      "tool_selection_accuracy": 0.2,
+      "argument_accuracy": 0.15,
+      "recovery_success_rate": 0.1,
+      "multistep_success_rate": 0.1,
+      "robustness_success_rate": 0.05,
+      "context_success_rate": 0.05
+    },
+    "penalties": {
+      "latency_ms_multiplier": 0.002,
+      "memory_mb_multiplier": 0.002,
+      "tool_error_rate_multiplier": 20.0,
+      "model_error_rate_multiplier": 30.0
+    }
+  },
+  "context_analysis": {
+    "near_peak_ratio": 0.95,
+    "dropoff_ratio": 0.9
+  },
+  "runs": [
+    {
+      "profile": {
+        "name": "local_server-qwen3.5-0.8b-q8_0",
+        "provider": "local_server",
+        "model": "qwen3.5-0.8b-q8_0",
+        "local_model_path": "models/qwen3.5-0.8b-q8_0.gguf",
+        "llamacpp_bin": "llama-cli",
+        "local_server_url": "http://127.0.0.1:8000/v1",
+        "enable_thinking": false,
+        "use_tools": true,
+        "system_prompt": null,
+        "max_tokens": 512,
+        "temperature": 0.0,
+        "env": {},
+        "tool_filter": null,
+        "tool_schema_variant": "standard",
+        "tool_use_directive": null
+      },
+      "status": "ok",
+      "error": null,
+      "started_at": "2026-03-09T19:14:43-0500",
+      "duration_s": 162.079,
+      "aggregate": {
+        "scenario_count": 1,
+        "scenario_passed": 1,
+        "task_success_rate": 1.0,
+        "total_turns": 3,
+        "avg_turn_latency_ms": 53625.184,
+        "p95_turn_latency_ms": 159609.631,
+        "avg_turns_to_success": 3.0,
+        "expected_tool_calls": 3,
+        "matched_tool_names": 3,
+        "tool_selection_accuracy": 1.0,
+        "expected_arg_checks": 0,
+        "matched_arg_checks": 0,
+        "argument_accuracy": 1.0,
+        "actual_tool_calls": 5,
+        "prompt_tokens": 7759,
+        "completion_tokens": 74,
+        "total_tokens": 7833,
+        "max_history_messages": 7,
+        "max_history_chars": 475,
+        "cpu_time_s": 0.125,
+        "python_peak_mb": 0.227,
+        "process_rss_delta_mb": 774.2,
+        "memory_peak_mb": 774.2,
+        "avg_tool_latency_ms": 2.825,
+        "p95_tool_latency_ms": 14.926,
+        "tool_call_error_count": 0,
+        "tool_call_error_rate": 0.0,
+        "tool_failure_summary": [],
+        "model_execution_error_count": 0,
+        "model_execution_error_rate": 0.0,
+        "first_turn_latency_ms": 101937.754,
+        "tokens_per_second": 48.69,
+        "avg_prefill_tok_s": 190.8,
+        "avg_gen_tok_s": 13.7,
+        "scenario_success_per_second": 0.0062,
+        "tag_success": {
+          "core": 1.0,
+          "lists": 1.0,
+          "multistep": 1.0,
+          "tools": 1.0
+        }
+      },
+      "scenarios": [
+        {
+          "id": "list_multistep_packing",
+          "name": "Multistep: Packing List Workflow",
+          "tags": [
+            "lists",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": true,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a packing list.",
+              "response": "I've added the following items to the packing list:\n- packets\n- laptop\n- phone\n- camera\n- water\n- snacks\n- books\n- clothing\n- glasses\n- toys\n\nThe list is now complete.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 101937.754,
+              "tool_calls": [
+                {
+                  "scenario_id": "list_multistep_packing",
+                  "turn_index": 0,
+                  "name": "create_list",
+                  "args": {
+                    "list_name": "packing_list"
+                  },
+                  "result": "Created 'packing_list' list.",
+                  "error": null,
+                  "latency_ms": 9.479,
+                  "failure_reason": null
+                },
+                {
+                  "scenario_id": "list_multistep_packing",
+                  "turn_index": 0,
+                  "name": "get_list",
+                  "args": {
+                    "list_name": "packing_list"
+                  },
+                  "result": "The packing_list list is empty.",
+                  "error": null,
+                  "latency_ms": 0.614,
+                  "failure_reason": null
+                },
+                {
+                  "scenario_id": "list_multistep_packing",
+                  "turn_index": 0,
+                  "name": "add_to_list",
+                  "args": {
+                    "items": [
+                      "packets",
+                      "laptop",
+                      "phone",
+                      "camera",
+                      "water",
+                      "snacks",
+                      "books",
+                      "clothing",
+                      "glasses",
+                      "toys"
+                    ],
+                    "list_name": "packing_list"
+                  },
+                  "result": "Added packets, laptop, phone, camera, water, snacks, books, clothing, glasses, toys to the packing_list list.",
+                  "error": null,
+                  "latency_ms": 1.545,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "completion_tokens": 49,
+                "prompt_tokens": 2575,
+                "total_tokens": 2624,
+                "x_prompt_eval_ms": 14573.8,
+                "x_gen_ms": 3669.4
+              },
+              "history_messages": 3,
+              "history_chars": 311
+            },
+            {
+              "index": 1,
+              "user": "Add socks and charger to the packing list.",
+              "response": "I've added socks and charger to the packing list.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 29089.891,
+              "tool_calls": [
+                {
+                  "scenario_id": "list_multistep_packing",
+                  "turn_index": 1,
+                  "name": "add_to_list",
+                  "args": {
+                    "items": [
+                      "socks",
+                      "charger"
+                    ],
+                    "list_name": "packing"
+                  },
+                  "result": "Added socks, charger to the packing list.",
+                  "error": null,
+                  "latency_ms": 1.698,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "completion_tokens": 12,
+                "prompt_tokens": 2574,
+                "total_tokens": 2586,
+                "x_prompt_eval_ms": 12368.4,
+                "x_gen_ms": 844.8
+              },
+              "history_messages": 5,
+              "history_chars": 402
+            },
+            {
+              "index": 2,
+              "user": "Show me the packing list.",
+              "response": "The packing list now includes:\n- socks\n- charger",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 29847.908,
+              "tool_calls": [
+                {
+                  "scenario_id": "list_multistep_packing",
+                  "turn_index": 2,
+                  "name": "get_list",
+                  "args": {
+                    "list_name": "packing"
+                  },
+                  "result": "Packing list:\n- socks\n- charger",
+                  "error": null,
+                  "latency_ms": 0.79,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "completion_tokens": 13,
+                "prompt_tokens": 2610,
+                "total_tokens": 2623,
+                "x_prompt_eval_ms": 13729.1,
+                "x_gen_ms": 898.8
+              },
+              "history_messages": 7,
+              "history_chars": 475
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 3,
+          "expected_tool_calls": 3,
+          "matched_tool_names": 3,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 5
+        }
+      ],
+      "tool_traces": [
+        {
+          "scenario_id": "list_multistep_packing",
+          "turn_index": 0,
+          "name": "create_list",
+          "args": {
+            "list_name": "packing_list"
+          },
+          "result": "Created 'packing_list' list.",
+          "error": null,
+          "latency_ms": 9.479,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "list_multistep_packing",
+          "turn_index": 0,
+          "name": "get_list",
+          "args": {
+            "list_name": "packing_list"
+          },
+          "result": "The packing_list list is empty.",
+          "error": null,
+          "latency_ms": 0.614,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "list_multistep_packing",
+          "turn_index": 0,
+          "name": "add_to_list",
+          "args": {
+            "items": [
+              "packets",
+              "laptop",
+              "phone",
+              "camera",
+              "water",
+              "snacks",
+              "books",
+              "clothing",
+              "glasses",
+              "toys"
+            ],
+            "list_name": "packing_list"
+          },
+          "result": "Added packets, laptop, phone, camera, water, snacks, books, clothing, glasses, toys to the packing_list list.",
+          "error": null,
+          "latency_ms": 1.545,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "list_multistep_packing",
+          "turn_index": 1,
+          "name": "add_to_list",
+          "args": {
+            "items": [
+              "socks",
+              "charger"
+            ],
+            "list_name": "packing"
+          },
+          "result": "Added socks, charger to the packing list.",
+          "error": null,
+          "latency_ms": 1.698,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "list_multistep_packing",
+          "turn_index": 2,
+          "name": "get_list",
+          "args": {
+            "list_name": "packing"
+          },
+          "result": "Packing list:\n- socks\n- charger",
+          "error": null,
+          "latency_ms": 0.79,
+          "failure_reason": null
+        }
+      ]
+    }
+  ],
+  "meta": {
+    "main_output_root": "benchmark_results",
+    "latest_run": "/home/ra/Projects/talkbot/benchmark_results/latest",
+    "run_name": "scratch-get-list-narration",
+    "runner_label": "fubarsream / i7-10610U / llama-server b8248",
+    "update_main": true
+  }
+}

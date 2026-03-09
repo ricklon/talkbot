@@ -1,7 +1,8 @@
 {
-  "updated_at": "2026-03-09T15:32:25-0500",
-  "latest_run": "fix-recovery-timer-qwen35-0.8b-q4km",
+  "updated_at": "2026-03-09T19:17:51.516013-05:00",
+  "latest_run": "llama-server-qwen35-2b-q4km",
   "runs": [
+    "llama-server-qwen35-2b-q4km",
     "validated-20260227-v3-schemas",
     "validated-20260227-v3-fixed",
     "validated-20260227-v3",
