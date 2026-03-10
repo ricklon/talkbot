@@ -1,0 +1,79 @@
+{
+  "id": "endurance_memory_recall",
+  "name": "Endurance: Memory and Context Recall",
+  "description": "10-turn conversation storing facts early and testing recall accuracy across many intervening turns. Tests long-range context retention under conversation pressure.",
+  "tags": ["endurance", "memory", "tools"],
+  "type": "endurance",
+  "reset_state": true,
+  "turns": [
+    {
+      "user": "Remember that my project codename is Nighthawk.",
+      "expect": {
+        "tool_calls": [{ "name": "remember" }]
+      }
+    },
+    {
+      "user": "Remember that the project deadline is March 31st.",
+      "expect": {
+        "tool_calls": [{ "name": "remember" }]
+      }
+    },
+    {
+      "user": "What's 22 divided by 7? Give me four decimal places.",
+      "expect": {
+        "tool_calls": [{ "name": "calculator" }]
+      }
+    },
+    {
+      "user": "Set a timer for 3 minutes — I need a short break.",
+      "expect": {
+        "tool_calls": [{ "name": "set_timer" }]
+      }
+    },
+    {
+      "user": "Create a tasks list and add 'write tests' and 'update docs' to it.",
+      "expect": {
+        "tool_calls": [{ "name_any": ["create_list", "add_to_list"] }],
+        "min_tool_calls": 1
+      }
+    },
+    {
+      "user": "What time is it?",
+      "expect": {
+        "tool_calls": [{ "name": "get_current_time" }]
+      }
+    },
+    {
+      "user": "What's the codename for my project?",
+      "recall_turn": true,
+      "expect": {
+        "tool_calls": [{ "name": "recall" }],
+        "response_spoken_contains": ["nighthawk"]
+      }
+    },
+    {
+      "user": "And when is the deadline?",
+      "recall_turn": true,
+      "expect": {
+        "tool_calls": [{ "name": "recall" }],
+        "response_spoken_contains": ["march"]
+      }
+    },
+    {
+      "user": "Show me my tasks list.",
+      "recall_turn": true,
+      "expect": {
+        "tool_calls": [{ "name": "get_list" }],
+        "response_spoken_regex": "(?i)(test|doc)"
+      }
+    },
+    {
+      "user": "What are all the things you remember for me?",
+      "recall_turn": true,
+      "expect": {
+        "tool_calls": [{ "name": "recall_all" }],
+        "response_spoken_regex": "(?i)(nighthawk|march|deadline)"
+      }
+    }
+  ]
+}

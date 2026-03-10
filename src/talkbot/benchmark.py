@@ -21,7 +21,9 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
+from talkbot.judge import JudgeResult, LLMJudge
 from talkbot.llm import create_llm_client, supports_tools
+from talkbot.text_utils import normalize_for_tts, tts_friction_score
 from talkbot.tools import TOOL_DEFINITIONS, TOOLS, get_tool_definitions_for_variant, reset_runtime_state
 
 try:
@@ -95,6 +97,18 @@ class TurnResult:
     usage: dict[str, Any]
     history_messages: int
     history_chars: int
+    # Endurance: failure mode detected for this turn
+    failure_mode: str = "none"   # "repetition" | "refusal" | "none"
+    recall_turn: bool = False    # True when scenario marks this as a context-recall check
+    # TTS friction: count of TTS-hostile tokens in the raw (pre-normalization) response
+    tts_friction_score: int = 0
+    tts_friction_detail: dict[str, Any] = field(default_factory=dict)
+    # LLM judge fields — None when judge is not enabled or call errored
+    judge_correctness: float | None = None
+    judge_spoken_quality: float | None = None
+    judge_reasoning: str | None = None
+    judge_checklist: dict[str, Any] | None = None
+    judge_error: str | None = None
 
 
 @dataclass
@@ -111,6 +125,14 @@ class ScenarioResult:
     expected_arg_checks: int
     matched_arg_checks: int
     actual_tool_calls: int
+    # pass^k reliability fields (pass_k=1 means single-run, current default)
+    pass_k: int = 1
+    pass_count: int = 1
+    pass_rate: float = 1.0
+    reliability_band: str = "high"
+    # Endurance fields — computed from canonical turns, None for short scenarios (<3 turns)
+    latency_growth_rate: float | None = None     # ms/turn slope; positive = slowing
+    quality_degradation_rate: float | None = None  # judge score slope; negative = degrading
 
 
 @dataclass
@@ -151,6 +173,17 @@ class RunAggregate:
     avg_gen_tok_s: float
     scenario_success_per_second: float
     tag_success: dict[str, float]
+    # Endurance aggregate
+    endurance_scenario_count: int = 0
+    avg_latency_growth_rate: float | None = None   # mean slope across endurance scenarios
+    failure_mode_counts: dict[str, int] = field(default_factory=dict)
+    # TTS friction aggregate
+    avg_tts_friction_score: float = 0.0
+    tts_friction_zero_rate: float = 0.0   # fraction of turns with score == 0
+    # LLM judge aggregate fields — None when judge not enabled for this run
+    avg_judge_correctness: float | None = None
+    avg_judge_spoken_quality: float | None = None
+    judge_calls: int = 0
 
 
 @dataclass
@@ -294,6 +327,60 @@ def _percent(numerator: int, denominator: int) -> float:
     if denominator <= 0:
         return 1.0
     return round(float(numerator) / float(denominator), 4)
+
+
+def _linear_slope(values: list[float]) -> float:
+    """Least-squares slope (units/step). Compatible with Python 3.10+."""
+    n = len(values)
+    if n < 3:
+        return 0.0
+    x_mean = (n - 1) / 2.0
+    y_mean = sum(values) / n
+    numerator = sum((i - x_mean) * (v - y_mean) for i, v in enumerate(values))
+    denominator = sum((i - x_mean) ** 2 for i in range(n))
+    return round(numerator / denominator, 4) if denominator > 0 else 0.0
+
+
+_REFUSAL_PHRASES = (
+    "i cannot",
+    "i can't",
+    "i am unable",
+    "i'm unable",
+    "i don't know how to",
+    "i do not know how to",
+    "i'm not able to",
+    "i am not able to",
+    "i'm sorry, i can't",
+    "i'm sorry, i cannot",
+    "sorry, i can't",
+    "sorry, i cannot",
+)
+
+
+def _detect_failure_mode(response: str, prior_response: str | None) -> str:
+    """Heuristic failure mode detection for a single turn response.
+
+    Returns one of: "repetition" | "refusal" | "none"
+    """
+    if not response:
+        return "none"
+    lower = response.lower()
+
+    # Refusal: response contains common refusal phrases
+    if any(phrase in lower for phrase in _REFUSAL_PHRASES):
+        return "refusal"
+
+    # Repetition: token Jaccard similarity > 0.80 with prior response
+    if prior_response:
+        a = set(response.lower().split())
+        b = set(prior_response.lower().split())
+        if a and b:
+            intersection = len(a & b)
+            union = len(a | b)
+            if union > 0 and intersection / union > 0.80:
+                return "repetition"
+
+    return "none"
 
 
 _TOOL_ARG_ALIASES: dict[str, dict[str, str]] = {
@@ -441,7 +528,11 @@ def _normalize_scenario(payload: dict[str, Any], source: Path) -> dict[str, Any]
         expect = turn.get("expect") or {}
         if not isinstance(expect, dict):
             raise ValueError(f"Scenario '{sid}' turn {index} expect must be an object.")
-        normalized_turns.append({"user": user, "expect": expect})
+        normalized_turn: dict[str, Any] = {"user": user, "expect": expect}
+        # Preserve optional per-turn metadata fields
+        if turn.get("recall_turn"):
+            normalized_turn["recall_turn"] = True
+        normalized_turns.append(normalized_turn)
     tags = payload.get("tags") or []
     return {
         "id": sid,
@@ -652,18 +743,35 @@ def _evaluate_turn(
     expected_arg_checks = 0
     matched_arg_checks = 0
 
+    normalized_response = normalize_for_tts(response)
+
     contains = expect.get("response_contains") or []
     if isinstance(contains, list):
-        response_folded = response.casefold()
+        response_folded = normalized_response.casefold()
         for part in contains:
             part_text = str(part)
             if part_text.casefold() not in response_folded:
                 assertions.append(f"Missing response text: {part_text!r}")
 
+    # response_spoken_contains is an explicit alias for the normalized match behavior
+    spoken_contains = expect.get("response_spoken_contains") or []
+    if isinstance(spoken_contains, list):
+        response_folded = normalized_response.casefold()
+        for part in spoken_contains:
+            part_text = str(part)
+            if part_text.casefold() not in response_folded:
+                assertions.append(f"Missing spoken response text: {part_text!r}")
+
     regex = expect.get("response_regex")
     if regex:
-        if re.search(str(regex), response) is None:
+        if re.search(str(regex), normalized_response) is None:
             assertions.append(f"Response does not match regex: {regex!r}")
+
+    # response_spoken_regex is an explicit alias for normalized regex matching
+    spoken_regex = expect.get("response_spoken_regex")
+    if spoken_regex:
+        if re.search(str(spoken_regex), normalized_response) is None:
+            assertions.append(f"Response does not match spoken regex: {spoken_regex!r}")
 
     if expect.get("no_tool_calls") and tool_calls:
         assertions.append("Expected no tool calls, but at least one was executed.")
@@ -1013,6 +1121,162 @@ def detect_runner_info(
     return _json_safe(payload)
 
 
+def _run_scenario_once(
+    *,
+    scenario: dict[str, Any],
+    client: Any,
+    profile: BenchmarkProfile,
+    system_message: dict[str, str] | None,
+    recorder: ToolRecorder,
+    judge: "LLMJudge | None",
+    temperature: float,
+) -> tuple[list[TurnResult], int, int, int, int, int]:
+    """Execute every turn in a scenario once and return results.
+
+    Returns:
+        (turns, expected_tool_calls, matched_tool_names,
+         expected_arg_checks, matched_arg_checks, actual_tool_calls)
+    """
+    messages: list[dict[str, str]] = [system_message] if system_message else []
+    turns: list[TurnResult] = []
+    expected_tool_calls = 0
+    matched_tool_names = 0
+    expected_arg_checks = 0
+    matched_arg_checks = 0
+    actual_tool_calls = 0
+    prior_response: str | None = None
+
+    for turn_idx, turn in enumerate(scenario["turns"]):
+        recorder.active_scenario_id = scenario["id"]
+        recorder.active_turn_index = turn_idx
+        start_call_index = len(recorder.calls)
+
+        user_text = turn["user"]
+        messages.append({"role": "user", "content": user_text})
+        turn_started = time.perf_counter()
+        assertions: list[str] = []
+        response_text = ""
+        try:
+            if profile.use_tools:
+                response_text = str(
+                    client.chat_with_tools(
+                        messages,
+                        temperature=temperature,
+                        max_tokens=profile.max_tokens,
+                    )
+                    or ""
+                ).strip()
+            else:
+                response = client.chat_completion(
+                    messages,
+                    temperature=temperature,
+                    max_tokens=profile.max_tokens,
+                )
+                response_text = _response_content(response).strip()
+        except Exception as exc:
+            assertions.append(f"Model execution error: {exc}")
+
+        latency_ms = round((time.perf_counter() - turn_started) * 1000.0, 3)
+        turn_calls = recorder.calls[start_call_index:]
+        usage = dict(getattr(client, "last_usage", {}) or {})
+
+        if not assertions:
+            (
+                passed,
+                extra_assertions,
+                exp_names,
+                got_names,
+                exp_args,
+                got_args,
+            ) = _evaluate_turn(
+                turn=turn,
+                response=response_text,
+                tool_calls=turn_calls,
+                latency_ms=latency_ms,
+            )
+            assertions.extend(extra_assertions)
+        else:
+            passed = False
+            exp_names = got_names = exp_args = got_args = 0
+
+        expected_tool_calls += exp_names
+        matched_tool_names += got_names
+        expected_arg_checks += exp_args
+        matched_arg_checks += got_args
+        actual_tool_calls += len(turn_calls)
+
+        if response_text:
+            messages.append({"role": "assistant", "content": response_text})
+
+        history_chars = sum(len(str(m.get("content", ""))) for m in messages)
+
+        # Endurance: failure mode and recall-turn flag
+        failure_mode = _detect_failure_mode(response_text, prior_response)
+        is_recall_turn = bool(turn.get("recall_turn", False))
+        prior_response = response_text or prior_response
+
+        # TTS friction: score the raw response before any normalization
+        friction, friction_detail = tts_friction_score(response_text)
+
+        judge_result: JudgeResult | None = None
+        if judge is not None and response_text:
+            judge_result = judge.evaluate_turn(
+                user=user_text,
+                response=response_text,
+                history=messages[:-1],
+                tags=list(scenario.get("tags") or []),
+            )
+
+        turns.append(
+            TurnResult(
+                index=turn_idx,
+                user=user_text,
+                response=response_text,
+                passed=passed and not assertions,
+                assertions=assertions,
+                latency_ms=latency_ms,
+                tool_calls=[asdict(call) for call in turn_calls],
+                usage=usage,
+                history_messages=len(messages),
+                history_chars=history_chars,
+                failure_mode=failure_mode,
+                recall_turn=is_recall_turn,
+                tts_friction_score=friction,
+                tts_friction_detail=friction_detail,
+                judge_correctness=(
+                    judge_result.correctness
+                    if judge_result and not judge_result.has_error
+                    else None
+                ),
+                judge_spoken_quality=(
+                    judge_result.spoken_quality
+                    if judge_result and not judge_result.has_error
+                    else None
+                ),
+                judge_reasoning=(judge_result.reasoning if judge_result else None),
+                judge_checklist=(judge_result.checklist if judge_result else None),
+                judge_error=(judge_result.error if judge_result else None),
+            )
+        )
+
+    return (
+        turns,
+        expected_tool_calls,
+        matched_tool_names,
+        expected_arg_checks,
+        matched_arg_checks,
+        actual_tool_calls,
+    )
+
+
+def _reliability_band(pass_rate: float) -> str:
+    if pass_rate >= 0.80:
+        return "high"
+    if pass_rate >= 0.40:
+        return "medium"
+    return "low"
+
+
 def run_benchmark(
     *,
     profiles: list[BenchmarkProfile],
@@ -1022,6 +1286,9 @@ def run_benchmark(
     context_analysis: dict[str, Any] | None = None,
     client_factory: Callable[[BenchmarkProfile], Any] | None = None,
     runner_info: dict[str, Any] | None = None,
+    judge: LLMJudge | None = None,
+    pass_k: int = 1,
+    pass_k_temperature: float = 0.3,
 ) -> dict[str, Any]:
     """Run all profiles against all scenarios and return a report dictionary."""
     out_dir = Path(output_dir)
@@ -1066,9 +1333,9 @@ def run_benchmark(
                         _warmup_local_server_client(client, profile.name)
 
                     for scenario in scenarios:
-                        if scenario.get("reset_state", True):
-                            reset_runtime_state(clear_persistent=True)
-                        messages: list[dict[str, str]] = []
+                        scenario_tags = list(scenario.get("tags") or [])
+
+                        # Build system message once; reused across all k runs
                         system_parts: list[str] = []
                         if profile.use_tools:
                             directive = (
@@ -1083,122 +1350,114 @@ def run_benchmark(
                         if scenario.get("system_prompt"):
                             system_parts.append(str(scenario["system_prompt"]).strip())
                         system_parts = [part for part in system_parts if part]
-                        if system_parts:
-                            messages.append(
-                                {
-                                    "role": "system",
-                                    "content": "\n\n".join(system_parts),
-                                }
-                            )
+                        system_message: dict[str, str] | None = (
+                            {"role": "system", "content": "\n\n".join(system_parts)}
+                            if system_parts
+                            else None
+                        )
 
-                        turns: list[TurnResult] = []
-                        expected_tool_calls = 0
-                        matched_tool_names = 0
-                        expected_arg_checks = 0
-                        matched_arg_checks = 0
-                        actual_tool_calls = 0
+                        # pass^k: high_variability scenarios use k=5, others use pass_k
+                        k_effective = (
+                            5 if "high_variability" in scenario_tags else pass_k
+                        )
+                        # When k>1 use pass_k_temperature; k=1 keeps profile temperature
+                        run_temperature = (
+                            pass_k_temperature if k_effective > 1 else profile.temperature
+                        )
 
-                        for turn_idx, turn in enumerate(scenario["turns"]):
-                            recorder.active_scenario_id = scenario["id"]
-                            recorder.active_turn_index = turn_idx
-                            start_call_index = len(recorder.calls)
+                        canonical_turns: list[TurnResult] = []
+                        canonical_exp_tool = 0
+                        canonical_matched_tool = 0
+                        canonical_exp_args = 0
+                        canonical_matched_args = 0
+                        canonical_actual_tools = 0
+                        pass_count = 0
 
-                            user_text = turn["user"]
-                            messages.append({"role": "user", "content": user_text})
-                            turn_started = time.perf_counter()
-                            assertions: list[str] = []
-                            response_text = ""
-                            try:
-                                if profile.use_tools:
-                                    response_text = str(
-                                        client.chat_with_tools(
-                                            messages,
-                                            temperature=profile.temperature,
-                                            max_tokens=profile.max_tokens,
-                                        )
-                                        or ""
-                                    ).strip()
-                                else:
-                                    response = client.chat_completion(
-                                        messages,
-                                        temperature=profile.temperature,
-                                        max_tokens=profile.max_tokens,
-                                    )
-                                    response_text = _response_content(response).strip()
-                            except Exception as exc:
-                                assertions.append(f"Model execution error: {exc}")
+                        for _k in range(k_effective):
+                            if scenario.get("reset_state", True):
+                                reset_runtime_state(clear_persistent=True)
 
-                            latency_ms = round(
-                                (time.perf_counter() - turn_started) * 1000.0, 3
-                            )
-                            turn_calls = recorder.calls[start_call_index:]
-                            usage = dict(getattr(client, "last_usage", {}) or {})
-                            if not assertions:
-                                (
-                                    passed,
-                                    extra_assertions,
-                                    exp_names,
-                                    got_names,
-                                    exp_args,
-                                    got_args,
-                                ) = _evaluate_turn(
-                                    turn=turn,
-                                    response=response_text,
-                                    tool_calls=turn_calls,
-                                    latency_ms=latency_ms,
-                                )
-                                assertions.extend(extra_assertions)
-                            else:
-                                passed = False
-                                exp_names = 0
-                                got_names = 0
-                                exp_args = 0
-                                got_args = 0
-
-                            expected_tool_calls += exp_names
-                            matched_tool_names += got_names
-                            expected_arg_checks += exp_args
-                            matched_arg_checks += got_args
-                            actual_tool_calls += len(turn_calls)
-
-                            if response_text:
-                                messages.append(
-                                    {"role": "assistant", "content": response_text}
-                                )
-                            history_chars = sum(
-                                len(str(message.get("content", "")))
-                                for message in messages
-                            )
-                            turns.append(
-                                TurnResult(
-                                    index=turn_idx,
-                                    user=user_text,
-                                    response=response_text,
-                                    passed=passed and not assertions,
-                                    assertions=assertions,
-                                    latency_ms=latency_ms,
-                                    tool_calls=[asdict(call) for call in turn_calls],
-                                    usage=usage,
-                                    history_messages=len(messages),
-                                    history_chars=history_chars,
-                                )
+                            (
+                                turns,
+                                exp_tool,
+                                matched_tool,
+                                exp_args,
+                                matched_args,
+                                actual_tools,
+                            ) = _run_scenario_once(
+                                scenario=scenario,
+                                client=client,
+                                profile=profile,
+                                system_message=system_message,
+                                recorder=recorder,
+                                judge=judge,
+                                temperature=run_temperature,
                             )
                             rss_peak = max(rss_peak, _current_rss_mb())
+
+                            run_passed = all(turn.passed for turn in turns)
+                            if run_passed:
+                                pass_count += 1
+                                if not canonical_turns:
+                                    # First passing run becomes canonical
+                                    canonical_turns = turns
+                                    canonical_exp_tool = exp_tool
+                                    canonical_matched_tool = matched_tool
+                                    canonical_exp_args = exp_args
+                                    canonical_matched_args = matched_args
+                                    canonical_actual_tools = actual_tools
+
+                            # Last run is the fallback canonical if nothing passed
+                            if _k == k_effective - 1 and not canonical_turns:
+                                canonical_turns = turns
+                                canonical_exp_tool = exp_tool
+                                canonical_matched_tool = matched_tool
+                                canonical_exp_args = exp_args
+                                canonical_matched_args = matched_args
+                                canonical_actual_tools = actual_tools
+
+                        pass_rate = pass_count / k_effective
+
+                        # Endurance: latency trend and quality degradation
+                        canon_latencies = [t.latency_ms for t in canonical_turns]
+                        lgr = (
+                            _linear_slope(canon_latencies)
+                            if len(canon_latencies) >= 3
+                            else None
+                        )
+                        judge_scores = [
+                            t.judge_correctness
+                            for t in canonical_turns
+                            if t.judge_correctness is not None
+                        ]
+                        qdr = (
+                            _linear_slope(judge_scores)
+                            if len(judge_scores) >= 3
+                            else None
+                        )
 
                         scenario_results.append(
                             ScenarioResult(
                                 id=scenario["id"],
                                 name=scenario["name"],
-                                tags=list(scenario.get("tags") or []),
-                                passed=all(turn.passed for turn in turns),
-                                turns=turns,
-                                turn_count=len(turns),
-                                passed_turns=sum(1 for turn in turns if turn.passed),
-                                expected_tool_calls=expected_tool_calls,
-                                matched_tool_names=matched_tool_names,
-                                expected_arg_checks=expected_arg_checks,
-                                matched_arg_checks=matched_arg_checks,
-                                actual_tool_calls=actual_tool_calls,
+                                tags=scenario_tags,
+                                passed=pass_rate >= 0.67,
+                                turns=canonical_turns,
+                                turn_count=len(canonical_turns),
+                                passed_turns=sum(
+                                    1 for t in canonical_turns if t.passed
+                                ),
+                                expected_tool_calls=canonical_exp_tool,
+                                matched_tool_names=canonical_matched_tool,
+                                expected_arg_checks=canonical_exp_args,
+                                matched_arg_checks=canonical_matched_args,
+                                actual_tool_calls=canonical_actual_tools,
+                                pass_k=k_effective,
+                                pass_count=pass_count,
+                                pass_rate=round(pass_rate, 4),
+                                reliability_band=_reliability_band(pass_rate),
+                                latency_growth_rate=lgr,
+                                quality_degradation_rate=qdr,
                             )
                         )
             except Exception as exc:
@@ -1254,6 +1513,12 @@ def run_benchmark(
         "runner": resolved_runner,
         "scenario_count": len(scenarios),
         "run_count": len(run_results),
+        "normalization": "v1",
+        "pass_k": pass_k,
+        "pass_k_temperature": pass_k_temperature if pass_k > 1 else None,
+        "judge_model": judge.config.model if judge is not None else None,
+        "judge_dry_run": judge.config.dry_run if judge is not None else None,
+        "judge_calls_total": judge.calls_made if judge is not None else None,
         "rubric": rubric_config,
         "context_analysis": context_analysis_config,
         "runs": [_run_to_dict(run) for run in run_results],
@@ -1370,6 +1635,54 @@ def _build_aggregate(
         if total_gen_ms > 0
         else 0.0
     )
+    # Endurance aggregate
+    endurance_scenarios = [
+        s for s in scenario_results if "endurance" in s.tags
+    ]
+    endurance_scenario_count = len(endurance_scenarios)
+    lgr_values = [
+        s.latency_growth_rate
+        for s in endurance_scenarios
+        if s.latency_growth_rate is not None
+    ]
+    avg_latency_growth_rate = (
+        round(statistics.fmean(lgr_values), 4) if lgr_values else None
+    )
+    failure_mode_counts: dict[str, int] = {}
+    for turn in all_turns:
+        if turn.failure_mode != "none":
+            failure_mode_counts[turn.failure_mode] = (
+                failure_mode_counts.get(turn.failure_mode, 0) + 1
+            )
+
+    # TTS friction aggregate
+    friction_scores = [t.tts_friction_score for t in all_turns]
+    avg_tts_friction = (
+        round(statistics.fmean(friction_scores), 3) if friction_scores else 0.0
+    )
+    tts_friction_zero_rate = _percent(
+        sum(1 for s in friction_scores if s == 0), max(1, len(friction_scores))
+    )
+
+    # Judge aggregate: average over turns that were successfully scored
+    judge_correctness_scores = [
+        t.judge_correctness for t in all_turns if t.judge_correctness is not None
+    ]
+    judge_spoken_scores = [
+        t.judge_spoken_quality for t in all_turns if t.judge_spoken_quality is not None
+    ]
+    avg_judge_correctness = (
+        round(statistics.fmean(judge_correctness_scores), 3)
+        if judge_correctness_scores
+        else None
+    )
+    avg_judge_spoken_quality = (
+        round(statistics.fmean(judge_spoken_scores), 3)
+        if judge_spoken_scores
+        else None
+    )
+    judge_calls = len(judge_correctness_scores)
+
     return RunAggregate(
         scenario_count=scenario_count,
         scenario_passed=passed_scenarios,
@@ -1418,6 +1731,14 @@ def _build_aggregate(
         avg_gen_tok_s=avg_gen_tok_s,
         scenario_success_per_second=scenario_success_per_second,
         tag_success=tag_success,
+        endurance_scenario_count=endurance_scenario_count,
+        avg_latency_growth_rate=avg_latency_growth_rate,
+        failure_mode_counts=failure_mode_counts,
+        avg_tts_friction_score=avg_tts_friction,
+        tts_friction_zero_rate=tts_friction_zero_rate,
+        avg_judge_correctness=avg_judge_correctness,
+        avg_judge_spoken_quality=avg_judge_spoken_quality,
+        judge_calls=judge_calls,
     )
 
 
@@ -2229,4 +2550,117 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
                 f"- Routing gap summary: intent minus llm avg score delta = {avg_score_gap:+.3f}",
             ]
         )
+
+    # --- Voice Quality & Reliability ---
+    lines.extend(
+        [
+            "",
+            "## TTS Friction",
+            "",
+            "- `Avg Friction`: mean count of TTS-hostile tokens per turn (lower is better).",
+            "- `Clean Rate`: fraction of turns with zero friction (higher is better).",
+            "",
+            "| Run | Avg Friction | Clean Rate |",
+            "|---|---:|---:|",
+        ]
+    )
+    for run in quality_rank:
+        agg = run["aggregate"]
+        lines.append(
+            f"| {(run.get('profile') or {}).get('name', '')} | "
+            f"{_coerce_float(agg.get('avg_tts_friction_score'), 0.0):.2f} | "
+            f"{_coerce_float(agg.get('tts_friction_zero_rate'), 0.0):.1%} |"
+        )
+
+    # Judge section — only rendered when at least one run has judge data
+    judge_runs = [r for r in quality_rank if r["aggregate"].get("avg_judge_correctness") is not None]
+    if judge_runs:
+        lines.extend(
+            [
+                "",
+                "## LLM Judge Scores",
+                "",
+                "- Scores are 1–5 (higher is better). Evaluated by the judge model on a sample of turns.",
+                "- `Correctness`: did the response correctly address the request?",
+                "- `Spoken Quality`: is the response phrased naturally for voice output?",
+                "",
+                "| Run | Correctness | Spoken Quality | Judge Calls |",
+                "|---|---:|---:|---:|",
+            ]
+        )
+        for run in quality_rank:
+            agg = run["aggregate"]
+            corr = agg.get("avg_judge_correctness")
+            spoken = agg.get("avg_judge_spoken_quality")
+            calls = int(_coerce_float(agg.get("judge_calls"), 0.0))
+            corr_str = f"{corr:.2f}" if corr is not None else "n/a"
+            spoken_str = f"{spoken:.2f}" if spoken is not None else "n/a"
+            lines.append(
+                f"| {(run.get('profile') or {}).get('name', '')} | "
+                f"{corr_str} | {spoken_str} | {calls} |"
+            )
+
+    # Reliability bands — summarise per-scenario pass^k results
+    any_passk = any(
+        any(
+            isinstance(sc, dict) and sc.get("pass_k", 1) > 1
+            for sc in (run.get("scenarios") or [])
+        )
+        for run in quality_rank
+    )
+    if any_passk:
+        lines.extend(
+            [
+                "",
+                "## Reliability Bands (pass^k)",
+                "",
+                "- Bands: **high** ≥80 %, **medium** 50–79 %, **low** 20–49 %, **very-low** <20 %.",
+                "",
+                "| Run | High | Medium | Low | Very-Low | Avg Pass Rate |",
+                "|---|---:|---:|---:|---:|---:|",
+            ]
+        )
+        for run in quality_rank:
+            scenarios = [s for s in (run.get("scenarios") or []) if isinstance(s, dict)]
+            bands: dict[str, int] = {"high": 0, "medium": 0, "low": 0, "very-low": 0}
+            pass_rates: list[float] = []
+            for sc in scenarios:
+                band = str(sc.get("reliability_band") or "high")
+                bands[band] = bands.get(band, 0) + 1
+                pr = sc.get("pass_rate")
+                if pr is not None:
+                    pass_rates.append(float(pr))
+            avg_pr = statistics.fmean(pass_rates) if pass_rates else 1.0
+            lines.append(
+                f"| {(run.get('profile') or {}).get('name', '')} | "
+                f"{bands['high']} | {bands['medium']} | {bands['low']} | {bands['very-low']} | "
+                f"{avg_pr:.1%} |"
+            )
+
+    # Endurance section — only rendered when endurance scenarios ran
+    endurance_runs = [
+        r for r in quality_rank if r["aggregate"].get("endurance_scenario_count", 0) > 0
+    ]
+    if endurance_runs:
+        lines.extend(
+            [
+                "",
+                "## Endurance",
+                "",
+                "- `Endurance Scen`: number of endurance-tagged scenarios run.",
+                "- `Latency Growth`: average ms/turn slope across endurance scenarios (positive = slowing down).",
+                "",
+                "| Run | Endurance Scen | Latency Growth (ms/turn) |",
+                "|---|---:|---:|",
+            ]
+        )
+        for run in quality_rank:
+            agg = run["aggregate"]
+            esc = int(_coerce_float(agg.get("endurance_scenario_count"), 0.0))
+            lgr = agg.get("avg_latency_growth_rate")
+            lgr_str = f"{lgr:+.1f}" if lgr is not None else "n/a"
+            lines.append(
+                f"| {(run.get('profile') or {}).get('name', '')} | {esc} | {lgr_str} |"
+            )
+
     return "\n".join(lines) + "\n"
