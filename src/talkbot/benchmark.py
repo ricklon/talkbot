@@ -97,6 +97,9 @@ class TurnResult:
     usage: dict[str, Any]
     history_messages: int
     history_chars: int
+    # Endurance: failure mode detected for this turn
+    failure_mode: str = "none"   # "repetition" | "refusal" | "none"
+    recall_turn: bool = False    # True when scenario marks this as a context-recall check
     # TTS friction: count of TTS-hostile tokens in the raw (pre-normalization) response
     tts_friction_score: int = 0
     tts_friction_detail: dict[str, Any] = field(default_factory=dict)
@@ -127,6 +130,9 @@ class ScenarioResult:
     pass_count: int = 1
     pass_rate: float = 1.0
     reliability_band: str = "high"
+    # Endurance fields — computed from canonical turns, None for short scenarios (<3 turns)
+    latency_growth_rate: float | None = None     # ms/turn slope; positive = slowing
+    quality_degradation_rate: float | None = None  # judge score slope; negative = degrading
 
 
 @dataclass
@@ -167,6 +173,10 @@ class RunAggregate:
     avg_gen_tok_s: float
     scenario_success_per_second: float
     tag_success: dict[str, float]
+    # Endurance aggregate
+    endurance_scenario_count: int = 0
+    avg_latency_growth_rate: float | None = None   # mean slope across endurance scenarios
+    failure_mode_counts: dict[str, int] = field(default_factory=dict)
     # TTS friction aggregate
     avg_tts_friction_score: float = 0.0
     tts_friction_zero_rate: float = 0.0   # fraction of turns with score == 0
@@ -319,6 +329,60 @@ def _percent(numerator: int, denominator: int) -> float:
     return round(float(numerator) / float(denominator), 4)
 
 
+def _linear_slope(values: list[float]) -> float:
+    """Least-squares slope (units/step). Compatible with Python 3.10+."""
+    n = len(values)
+    if n < 3:
+        return 0.0
+    x_mean = (n - 1) / 2.0
+    y_mean = sum(values) / n
+    numerator = sum((i - x_mean) * (v - y_mean) for i, v in enumerate(values))
+    denominator = sum((i - x_mean) ** 2 for i in range(n))
+    return round(numerator / denominator, 4) if denominator > 0 else 0.0
+
+
+_REFUSAL_PHRASES = (
+    "i cannot",
+    "i can't",
+    "i am unable",
+    "i'm unable",
+    "i don't know how to",
+    "i do not know how to",
+    "i'm not able to",
+    "i am not able to",
+    "i'm sorry, i can't",
+    "i'm sorry, i cannot",
+    "sorry, i can't",
+    "sorry, i cannot",
+)
+
+
+def _detect_failure_mode(response: str, prior_response: str | None) -> str:
+    """Heuristic failure mode detection for a single turn response.
+
+    Returns one of: "repetition" | "refusal" | "none"
+    """
+    if not response:
+        return "none"
+    lower = response.lower()
+
+    # Refusal: response contains common refusal phrases
+    if any(phrase in lower for phrase in _REFUSAL_PHRASES):
+        return "refusal"
+
+    # Repetition: token Jaccard similarity > 0.80 with prior response
+    if prior_response:
+        a = set(response.lower().split())
+        b = set(prior_response.lower().split())
+        if a and b:
+            intersection = len(a & b)
+            union = len(a | b)
+            if union > 0 and intersection / union > 0.80:
+                return "repetition"
+
+    return "none"
+
+
 _TOOL_ARG_ALIASES: dict[str, dict[str, str]] = {
     "set_timer": {
         "duration": "seconds",
@@ -464,7 +528,11 @@ def _normalize_scenario(payload: dict[str, Any], source: Path) -> dict[str, Any]
         expect = turn.get("expect") or {}
         if not isinstance(expect, dict):
             raise ValueError(f"Scenario '{sid}' turn {index} expect must be an object.")
-        normalized_turns.append({"user": user, "expect": expect})
+        normalized_turn: dict[str, Any] = {"user": user, "expect": expect}
+        # Preserve optional per-turn metadata fields
+        if turn.get("recall_turn"):
+            normalized_turn["recall_turn"] = True
+        normalized_turns.append(normalized_turn)
     tags = payload.get("tags") or []
     return {
         "id": sid,
@@ -1076,6 +1144,7 @@ def _run_scenario_once(
     expected_arg_checks = 0
     matched_arg_checks = 0
     actual_tool_calls = 0
+    prior_response: str | None = None
 
     for turn_idx, turn in enumerate(scenario["turns"]):
         recorder.active_scenario_id = scenario["id"]
@@ -1141,6 +1210,11 @@ def _run_scenario_once(
 
         history_chars = sum(len(str(m.get("content", ""))) for m in messages)
 
+        # Endurance: failure mode and recall-turn flag
+        failure_mode = _detect_failure_mode(response_text, prior_response)
+        is_recall_turn = bool(turn.get("recall_turn", False))
+        prior_response = response_text or prior_response
+
         # TTS friction: score the raw response before any normalization
         friction, friction_detail = tts_friction_score(response_text)
 
@@ -1165,6 +1239,8 @@ def _run_scenario_once(
                 usage=usage,
                 history_messages=len(messages),
                 history_chars=history_chars,
+                failure_mode=failure_mode,
+                recall_turn=is_recall_turn,
                 tts_friction_score=friction,
                 tts_friction_detail=friction_detail,
                 judge_correctness=(
@@ -1341,6 +1417,25 @@ def run_benchmark(
                                 canonical_actual_tools = actual_tools
 
                         pass_rate = pass_count / k_effective
+
+                        # Endurance: latency trend and quality degradation
+                        canon_latencies = [t.latency_ms for t in canonical_turns]
+                        lgr = (
+                            _linear_slope(canon_latencies)
+                            if len(canon_latencies) >= 3
+                            else None
+                        )
+                        judge_scores = [
+                            t.judge_correctness
+                            for t in canonical_turns
+                            if t.judge_correctness is not None
+                        ]
+                        qdr = (
+                            _linear_slope(judge_scores)
+                            if len(judge_scores) >= 3
+                            else None
+                        )
+
                         scenario_results.append(
                             ScenarioResult(
                                 id=scenario["id"],
@@ -1361,6 +1456,8 @@ def run_benchmark(
                                 pass_count=pass_count,
                                 pass_rate=round(pass_rate, 4),
                                 reliability_band=_reliability_band(pass_rate),
+                                latency_growth_rate=lgr,
+                                quality_degradation_rate=qdr,
                             )
                         )
             except Exception as exc:
@@ -1538,6 +1635,26 @@ def _build_aggregate(
         if total_gen_ms > 0
         else 0.0
     )
+    # Endurance aggregate
+    endurance_scenarios = [
+        s for s in scenario_results if "endurance" in s.tags
+    ]
+    endurance_scenario_count = len(endurance_scenarios)
+    lgr_values = [
+        s.latency_growth_rate
+        for s in endurance_scenarios
+        if s.latency_growth_rate is not None
+    ]
+    avg_latency_growth_rate = (
+        round(statistics.fmean(lgr_values), 4) if lgr_values else None
+    )
+    failure_mode_counts: dict[str, int] = {}
+    for turn in all_turns:
+        if turn.failure_mode != "none":
+            failure_mode_counts[turn.failure_mode] = (
+                failure_mode_counts.get(turn.failure_mode, 0) + 1
+            )
+
     # TTS friction aggregate
     friction_scores = [t.tts_friction_score for t in all_turns]
     avg_tts_friction = (
@@ -1614,6 +1731,9 @@ def _build_aggregate(
         avg_gen_tok_s=avg_gen_tok_s,
         scenario_success_per_second=scenario_success_per_second,
         tag_success=tag_success,
+        endurance_scenario_count=endurance_scenario_count,
+        avg_latency_growth_rate=avg_latency_growth_rate,
+        failure_mode_counts=failure_mode_counts,
         avg_tts_friction_score=avg_tts_friction,
         tts_friction_zero_rate=tts_friction_zero_rate,
         avg_judge_correctness=avg_judge_correctness,

@@ -1,0 +1,111 @@
+{
+  "id": "endurance_timer_sequence",
+  "name": "Endurance: Timer Sequence",
+  "description": "15-turn conversation setting multiple timers, doing other tasks, and recalling timer state. Tests context retention and tool use accuracy across a long session.",
+  "tags": ["endurance", "timer", "tools", "high_variability"],
+  "type": "endurance",
+  "reset_state": true,
+  "turns": [
+    {
+      "user": "Set a timer for 2 minutes and call it my pasta timer.",
+      "expect": {
+        "tool_calls": [{ "name": "set_timer" }]
+      }
+    },
+    {
+      "user": "Now set a second timer for 5 minutes for the sauce.",
+      "expect": {
+        "tool_calls": [{ "name": "set_timer" }]
+      }
+    },
+    {
+      "user": "What's today's date?",
+      "expect": {
+        "tool_calls": [{ "name": "get_current_date" }]
+      }
+    },
+    {
+      "user": "Add pasta and sauce to my grocery list.",
+      "expect": {
+        "tool_calls": [{ "name_any": ["add_to_list", "create_list"] }],
+        "min_tool_calls": 1
+      }
+    },
+    {
+      "user": "How many timers are running right now?",
+      "recall_turn": true,
+      "expect": {
+        "tool_calls": [{ "name": "list_timers" }]
+      }
+    },
+    {
+      "user": "Set a third timer for 30 seconds — it's for the garlic bread.",
+      "expect": {
+        "tool_calls": [{ "name": "set_timer" }]
+      }
+    },
+    {
+      "user": "What time is it right now?",
+      "expect": {
+        "tool_calls": [{ "name": "get_current_time" }]
+      }
+    },
+    {
+      "user": "What's 15 percent of 48?",
+      "expect": {
+        "tool_calls": [{ "name": "calculator" }]
+      }
+    },
+    {
+      "user": "List all my running timers so I can check them.",
+      "recall_turn": true,
+      "expect": {
+        "tool_calls": [{ "name": "list_timers" }],
+        "response_spoken_regex": "(?i)(timer|minute|second)"
+      }
+    },
+    {
+      "user": "Cancel timer 1.",
+      "expect": {
+        "tool_calls": [{ "name_any": ["cancel_timer", "list_timers"] }],
+        "min_tool_calls": 1
+      }
+    },
+    {
+      "user": "Remember that my favourite pasta is rigatoni.",
+      "expect": {
+        "tool_calls": [{ "name": "remember" }]
+      }
+    },
+    {
+      "user": "List my timers again.",
+      "recall_turn": true,
+      "expect": {
+        "tool_calls": [{ "name": "list_timers" }]
+      }
+    },
+    {
+      "user": "What did I ask you to remember about pasta?",
+      "recall_turn": true,
+      "expect": {
+        "tool_calls": [{ "name": "recall" }],
+        "response_spoken_contains": ["rigatoni"]
+      }
+    },
+    {
+      "user": "Show me my grocery list.",
+      "recall_turn": true,
+      "expect": {
+        "tool_calls": [{ "name": "get_list" }],
+        "response_spoken_regex": "(?i)(pasta|sauce|grocery)"
+      }
+    },
+    {
+      "user": "Cancel all remaining timers.",
+      "expect": {
+        "tool_calls": [{ "name_any": ["cancel_timer", "list_timers"] }],
+        "min_tool_calls": 1
+      }
+    }
+  ]
+}

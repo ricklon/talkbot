@@ -1,0 +1,90 @@
+{
+  "id": "endurance_list_management",
+  "name": "Endurance: List Management",
+  "description": "12-turn conversation building and modifying a packing list across many turns. Tests that the model retains list context and issues correct tool calls throughout a session.",
+  "tags": ["endurance", "list", "tools"],
+  "type": "endurance",
+  "reset_state": true,
+  "turns": [
+    {
+      "user": "Create a packing list for my trip.",
+      "expect": {
+        "tool_calls": [{ "name": "create_list" }]
+      }
+    },
+    {
+      "user": "Add passport, phone charger, and headphones to the packing list.",
+      "expect": {
+        "tool_calls": [{ "name": "add_to_list" }]
+      }
+    },
+    {
+      "user": "What time is it?",
+      "expect": {
+        "tool_calls": [{ "name": "get_current_time" }]
+      }
+    },
+    {
+      "user": "Add sunscreen and a hat to the packing list.",
+      "expect": {
+        "tool_calls": [{ "name": "add_to_list" }]
+      }
+    },
+    {
+      "user": "What's on my packing list so far?",
+      "recall_turn": true,
+      "expect": {
+        "tool_calls": [{ "name": "get_list" }],
+        "response_spoken_regex": "(?i)(passport|charger|headphones|sunscreen|hat)"
+      }
+    },
+    {
+      "user": "Remove headphones — I decided not to bring them.",
+      "expect": {
+        "tool_calls": [{ "name": "remove_from_list" }]
+      }
+    },
+    {
+      "user": "Remember that my flight is at 9 AM.",
+      "expect": {
+        "tool_calls": [{ "name": "remember" }]
+      }
+    },
+    {
+      "user": "Add a travel adapter and a notebook to the packing list.",
+      "expect": {
+        "tool_calls": [{ "name": "add_to_list" }]
+      }
+    },
+    {
+      "user": "What's my complete packing list now?",
+      "recall_turn": true,
+      "expect": {
+        "tool_calls": [{ "name": "get_list" }],
+        "response_spoken_regex": "(?i)(passport|adapter|notebook)",
+        "response_spoken_contains": ["passport"]
+      }
+    },
+    {
+      "user": "When is my flight?",
+      "recall_turn": true,
+      "expect": {
+        "tool_calls": [{ "name": "recall" }],
+        "response_spoken_contains": ["9"]
+      }
+    },
+    {
+      "user": "How many items are on the packing list?",
+      "recall_turn": true,
+      "expect": {
+        "tool_calls": [{ "name": "get_list" }]
+      }
+    },
+    {
+      "user": "Clear the packing list — I changed my plans.",
+      "expect": {
+        "tool_calls": [{ "name": "clear_list" }]
+      }
+    }
+  ]
+}

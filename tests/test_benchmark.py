@@ -732,3 +732,170 @@ def test_aggregate_has_friction_fields(tmp_path):
     # FakeBenchClient returns "ok" — no markdown, so friction should be 0
     assert agg["avg_tts_friction_score"] == 0.0
     assert agg["tts_friction_zero_rate"] == 1.0  # _percent returns 0-1 fraction
+
+
+# --- PR 4: endurance tests ---
+
+
+def _endurance_scenario(turns=5):
+    """Short endurance scenario for testing; last turn is a recall check."""
+    turn_list = [
+        {"user": "hi", "expect": {"response_contains": ["ok"]}}
+        for _ in range(turns - 1)
+    ]
+    turn_list.append({
+        "user": "hi",
+        "recall_turn": True,
+        "expect": {"response_contains": ["ok"]},
+    })
+    return [{
+        "id": "endurance_test",
+        "name": "Endurance Test",
+        "tags": ["endurance"],
+        "type": "endurance",
+        "reset_state": True,
+        "turns": turn_list,
+    }]
+
+
+def test_turn_result_has_failure_mode_field(tmp_path):
+    """Every TurnResult has a failure_mode field defaulting to 'none'."""
+    profile = BenchmarkProfile(name="t", provider="fake", model="fake", use_tools=False)
+    report = run_benchmark(
+        profiles=[profile],
+        scenarios=_endurance_scenario(turns=3),
+        output_dir=tmp_path,
+        runner_info={"label": "t", "hostname": "h"},
+        client_factory=lambda p: FakeBenchClient(),
+    )
+    turns = report["runs"][0]["scenarios"][0]["turns"]
+    for turn in turns:
+        assert "failure_mode" in turn
+        assert turn["failure_mode"] in ("none", "repetition", "refusal")
+
+
+def test_turn_result_has_recall_turn_field(tmp_path):
+    """recall_turn is True on turns where scenario marks recall_turn: true."""
+    profile = BenchmarkProfile(name="t", provider="fake", model="fake", use_tools=False)
+    report = run_benchmark(
+        profiles=[profile],
+        scenarios=_endurance_scenario(turns=3),
+        output_dir=tmp_path,
+        runner_info={"label": "t", "hostname": "h"},
+        client_factory=lambda p: FakeBenchClient(),
+    )
+    turns = report["runs"][0]["scenarios"][0]["turns"]
+    assert turns[-1]["recall_turn"] is True
+    assert turns[0]["recall_turn"] is False
+
+
+def test_scenario_result_has_latency_growth_rate(tmp_path):
+    """latency_growth_rate is computed for scenarios with >=3 turns."""
+    profile = BenchmarkProfile(name="t", provider="fake", model="fake", use_tools=False)
+    report = run_benchmark(
+        profiles=[profile],
+        scenarios=_endurance_scenario(turns=4),
+        output_dir=tmp_path,
+        runner_info={"label": "t", "hostname": "h"},
+        client_factory=lambda p: FakeBenchClient(),
+    )
+    scenario = report["runs"][0]["scenarios"][0]
+    assert "latency_growth_rate" in scenario
+    assert isinstance(scenario["latency_growth_rate"], float)
+
+
+def test_scenario_result_latency_growth_rate_none_for_short(tmp_path):
+    """latency_growth_rate is None for scenarios with <3 turns."""
+    profile = BenchmarkProfile(name="t", provider="fake", model="fake", use_tools=False)
+    report = run_benchmark(
+        profiles=[profile],
+        scenarios=[{
+            "id": "s1", "name": "short", "tags": [], "reset_state": True,
+            "turns": [{"user": "hi", "expect": {}}],
+        }],
+        output_dir=tmp_path,
+        runner_info={"label": "t", "hostname": "h"},
+        client_factory=lambda p: FakeBenchClient(),
+    )
+    scenario = report["runs"][0]["scenarios"][0]
+    assert scenario["latency_growth_rate"] is None
+
+
+def test_aggregate_has_endurance_fields(tmp_path):
+    """RunAggregate includes endurance_scenario_count and failure_mode_counts."""
+    profile = BenchmarkProfile(name="t", provider="fake", model="fake", use_tools=False)
+    report = run_benchmark(
+        profiles=[profile],
+        scenarios=_endurance_scenario(turns=4),
+        output_dir=tmp_path,
+        runner_info={"label": "t", "hostname": "h"},
+        client_factory=lambda p: FakeBenchClient(),
+    )
+    agg = report["runs"][0]["aggregate"]
+    assert "endurance_scenario_count" in agg
+    assert agg["endurance_scenario_count"] == 1
+    assert "failure_mode_counts" in agg
+    assert isinstance(agg["failure_mode_counts"], dict)
+
+
+def test_endurance_scenarios_load_from_disk():
+    """The three endurance scenario JSON files are valid and loadable."""
+    from talkbot.benchmark import load_scenarios
+    import pathlib
+    endurance_dir = pathlib.Path("tests/conversations/endurance")
+    for fname in [
+        "endurance_timer_sequence.json",
+        "endurance_list_management.json",
+        "endurance_memory_recall.json",
+    ]:
+        scenarios = load_scenarios(str(endurance_dir / fname))
+        assert len(scenarios) == 1
+        scenario = scenarios[0]
+        assert "endurance" in scenario["tags"]
+        assert len(scenario["turns"]) >= 10
+        # At least one recall turn should be marked
+        recall_turns = [t for t in scenario["turns"] if t.get("recall_turn")]
+        assert len(recall_turns) >= 1
+
+
+def test_detect_failure_mode_refusal():
+    from talkbot.benchmark import _detect_failure_mode
+    assert _detect_failure_mode("I cannot help with that.", None) == "refusal"
+    assert _detect_failure_mode("I'm unable to do that.", None) == "refusal"
+    assert _detect_failure_mode("Sorry, I can't assist.", None) == "refusal"
+
+
+def test_detect_failure_mode_repetition():
+    from talkbot.benchmark import _detect_failure_mode
+    prior = "The timer is set for five minutes and counting down."
+    same = "The timer is set for five minutes and counting down."
+    assert _detect_failure_mode(same, prior) == "repetition"
+
+
+def test_detect_failure_mode_none():
+    from talkbot.benchmark import _detect_failure_mode
+    assert _detect_failure_mode("Sure, I set a timer for 5 minutes.", None) == "none"
+    assert _detect_failure_mode(
+        "Sure, I set a timer.",
+        "Your list now has three items: passport, charger, and hat.",
+    ) == "none"
+
+
+def test_linear_slope_positive():
+    from talkbot.benchmark import _linear_slope
+    # Steadily increasing latencies
+    latencies = [100.0, 200.0, 300.0, 400.0, 500.0]
+    slope = _linear_slope(latencies)
+    assert slope > 0
+
+
+def test_linear_slope_flat():
+    from talkbot.benchmark import _linear_slope
+    latencies = [100.0, 100.0, 100.0, 100.0]
+    assert _linear_slope(latencies) == 0.0
+
+
+def test_linear_slope_short_returns_zero():
+    from talkbot.benchmark import _linear_slope
+    assert _linear_slope([100.0]) == 0.0
+    assert _linear_slope([100.0, 200.0]) == 0.0
