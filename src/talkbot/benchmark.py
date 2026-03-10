@@ -743,7 +743,7 @@ def _evaluate_turn(
 def _default_client_factory(profile: BenchmarkProfile):
     local_server_url = profile.local_server_url
     if local_server_url is None and profile.provider == "local_server":
-        local_server_url = os.getenv("TALKBOT_LOCAL_SERVER_URL", "http://localhost:11434/v1")
+        local_server_url = os.getenv("TALKBOT_LOCAL_SERVER_URL", "http://localhost:8000/v1")
     return create_llm_client(
         provider=profile.provider,
         model=profile.model,

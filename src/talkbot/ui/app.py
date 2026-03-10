@@ -36,9 +36,12 @@ OPENROUTER_MODELS = [
     "anthropic/claude-3.5-sonnet",       # #3 balanced score — best tool selection accuracy
 ]
 
-# Curated Ollama models with validated tool-calling status (tested 2026-02-27).
-# Ordered: tool-capable first (best default), then chat-only with tools disabled.
+# Curated local server models ordered by CPU performance (benchmarked 2026-03-09).
+# qwen3.5 via llama-server: best accuracy/speed/memory trade-off on CPU.
 LOCAL_SERVER_MODELS = [
+    "qwen3.5-0.8b-q8_0",  # 774MB — 90% success, 18.7s avg, recommended ✓
+    "qwen3.5-0.8b-q4_k_m", # 508MB — 80% success, 17.8s avg, lightest ✓
+    "qwen3.5-2b-q4_k_m",  # 1.2GB — 90% success, 44s avg, more capable
     "llama3.2:3b",        # 2GB — native tool_calls, validated ✓
     "mistral-nemo:latest", # 7GB — best multi-tool reliability, validated ✓
     "ministral-3b:latest", # 2GB — fast chat, no tool support in Ollama
@@ -53,6 +56,7 @@ VAD_PRESETS: dict[str, dict | None] = {
 
 # Substring → tool support. True=supported, False=not supported, absent=unknown (default ON).
 LOCAL_SERVER_TOOL_SUPPORT: dict[str, bool] = {
+    "qwen3.5": True,         # llama-server: tool_calls validated ✓ (2026-03-09)
     "llama3.2": True,
     "llama-3.2": True,
     "mistral-nemo": True,
@@ -118,7 +122,7 @@ class TalkBotGUI:
     def __init__(self, api_key: str = None, model: str = None):
         """Initialize the GUI."""
         self.api_key = api_key or os.getenv("OPENROUTER_API_KEY")
-        self.provider = os.getenv("TALKBOT_LLM_PROVIDER", "local")
+        self.provider = os.getenv("TALKBOT_LLM_PROVIDER", "local_server")
         if self.provider == "local_server":
             default_model = (os.getenv("TALKBOT_LOCAL_SERVER_MODEL") or "").strip()
         elif self.provider == "openrouter":
@@ -129,7 +133,7 @@ class TalkBotGUI:
         self.local_model_path = _default_local_model_path()
         self.llamacpp_bin = _default_llamacpp_bin()
         self.local_server_url = os.getenv(
-            "TALKBOT_LOCAL_SERVER_URL", "http://localhost:11434/v1"
+            "TALKBOT_LOCAL_SERVER_URL", "http://localhost:8000/v1"
         )
         self.local_server_api_key = os.getenv("TALKBOT_LOCAL_SERVER_API_KEY")
         self.client = None

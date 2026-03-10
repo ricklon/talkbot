@@ -37,7 +37,7 @@ def _default_agent_prompt() -> str | None:
 
 
 def _default_provider() -> str:
-    return os.getenv("TALKBOT_LLM_PROVIDER", "local")
+    return os.getenv("TALKBOT_LLM_PROVIDER", "local_server")
 
 
 def _default_model() -> str:
@@ -83,7 +83,7 @@ def _create_client_from_ctx(ctx: click.Context):
     "--provider",
     type=click.Choice(["local", "local_server", "openrouter"]),
     default=lambda: _default_provider(),
-    show_default="env:TALKBOT_LLM_PROVIDER or local",
+    show_default="env:TALKBOT_LLM_PROVIDER or local_server",
     help="LLM provider",
 )
 @click.option(
