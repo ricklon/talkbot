@@ -1,7 +1,8 @@
 {
-  "updated_at": "2026-03-09T19:20:50.794871-05:00",
-  "latest_run": "llama-server-qwen35-4b-q4km",
+  "updated_at": "2026-03-09T19:30:14-05:00",
+  "latest_run": "canonical-qwen35-0.8b-q8_0",
   "runs": [
+    "canonical-qwen35-0.8b-q8_0",
     "llama-server-qwen35-4b-q4km",
     "llama-server-qwen35-2b-q4km",
     "validated-20260227-v3-schemas",
