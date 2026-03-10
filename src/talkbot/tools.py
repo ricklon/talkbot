@@ -852,7 +852,7 @@ TOOL_DEFINITIONS = {
         },
     },
     "list_all_lists": {
-        "description": "Show all named lists and their contents",
+        "description": "Show all named lists and their contents. Read back every list name and its items in your response.",
         "parameters": {"type": "object", "properties": {}, "required": []},
     },
     "remember": {
@@ -939,7 +939,7 @@ TOOL_DEFINITION_VARIANTS: dict[str, dict[str, dict]] = {
                                "parameters": TOOL_DEFINITIONS["get_list"]["parameters"]},
         "create_list":        {"description": "Create a new empty named list.",
                                "parameters": TOOL_DEFINITIONS["create_list"]["parameters"]},
-        "list_all_lists":     {"description": "Show all lists and their contents.",
+        "list_all_lists":     {"description": "Show all lists and their contents. Read back every list name and its items in your response.",
                                "parameters": TOOL_DEFINITIONS["list_all_lists"]["parameters"]},
     },
     "examples": {
