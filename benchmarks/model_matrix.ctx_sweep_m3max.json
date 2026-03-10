@@ -1,0 +1,133 @@
+{
+  "_comment": "Context window sweep for M3 Max (Metal, llama-cli). Tests whether larger KV cache improves tool-calling accuracy or latency. Compare with openrouter_small3 run (qwen3-1.7b ctx2048-32768 showed no change on standard scenarios). M3 Max adds: qwen3.5-0.8b at very large contexts (up to 65536), qwen3-8b at broader range, both LLM and Intent routing, and endurance scenarios. Run with: uv run python scripts/benchmark_conversations.py --matrix benchmarks/model_matrix.ctx_sweep_m3max.json --scenarios tests/conversations --name ctx-sweep-m3max-$(date +%Y%m%d)",
+  "benchmark": {
+    "schema_version": "2026.1",
+    "values_file": "benchmarks/evaluation_values.json",
+    "rubric": {
+      "version": "2026.ctx-sweep.v1",
+      "weights": {
+        "task_success_rate": 0.35,
+        "tool_selection_accuracy": 0.2,
+        "argument_accuracy": 0.15,
+        "recovery_success_rate": 0.1,
+        "multistep_success_rate": 0.1,
+        "robustness_success_rate": 0.05,
+        "context_success_rate": 0.05
+      },
+      "penalties": {
+        "latency_ms_multiplier": 0.002,
+        "memory_mb_multiplier": 0.002,
+        "tool_error_rate_multiplier": 20.0,
+        "model_error_rate_multiplier": 30.0
+      }
+    },
+    "context_analysis": {
+      "near_peak_ratio": 0.95,
+      "dropoff_ratio": 0.9
+    }
+  },
+  "profiles": [
+    {
+      "_comment": "qwen3.5-0.8b-q8_0 LLM routing — wide context sweep. Model supports 262K; test up to 65536 to find memory/latency knee.",
+      "name": "qwen3.5-0.8b-q8-llm",
+      "provider": "local",
+      "model": "qwen/qwen3.5-0.8b",
+      "local_model_path": "models/qwen3.5-0.8b-q8_0.gguf",
+      "llamacpp_bin": "llama-cli",
+      "enable_thinking": false,
+      "use_tools": true,
+      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+      "max_tokens": 512,
+      "temperature": 0.0,
+      "context_windows": [512, 1024, 2048, 4096, 8192, 16384, 32768, 65536],
+      "env": {
+        "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "0"
+      }
+    },
+    {
+      "_comment": "qwen3.5-0.8b-q8_0 Intent routing — same context range for clean A/B vs LLM routing.",
+      "name": "qwen3.5-0.8b-q8-intent",
+      "provider": "local",
+      "model": "qwen/qwen3.5-0.8b",
+      "local_model_path": "models/qwen3.5-0.8b-q8_0.gguf",
+      "llamacpp_bin": "llama-cli",
+      "enable_thinking": false,
+      "use_tools": true,
+      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+      "max_tokens": 512,
+      "temperature": 0.0,
+      "context_windows": [512, 1024, 2048, 4096, 8192, 16384, 32768, 65536],
+      "env": {
+        "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "1"
+      }
+    },
+    {
+      "_comment": "qwen3-1.7b-q4km LLM routing — repeat of openrouter_small3 range plus larger contexts unique to M3 Max.",
+      "name": "qwen3-1.7b-q4km-llm",
+      "provider": "local",
+      "model": "qwen/qwen3-1.7b",
+      "local_model_path": "models/qwen3-1.7b-q4_k_m.gguf",
+      "llamacpp_bin": "llama-cli",
+      "enable_thinking": false,
+      "use_tools": true,
+      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+      "max_tokens": 512,
+      "temperature": 0.0,
+      "context_windows": [2048, 4096, 8192, 16384, 32768, 65536],
+      "env": {
+        "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "0"
+      }
+    },
+    {
+      "_comment": "qwen3-1.7b-q4km Intent routing.",
+      "name": "qwen3-1.7b-q4km-intent",
+      "provider": "local",
+      "model": "qwen/qwen3-1.7b",
+      "local_model_path": "models/qwen3-1.7b-q4_k_m.gguf",
+      "llamacpp_bin": "llama-cli",
+      "enable_thinking": false,
+      "use_tools": true,
+      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+      "max_tokens": 512,
+      "temperature": 0.0,
+      "context_windows": [2048, 4096, 8192, 16384, 32768, 65536],
+      "env": {
+        "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "1"
+      }
+    },
+    {
+      "_comment": "qwen3-8b-q4km LLM routing — larger model, test whether 8B needs bigger context for tool accuracy.",
+      "name": "qwen3-8b-q4km-llm",
+      "provider": "local",
+      "model": "qwen/qwen3-8b",
+      "local_model_path": "models/qwen3-8b-q4_k_m.gguf",
+      "llamacpp_bin": "llama-cli",
+      "enable_thinking": false,
+      "use_tools": true,
+      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+      "max_tokens": 512,
+      "temperature": 0.0,
+      "context_windows": [2048, 4096, 8192, 16384, 32768],
+      "env": {
+        "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "0"
+      }
+    },
+    {
+      "_comment": "qwen3-8b-q4km Intent routing.",
+      "name": "qwen3-8b-q4km-intent",
+      "provider": "local",
+      "model": "qwen/qwen3-8b",
+      "local_model_path": "models/qwen3-8b-q4_k_m.gguf",
+      "llamacpp_bin": "llama-cli",
+      "enable_thinking": false,
+      "use_tools": true,
+      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+      "max_tokens": 512,
+      "temperature": 0.0,
+      "context_windows": [2048, 4096, 8192, 16384, 32768],
+      "env": {
+        "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "1"
+      }
+    }
+  ]
+}

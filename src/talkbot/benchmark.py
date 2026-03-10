@@ -80,6 +80,9 @@ class BenchmarkProfile:
     # ""   = no directive (explicit suppression)
     # str  = use this custom directive
     tool_use_directive: str | None = None
+    # True signals that TTS_VOICE_DIRECTIVE was appended to the system prompt.
+    # Used by the leaderboard A/B comparison; does not change runtime behaviour.
+    tts_directive: bool = False
 
 
 @dataclass

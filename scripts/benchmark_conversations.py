@@ -440,6 +440,12 @@ def main(argv: list[str] | None = None) -> int:
         profiles = matrix_config["profiles"]
         rubric = matrix_config.get("rubric")
         context_analysis = matrix_config.get("context_analysis")
+        # Apply CLI --local-server-url as fallback for matrix local_server profiles
+        # that don't already specify their own URL.
+        if args.local_server_url:
+            for p in profiles:
+                if p.provider == "local_server" and not p.local_server_url:
+                    p.local_server_url = args.local_server_url
     else:
         profiles = [_default_profile_from_args(args)]
 
