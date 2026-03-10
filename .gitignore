@@ -16,6 +16,7 @@ sample.wav
 # Local model weights
 models/*.gguf
 models/*.GGUF
+models/*.part
 
 # System/installation-specific tools (e.g. llama.cpp binaries)
 tools/
@@ -28,6 +29,9 @@ tools/
 
 # macOS
 .DS_Store
+
+# Scratch scripts in repo root
+sounddevice*
 
 # Generated benchmark artifacts
 benchmark_results/
