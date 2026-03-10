@@ -34,14 +34,15 @@ wget "https://huggingface.co/bartowski/Qwen_Qwen3.5-0.8B-GGUF/resolve/main/Qwen_
 cp .env.example .env
 
 # 4) Start local llama-server (in a separate terminal)
+# Linux (CPU):
 llama-server \
   -m models/qwen3.5-0.8b-q8_0.gguf \
-  --port 8000 \
-  --ctx-size 4096 \
-  --n-predict 512 \
-  --no-mmap \
-  -t 4 \
-  --reasoning-budget 0
+  --port 8000 --ctx-size 4096 --n-predict 512 --no-mmap -t 4 --reasoning-budget 0
+
+# macOS Apple Silicon (Metal GPU — install first: brew install llama.cpp):
+# llama-server \
+#   -m models/qwen3.5-0.8b-q8_0.gguf \
+#   --port 8000 --ctx-size 4096 --n-predict 512 --gpu-layers -1 --reasoning-budget 0
 
 # 5) Start the GUI
 uv run talkbot-gui
@@ -49,18 +50,18 @@ uv run talkbot-gui
 
 ## Platform Compatibility
 
-| Component | Windows 11 | Linux / macOS | Notes |
-|---|---|---|---|
-| **local_server** (default LLM) | ✅ | ✅ | Pre-built `llama-server` binary from llama.cpp releases; see below |
-| **local** (in-process LLM) | ⚠️ | ✅ | Requires MSVC build tools on Windows to compile `llama-cpp-python`; use `local_server` instead |
-| **openrouter** (cloud LLM) | ✅ | ✅ | No platform concerns |
-| **kittentts** (default TTS) | ✅ | ✅ | fd-suppression during init silently skipped on Windows — cosmetic only, TTS works fully |
-| **edge-tts** (online TTS) | ✅ | ✅ | asyncio + pygame, no issues |
-| **pyttsx3** (offline TTS) | ✅ | ✅ | Uses Windows SAPI5 on Windows, eSpeak on Linux |
-| **faster-whisper** (STT) | ✅ | ✅ | Pre-built PyPI wheels; CPU int8 inference |
-| **silero-vad** (VAD) | ✅ | ✅ | Pre-built PyPI wheels |
-| **sounddevice / soundfile** | ✅ | ✅ | PortAudio; well-tested on Windows |
-| **GUI (tkinter)** | ✅ | ✅ | tkinter bundled with Python on Windows; system package on Linux |
+| Component | Windows 11 | Linux | macOS (Apple Silicon) | Notes |
+|---|---|---|---|---|
+| **local_server** (default LLM) | ✅ | ✅ | ✅ Metal GPU | `brew install llama.cpp` on macOS; pre-built binary from llama.cpp releases on Linux/Windows |
+| **local** (in-process LLM) | ⚠️ | ✅ | ✅ | Requires MSVC on Windows; `llama-cpp-python` 0.3.16 does not support Qwen3.5 — use `local_server` |
+| **openrouter** (cloud LLM) | ✅ | ✅ | ✅ | No platform concerns |
+| **kittentts** (default TTS) | ✅ | ✅ | ✅ | Needs `espeak-ng` (`brew install espeak-ng` on macOS) |
+| **edge-tts** (online TTS) | ✅ | ✅ | ✅ | asyncio + pygame, no issues |
+| **pyttsx3** (offline TTS) | ✅ | ✅ | ✅ | Uses SAPI5 on Windows, eSpeak on Linux/macOS |
+| **faster-whisper** (STT) | ✅ | ✅ | ✅ | Pre-built PyPI wheels; CPU int8 inference |
+| **silero-vad** (VAD) | ✅ | ✅ | ✅ | Pre-built PyPI wheels |
+| **sounddevice / soundfile** | ✅ | ✅ | ✅ | Needs `brew install portaudio` on macOS |
+| **GUI (tkinter)** | ✅ | ✅ | ✅ | Needs `brew install python-tk` on macOS |
 
 > **Dependency note:** TalkBot pins `kittentts==0.8.1` via direct GitHub release wheel (not on PyPI). `uv sync` fetches it automatically.
 
@@ -84,9 +85,14 @@ sudo dnf install espeak-ng                  # Fedora/RHEL
 
 ### Prerequisites (macOS)
 
-KittenTTS needs eSpeak NG:
-
 ```bash
+# Required for GUI (tkinter is not bundled with Homebrew Python)
+brew install python-tk
+
+# Required for voice pipeline (sounddevice uses PortAudio)
+brew install portaudio
+
+# Required for KittenTTS TTS backend
 brew install espeak-ng
 ```
 
@@ -167,15 +173,27 @@ uv sync
 
 The default provider is `local_server`, which requires llama-server to be running before TalkBot starts.
 
-**Recommended model: `qwen3.5-0.8b-q8_0.gguf`** (774 MB, 90% benchmark success, 21 tok/s on i7-10610U)
+**Recommended model: `qwen3.5-0.8b-q8_0.gguf`** (774 MB, 90% benchmark success)
 
-Download:
+Download (Linux):
 ```bash
 wget "https://huggingface.co/bartowski/Qwen_Qwen3.5-0.8B-GGUF/resolve/main/Qwen_Qwen3.5-0.8B-Q8_0.gguf" \
   -O models/qwen3.5-0.8b-q8_0.gguf
 ```
 
-Start the server (Linux/macOS):
+Download (macOS — `wget` not pre-installed, use `curl`):
+```bash
+curl -L "https://huggingface.co/bartowski/Qwen_Qwen3.5-0.8B-GGUF/resolve/main/Qwen_Qwen3.5-0.8B-Q8_0.gguf" \
+  -o models/qwen3.5-0.8b-q8_0.gguf
+```
+
+**Getting `llama-server` (macOS — Apple Silicon):**
+```bash
+brew install llama.cpp
+```
+This installs a Metal-enabled build. `llama-server` will be on your PATH.
+
+Start the server (Linux — CPU):
 ```bash
 llama-server \
   -m models/qwen3.5-0.8b-q8_0.gguf \
@@ -187,15 +205,27 @@ llama-server \
   --reasoning-budget 0
 ```
 
+Start the server (macOS — Apple Silicon, Metal GPU):
+```bash
+llama-server \
+  -m models/qwen3.5-0.8b-q8_0.gguf \
+  --port 8000 \
+  --ctx-size 4096 \
+  --n-predict 512 \
+  --gpu-layers -1 \
+  --reasoning-budget 0
+```
+
 Start the server (Windows):
 ```bat
 tools\llama-cpp\llama-server.exe -m models\qwen3.5-0.8b-q8_0.gguf --port 8000 --ctx-size 4096 --n-predict 512 --no-mmap -t 4 --reasoning-budget 0
 ```
 
 **Flag notes:**
-- `--no-mmap`: loads weights into RAM entirely — better performance on CPU
+- `--gpu-layers -1`: offload all layers to Metal GPU (Apple Silicon) — expect 3-5s turns vs ~18s on CPU
+- `--no-mmap`: loads weights into RAM entirely — better for Linux CPU; skip on Apple Silicon with GPU offload
 - `--reasoning-budget 0`: disables extended thinking mode (faster, cleaner tool responses)
-- `-t 4`: thread count — tune to your CPU core count
+- `-t 4`: CPU thread count — tune to your core count; not needed when using Metal
 - `--ctx-size 4096`: supports 16-tool prompts (~2400 tokens) plus conversation history
 
 **Alternative: `local` provider (llama-cpp-python)**
