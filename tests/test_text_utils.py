@@ -1,4 +1,4 @@
-from talkbot.text_utils import normalize_for_tts, strip_thinking
+from talkbot.text_utils import normalize_for_tts, strip_thinking, tts_friction_score
 
 
 def test_strip_thinking_removes_think_blocks():
@@ -117,4 +117,74 @@ def test_normalize_file_path_not_affected():
     result = normalize_for_tts(text)
     # The path segment itself may be altered but the slash prevents full match
     assert "/home/user/" in result
+
+
+# --- tts_friction_score tests ---
+
+
+def test_friction_clean_text_is_zero():
+    score, detail = tts_friction_score("The timer is set for five minutes.")
+    assert score == 0
+    assert detail == {}
+
+
+def test_friction_empty_string():
+    score, detail = tts_friction_score("")
+    assert score == 0
+    assert detail == {}
+
+
+def test_friction_counts_markdown_bold():
+    score, detail = tts_friction_score("This is **bold** text.")
+    assert score >= 1
+    assert "markdown" in detail
+
+
+def test_friction_counts_code_fence():
+    score, detail = tts_friction_score("Here:\n```python\nprint('hi')\n```")
+    assert "markdown" in detail
+    assert detail["markdown"] >= 1
+
+
+def test_friction_counts_bullet():
+    score, detail = tts_friction_score("Options:\n- First\n- Second")
+    assert "markdown" in detail
+
+
+def test_friction_counts_underscore_identifier():
+    score, detail = tts_friction_score("Call cancel_timer to stop it.")
+    assert score >= 1
+    assert "identifiers" in detail
+    assert detail["identifiers"] == 1
+
+
+def test_friction_counts_label_id():
+    score, detail = tts_friction_score("Timer ID: 3 is running.")
+    assert "label_ids" in detail
+    assert detail["label_ids"] == 1
+
+
+def test_friction_multiple_categories():
+    text = "**cancel_timer** for Timer ID: 5"
+    score, detail = tts_friction_score(text)
+    assert score >= 3
+    assert "markdown" in detail
+    assert "identifiers" in detail
+    assert "label_ids" in detail
+
+
+def test_friction_detail_sums_to_total():
+    text = "**bold** `code` cancel_timer Timer ID: 2"
+    score, detail = tts_friction_score(text)
+    assert score == sum(detail.values())
+
+
+def test_friction_score_before_normalization():
+    """Score is computed on raw text, not normalized text."""
+    raw = "Use cancel_timer now."
+    score_raw, _ = tts_friction_score(raw)
+    normalized = normalize_for_tts(raw)
+    score_after, _ = tts_friction_score(normalized)
+    assert score_raw >= 1
+    assert score_after == 0
 

@@ -30,6 +30,45 @@ _UNDERSCORE_ID_RE = re.compile(r"\b([a-z][a-z0-9]*)_([a-z][a-z0-9_]*)\b")
 _LABEL_ID_RE = re.compile(r"\bID\s*[:=]\s*(\d+)", re.IGNORECASE)
 
 
+def tts_friction_score(text: str) -> tuple[int, dict[str, int]]:
+    """Count TTS-hostile token patterns in text before normalization.
+
+    Returns (total_score, detail_dict) where detail_dict breaks the count
+    down by category. A score of 0 means the text is clean for TTS.
+
+    Categories:
+      markdown  — code fences, inline code, bold/italic, headers, bullets, HRs
+      identifiers — underscore_identifiers (snake_case tokens)
+      label_ids   — "Timer ID: 3" style patterns
+    """
+    if not text:
+        return 0, {}
+
+    detail: dict[str, int] = {}
+
+    md_count = (
+        len(_MD_CODE_FENCE_RE.findall(text))
+        + len(_MD_CODE_SPAN_RE.findall(text))
+        + len(_MD_BOLD_ITALIC_RE.findall(text))
+        + len(_MD_HEADER_RE.findall(text))
+        + len(_MD_BULLET_RE.findall(text))
+        + len(_MD_NUMBERED_RE.findall(text))
+        + len(_MD_HR_RE.findall(text))
+    )
+    if md_count:
+        detail["markdown"] = md_count
+
+    id_count = len(_UNDERSCORE_ID_RE.findall(text))
+    if id_count:
+        detail["identifiers"] = id_count
+
+    label_count = len(_LABEL_ID_RE.findall(text))
+    if label_count:
+        detail["label_ids"] = label_count
+
+    return sum(detail.values()), detail
+
+
 def normalize_for_tts(text: str) -> str:
     """Normalize LLM output for natural-sounding TTS synthesis."""
     if not text:

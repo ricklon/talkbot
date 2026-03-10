@@ -678,3 +678,57 @@ def test_reliability_band_values(tmp_path):
     assert _reliability_band(0.40) == "medium"
     assert _reliability_band(0.39) == "low"
     assert _reliability_band(0.0) == "low"
+
+
+# --- TTS friction scoring tests ---
+
+
+def test_turn_result_has_tts_friction_fields(tmp_path):
+    """Every TurnResult has tts_friction_score and tts_friction_detail."""
+    profile = BenchmarkProfile(name="test", provider="fake", model="fake", use_tools=False)
+    scenarios = [
+        {
+            "id": "s1",
+            "name": "clean",
+            "tags": [],
+            "turns": [{"user": "hi", "expect": {}}],
+        }
+    ]
+    report = run_benchmark(
+        profiles=[profile],
+        scenarios=scenarios,
+        output_dir=tmp_path,
+        runner_info={"label": "t", "hostname": "h"},
+        client_factory=lambda p: FakeBenchClient(),
+    )
+    turn = report["runs"][0]["scenarios"][0]["turns"][0]
+    assert "tts_friction_score" in turn
+    assert "tts_friction_detail" in turn
+    assert isinstance(turn["tts_friction_score"], int)
+    assert isinstance(turn["tts_friction_detail"], dict)
+
+
+def test_aggregate_has_friction_fields(tmp_path):
+    """RunAggregate includes avg_tts_friction_score and tts_friction_zero_rate."""
+    profile = BenchmarkProfile(name="test", provider="fake", model="fake", use_tools=False)
+    scenarios = [
+        {
+            "id": "s1",
+            "name": "clean",
+            "tags": [],
+            "turns": [{"user": "hi", "expect": {}}],
+        }
+    ]
+    report = run_benchmark(
+        profiles=[profile],
+        scenarios=scenarios,
+        output_dir=tmp_path,
+        runner_info={"label": "t", "hostname": "h"},
+        client_factory=lambda p: FakeBenchClient(),
+    )
+    agg = report["runs"][0]["aggregate"]
+    assert "avg_tts_friction_score" in agg
+    assert "tts_friction_zero_rate" in agg
+    # FakeBenchClient returns "ok" — no markdown, so friction should be 0
+    assert agg["avg_tts_friction_score"] == 0.0
+    assert agg["tts_friction_zero_rate"] == 1.0  # _percent returns 0-1 fraction

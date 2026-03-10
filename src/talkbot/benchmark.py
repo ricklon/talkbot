@@ -23,7 +23,7 @@ from typing import Any, Callable
 
 from talkbot.judge import JudgeResult, LLMJudge
 from talkbot.llm import create_llm_client, supports_tools
-from talkbot.text_utils import normalize_for_tts
+from talkbot.text_utils import normalize_for_tts, tts_friction_score
 from talkbot.tools import TOOL_DEFINITIONS, TOOLS, get_tool_definitions_for_variant, reset_runtime_state
 
 try:
@@ -97,6 +97,9 @@ class TurnResult:
     usage: dict[str, Any]
     history_messages: int
     history_chars: int
+    # TTS friction: count of TTS-hostile tokens in the raw (pre-normalization) response
+    tts_friction_score: int = 0
+    tts_friction_detail: dict[str, Any] = field(default_factory=dict)
     # LLM judge fields — None when judge is not enabled or call errored
     judge_correctness: float | None = None
     judge_spoken_quality: float | None = None
@@ -164,6 +167,9 @@ class RunAggregate:
     avg_gen_tok_s: float
     scenario_success_per_second: float
     tag_success: dict[str, float]
+    # TTS friction aggregate
+    avg_tts_friction_score: float = 0.0
+    tts_friction_zero_rate: float = 0.0   # fraction of turns with score == 0
     # LLM judge aggregate fields — None when judge not enabled for this run
     avg_judge_correctness: float | None = None
     avg_judge_spoken_quality: float | None = None
@@ -1135,6 +1141,9 @@ def _run_scenario_once(
 
         history_chars = sum(len(str(m.get("content", ""))) for m in messages)
 
+        # TTS friction: score the raw response before any normalization
+        friction, friction_detail = tts_friction_score(response_text)
+
         judge_result: JudgeResult | None = None
         if judge is not None and response_text:
             judge_result = judge.evaluate_turn(
@@ -1156,6 +1165,8 @@ def _run_scenario_once(
                 usage=usage,
                 history_messages=len(messages),
                 history_chars=history_chars,
+                tts_friction_score=friction,
+                tts_friction_detail=friction_detail,
                 judge_correctness=(
                     judge_result.correctness
                     if judge_result and not judge_result.has_error
@@ -1527,6 +1538,15 @@ def _build_aggregate(
         if total_gen_ms > 0
         else 0.0
     )
+    # TTS friction aggregate
+    friction_scores = [t.tts_friction_score for t in all_turns]
+    avg_tts_friction = (
+        round(statistics.fmean(friction_scores), 3) if friction_scores else 0.0
+    )
+    tts_friction_zero_rate = _percent(
+        sum(1 for s in friction_scores if s == 0), max(1, len(friction_scores))
+    )
+
     # Judge aggregate: average over turns that were successfully scored
     judge_correctness_scores = [
         t.judge_correctness for t in all_turns if t.judge_correctness is not None
@@ -1594,6 +1614,8 @@ def _build_aggregate(
         avg_gen_tok_s=avg_gen_tok_s,
         scenario_success_per_second=scenario_success_per_second,
         tag_success=tag_success,
+        avg_tts_friction_score=avg_tts_friction,
+        tts_friction_zero_rate=tts_friction_zero_rate,
         avg_judge_correctness=avg_judge_correctness,
         avg_judge_spoken_quality=avg_judge_spoken_quality,
         judge_calls=judge_calls,
