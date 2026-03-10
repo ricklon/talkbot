@@ -526,6 +526,8 @@ tts.list_voices()
 
 ## Conversation Benchmarking
 
+TalkBot evaluates the full voice pipeline — STT accuracy, LLM tool use, and TTS latency — to find the best model combinations per hardware class. See **[`benchmarks/README.md`](benchmarks/README.md)** for the full evaluation framework, current leaderboards, and how to add a new machine.
+
 Use scripted multi-turn conversations to score tool reliability, latency, context usage, and memory footprint.
 
 ### Run a benchmark
