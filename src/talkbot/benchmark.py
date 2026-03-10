@@ -2550,4 +2550,117 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
                 f"- Routing gap summary: intent minus llm avg score delta = {avg_score_gap:+.3f}",
             ]
         )
+
+    # --- Voice Quality & Reliability ---
+    lines.extend(
+        [
+            "",
+            "## TTS Friction",
+            "",
+            "- `Avg Friction`: mean count of TTS-hostile tokens per turn (lower is better).",
+            "- `Clean Rate`: fraction of turns with zero friction (higher is better).",
+            "",
+            "| Run | Avg Friction | Clean Rate |",
+            "|---|---:|---:|",
+        ]
+    )
+    for run in quality_rank:
+        agg = run["aggregate"]
+        lines.append(
+            f"| {(run.get('profile') or {}).get('name', '')} | "
+            f"{_coerce_float(agg.get('avg_tts_friction_score'), 0.0):.2f} | "
+            f"{_coerce_float(agg.get('tts_friction_zero_rate'), 0.0):.1%} |"
+        )
+
+    # Judge section — only rendered when at least one run has judge data
+    judge_runs = [r for r in quality_rank if r["aggregate"].get("avg_judge_correctness") is not None]
+    if judge_runs:
+        lines.extend(
+            [
+                "",
+                "## LLM Judge Scores",
+                "",
+                "- Scores are 1–5 (higher is better). Evaluated by the judge model on a sample of turns.",
+                "- `Correctness`: did the response correctly address the request?",
+                "- `Spoken Quality`: is the response phrased naturally for voice output?",
+                "",
+                "| Run | Correctness | Spoken Quality | Judge Calls |",
+                "|---|---:|---:|---:|",
+            ]
+        )
+        for run in quality_rank:
+            agg = run["aggregate"]
+            corr = agg.get("avg_judge_correctness")
+            spoken = agg.get("avg_judge_spoken_quality")
+            calls = int(_coerce_float(agg.get("judge_calls"), 0.0))
+            corr_str = f"{corr:.2f}" if corr is not None else "n/a"
+            spoken_str = f"{spoken:.2f}" if spoken is not None else "n/a"
+            lines.append(
+                f"| {(run.get('profile') or {}).get('name', '')} | "
+                f"{corr_str} | {spoken_str} | {calls} |"
+            )
+
+    # Reliability bands — summarise per-scenario pass^k results
+    any_passk = any(
+        any(
+            isinstance(sc, dict) and sc.get("pass_k", 1) > 1
+            for sc in (run.get("scenarios") or [])
+        )
+        for run in quality_rank
+    )
+    if any_passk:
+        lines.extend(
+            [
+                "",
+                "## Reliability Bands (pass^k)",
+                "",
+                "- Bands: **high** ≥80 %, **medium** 50–79 %, **low** 20–49 %, **very-low** <20 %.",
+                "",
+                "| Run | High | Medium | Low | Very-Low | Avg Pass Rate |",
+                "|---|---:|---:|---:|---:|---:|",
+            ]
+        )
+        for run in quality_rank:
+            scenarios = [s for s in (run.get("scenarios") or []) if isinstance(s, dict)]
+            bands: dict[str, int] = {"high": 0, "medium": 0, "low": 0, "very-low": 0}
+            pass_rates: list[float] = []
+            for sc in scenarios:
+                band = str(sc.get("reliability_band") or "high")
+                bands[band] = bands.get(band, 0) + 1
+                pr = sc.get("pass_rate")
+                if pr is not None:
+                    pass_rates.append(float(pr))
+            avg_pr = statistics.fmean(pass_rates) if pass_rates else 1.0
+            lines.append(
+                f"| {(run.get('profile') or {}).get('name', '')} | "
+                f"{bands['high']} | {bands['medium']} | {bands['low']} | {bands['very-low']} | "
+                f"{avg_pr:.1%} |"
+            )
+
+    # Endurance section — only rendered when endurance scenarios ran
+    endurance_runs = [
+        r for r in quality_rank if r["aggregate"].get("endurance_scenario_count", 0) > 0
+    ]
+    if endurance_runs:
+        lines.extend(
+            [
+                "",
+                "## Endurance",
+                "",
+                "- `Endurance Scen`: number of endurance-tagged scenarios run.",
+                "- `Latency Growth`: average ms/turn slope across endurance scenarios (positive = slowing down).",
+                "",
+                "| Run | Endurance Scen | Latency Growth (ms/turn) |",
+                "|---|---:|---:|",
+            ]
+        )
+        for run in quality_rank:
+            agg = run["aggregate"]
+            esc = int(_coerce_float(agg.get("endurance_scenario_count"), 0.0))
+            lgr = agg.get("avg_latency_growth_rate")
+            lgr_str = f"{lgr:+.1f}" if lgr is not None else "n/a"
+            lines.append(
+                f"| {(run.get('profile') or {}).get('name', '')} | {esc} | {lgr_str} |"
+            )
+
     return "\n".join(lines) + "\n"
