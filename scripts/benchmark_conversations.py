@@ -27,6 +27,7 @@ from talkbot.benchmark import (
     write_outputs,
 )
 from talkbot.benchmark_publish import publish_benchmark_results
+from talkbot.judge import DEFAULT_JUDGE_MODEL, JudgeConfig, LLMJudge, estimate_judge_cost
 
 
 # ---------------------------------------------------------------------------
@@ -370,6 +371,54 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         default=None,
         help="Set TALKBOT_LOCAL_N_CTX for local provider profiles",
     )
+
+    # --- pass^k reliability options ---
+    parser.add_argument(
+        "--pass-k",
+        type=int,
+        default=1,
+        metavar="K",
+        help="Run each scenario K times and report pass rate (default: 1 = single run). "
+             "Scenarios tagged 'high_variability' always use k=5.",
+    )
+    parser.add_argument(
+        "--pass-k-temperature",
+        type=float,
+        default=0.3,
+        metavar="T",
+        help="Temperature used for pass^k runs when K > 1 (default: 0.3)",
+    )
+
+    # --- LLM judge options ---
+    parser.add_argument(
+        "--judge",
+        action="store_true",
+        default=False,
+        help="Enable LLM-as-judge evaluation via OpenRouter after each turn.",
+    )
+    parser.add_argument(
+        "--judge-model",
+        default=DEFAULT_JUDGE_MODEL,
+        help=f"OpenRouter model ID for judge (default: {DEFAULT_JUDGE_MODEL})",
+    )
+    parser.add_argument(
+        "--judge-api-key",
+        default=None,
+        help="OpenRouter API key for judge (falls back to OPENROUTER_API_KEY env var)",
+    )
+    parser.add_argument(
+        "--judge-max-calls",
+        type=int,
+        default=500,
+        help="Maximum judge API calls per run — cost guard (default: 500)",
+    )
+    parser.add_argument(
+        "--judge-dry-run",
+        action="store_true",
+        default=False,
+        help="Use heuristic scorer instead of real judge API calls (no cost, for testing)",
+    )
+
     return parser.parse_args(argv)
 
 
@@ -407,6 +456,41 @@ def main(argv: list[str] | None = None) -> int:
         server_url = os.getenv("TALKBOT_LOCAL_SERVER_URL", "http://localhost:11434/v1")
         ensure_ollama_models(profiles, server_url)
 
+    # Build judge if requested
+    judge: LLMJudge | None = None
+    if args.judge or args.judge_dry_run:
+        judge_config = JudgeConfig(
+            model=args.judge_model,
+            api_key=args.judge_api_key or None,
+            max_calls=args.judge_max_calls,
+            dry_run=args.judge_dry_run,
+        )
+        # Print cost estimate before any API calls
+        if not args.judge_dry_run:
+            avg_turns = (
+                sum(len(s.get("turns", [])) for s in scenarios) / max(1, len(scenarios))
+            )
+            est = estimate_judge_cost(
+                scenario_count=len(scenarios),
+                avg_turns=avg_turns,
+                model=judge_config.model,
+            )
+            print(
+                f"[judge] model={est['model']} "
+                f"calls≈{est['judge_calls']} "
+                f"tokens≈{est['input_tokens']}+{est['output_tokens']} "
+                f"estimated_cost≈${est['estimated_cost_usd']:.4f} USD"
+            )
+        else:
+            print(f"[judge] dry-run mode — heuristic scorer, no API calls")
+        judge = LLMJudge(judge_config)
+
+    if args.pass_k > 1:
+        print(
+            f"[pass^k] k={args.pass_k}, temperature={args.pass_k_temperature} "
+            f"(scenarios tagged 'high_variability' will use k=5)"
+        )
+
     report = run_benchmark(
         profiles=profiles,
         scenarios=scenarios,
@@ -414,7 +498,13 @@ def main(argv: list[str] | None = None) -> int:
         rubric=rubric,
         context_analysis=context_analysis,
         runner_info=runner_info,
+        judge=judge,
+        pass_k=args.pass_k,
+        pass_k_temperature=args.pass_k_temperature,
     )
+    if judge is not None:
+        print(f"[judge] {judge.calls_made} call(s) made")
+        judge.close()
     report["meta"] = {
         "main_output_root": str(Path(args.main_output_root)),
         "latest_run": str(Path(args.output).resolve()),

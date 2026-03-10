@@ -21,7 +21,9 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
+from talkbot.judge import JudgeResult, LLMJudge
 from talkbot.llm import create_llm_client, supports_tools
+from talkbot.text_utils import normalize_for_tts
 from talkbot.tools import TOOL_DEFINITIONS, TOOLS, get_tool_definitions_for_variant, reset_runtime_state
 
 try:
@@ -95,6 +97,12 @@ class TurnResult:
     usage: dict[str, Any]
     history_messages: int
     history_chars: int
+    # LLM judge fields — None when judge is not enabled or call errored
+    judge_correctness: float | None = None
+    judge_spoken_quality: float | None = None
+    judge_reasoning: str | None = None
+    judge_checklist: dict[str, Any] | None = None
+    judge_error: str | None = None
 
 
 @dataclass
@@ -111,6 +119,11 @@ class ScenarioResult:
     expected_arg_checks: int
     matched_arg_checks: int
     actual_tool_calls: int
+    # pass^k reliability fields (pass_k=1 means single-run, current default)
+    pass_k: int = 1
+    pass_count: int = 1
+    pass_rate: float = 1.0
+    reliability_band: str = "high"
 
 
 @dataclass
@@ -151,6 +164,10 @@ class RunAggregate:
     avg_gen_tok_s: float
     scenario_success_per_second: float
     tag_success: dict[str, float]
+    # LLM judge aggregate fields — None when judge not enabled for this run
+    avg_judge_correctness: float | None = None
+    avg_judge_spoken_quality: float | None = None
+    judge_calls: int = 0
 
 
 @dataclass
@@ -652,18 +669,35 @@ def _evaluate_turn(
     expected_arg_checks = 0
     matched_arg_checks = 0
 
+    normalized_response = normalize_for_tts(response)
+
     contains = expect.get("response_contains") or []
     if isinstance(contains, list):
-        response_folded = response.casefold()
+        response_folded = normalized_response.casefold()
         for part in contains:
             part_text = str(part)
             if part_text.casefold() not in response_folded:
                 assertions.append(f"Missing response text: {part_text!r}")
 
+    # response_spoken_contains is an explicit alias for the normalized match behavior
+    spoken_contains = expect.get("response_spoken_contains") or []
+    if isinstance(spoken_contains, list):
+        response_folded = normalized_response.casefold()
+        for part in spoken_contains:
+            part_text = str(part)
+            if part_text.casefold() not in response_folded:
+                assertions.append(f"Missing spoken response text: {part_text!r}")
+
     regex = expect.get("response_regex")
     if regex:
-        if re.search(str(regex), response) is None:
+        if re.search(str(regex), normalized_response) is None:
             assertions.append(f"Response does not match regex: {regex!r}")
+
+    # response_spoken_regex is an explicit alias for normalized regex matching
+    spoken_regex = expect.get("response_spoken_regex")
+    if spoken_regex:
+        if re.search(str(spoken_regex), normalized_response) is None:
+            assertions.append(f"Response does not match spoken regex: {spoken_regex!r}")
 
     if expect.get("no_tool_calls") and tool_calls:
         assertions.append("Expected no tool calls, but at least one was executed.")
@@ -1013,6 +1047,149 @@ def detect_runner_info(
     return _json_safe(payload)
 
 
+def _run_scenario_once(
+    *,
+    scenario: dict[str, Any],
+    client: Any,
+    profile: BenchmarkProfile,
+    system_message: dict[str, str] | None,
+    recorder: ToolRecorder,
+    judge: "LLMJudge | None",
+    temperature: float,
+) -> tuple[list[TurnResult], int, int, int, int, int]:
+    """Execute every turn in a scenario once and return results.
+
+    Returns:
+        (turns, expected_tool_calls, matched_tool_names,
+         expected_arg_checks, matched_arg_checks, actual_tool_calls)
+    """
+    messages: list[dict[str, str]] = [system_message] if system_message else []
+    turns: list[TurnResult] = []
+    expected_tool_calls = 0
+    matched_tool_names = 0
+    expected_arg_checks = 0
+    matched_arg_checks = 0
+    actual_tool_calls = 0
+
+    for turn_idx, turn in enumerate(scenario["turns"]):
+        recorder.active_scenario_id = scenario["id"]
+        recorder.active_turn_index = turn_idx
+        start_call_index = len(recorder.calls)
+
+        user_text = turn["user"]
+        messages.append({"role": "user", "content": user_text})
+        turn_started = time.perf_counter()
+        assertions: list[str] = []
+        response_text = ""
+        try:
+            if profile.use_tools:
+                response_text = str(
+                    client.chat_with_tools(
+                        messages,
+                        temperature=temperature,
+                        max_tokens=profile.max_tokens,
+                    )
+                    or ""
+                ).strip()
+            else:
+                response = client.chat_completion(
+                    messages,
+                    temperature=temperature,
+                    max_tokens=profile.max_tokens,
+                )
+                response_text = _response_content(response).strip()
+        except Exception as exc:
+            assertions.append(f"Model execution error: {exc}")
+
+        latency_ms = round((time.perf_counter() - turn_started) * 1000.0, 3)
+        turn_calls = recorder.calls[start_call_index:]
+        usage = dict(getattr(client, "last_usage", {}) or {})
+
+        if not assertions:
+            (
+                passed,
+                extra_assertions,
+                exp_names,
+                got_names,
+                exp_args,
+                got_args,
+            ) = _evaluate_turn(
+                turn=turn,
+                response=response_text,
+                tool_calls=turn_calls,
+                latency_ms=latency_ms,
+            )
+            assertions.extend(extra_assertions)
+        else:
+            passed = False
+            exp_names = got_names = exp_args = got_args = 0
+
+        expected_tool_calls += exp_names
+        matched_tool_names += got_names
+        expected_arg_checks += exp_args
+        matched_arg_checks += got_args
+        actual_tool_calls += len(turn_calls)
+
+        if response_text:
+            messages.append({"role": "assistant", "content": response_text})
+
+        history_chars = sum(len(str(m.get("content", ""))) for m in messages)
+
+        judge_result: JudgeResult | None = None
+        if judge is not None and response_text:
+            judge_result = judge.evaluate_turn(
+                user=user_text,
+                response=response_text,
+                history=messages[:-1],
+                tags=list(scenario.get("tags") or []),
+            )
+
+        turns.append(
+            TurnResult(
+                index=turn_idx,
+                user=user_text,
+                response=response_text,
+                passed=passed and not assertions,
+                assertions=assertions,
+                latency_ms=latency_ms,
+                tool_calls=[asdict(call) for call in turn_calls],
+                usage=usage,
+                history_messages=len(messages),
+                history_chars=history_chars,
+                judge_correctness=(
+                    judge_result.correctness
+                    if judge_result and not judge_result.has_error
+                    else None
+                ),
+                judge_spoken_quality=(
+                    judge_result.spoken_quality
+                    if judge_result and not judge_result.has_error
+                    else None
+                ),
+                judge_reasoning=(judge_result.reasoning if judge_result else None),
+                judge_checklist=(judge_result.checklist if judge_result else None),
+                judge_error=(judge_result.error if judge_result else None),
+            )
+        )
+
+    return (
+        turns,
+        expected_tool_calls,
+        matched_tool_names,
+        expected_arg_checks,
+        matched_arg_checks,
+        actual_tool_calls,
+    )
+
+
+def _reliability_band(pass_rate: float) -> str:
+    if pass_rate >= 0.80:
+        return "high"
+    if pass_rate >= 0.40:
+        return "medium"
+    return "low"
+
+
 def run_benchmark(
     *,
     profiles: list[BenchmarkProfile],
@@ -1022,6 +1199,9 @@ def run_benchmark(
     context_analysis: dict[str, Any] | None = None,
     client_factory: Callable[[BenchmarkProfile], Any] | None = None,
     runner_info: dict[str, Any] | None = None,
+    judge: LLMJudge | None = None,
+    pass_k: int = 1,
+    pass_k_temperature: float = 0.3,
 ) -> dict[str, Any]:
     """Run all profiles against all scenarios and return a report dictionary."""
     out_dir = Path(output_dir)
@@ -1066,9 +1246,9 @@ def run_benchmark(
                         _warmup_local_server_client(client, profile.name)
 
                     for scenario in scenarios:
-                        if scenario.get("reset_state", True):
-                            reset_runtime_state(clear_persistent=True)
-                        messages: list[dict[str, str]] = []
+                        scenario_tags = list(scenario.get("tags") or [])
+
+                        # Build system message once; reused across all k runs
                         system_parts: list[str] = []
                         if profile.use_tools:
                             directive = (
@@ -1083,122 +1263,93 @@ def run_benchmark(
                         if scenario.get("system_prompt"):
                             system_parts.append(str(scenario["system_prompt"]).strip())
                         system_parts = [part for part in system_parts if part]
-                        if system_parts:
-                            messages.append(
-                                {
-                                    "role": "system",
-                                    "content": "\n\n".join(system_parts),
-                                }
-                            )
+                        system_message: dict[str, str] | None = (
+                            {"role": "system", "content": "\n\n".join(system_parts)}
+                            if system_parts
+                            else None
+                        )
 
-                        turns: list[TurnResult] = []
-                        expected_tool_calls = 0
-                        matched_tool_names = 0
-                        expected_arg_checks = 0
-                        matched_arg_checks = 0
-                        actual_tool_calls = 0
+                        # pass^k: high_variability scenarios use k=5, others use pass_k
+                        k_effective = (
+                            5 if "high_variability" in scenario_tags else pass_k
+                        )
+                        # When k>1 use pass_k_temperature; k=1 keeps profile temperature
+                        run_temperature = (
+                            pass_k_temperature if k_effective > 1 else profile.temperature
+                        )
 
-                        for turn_idx, turn in enumerate(scenario["turns"]):
-                            recorder.active_scenario_id = scenario["id"]
-                            recorder.active_turn_index = turn_idx
-                            start_call_index = len(recorder.calls)
+                        canonical_turns: list[TurnResult] = []
+                        canonical_exp_tool = 0
+                        canonical_matched_tool = 0
+                        canonical_exp_args = 0
+                        canonical_matched_args = 0
+                        canonical_actual_tools = 0
+                        pass_count = 0
 
-                            user_text = turn["user"]
-                            messages.append({"role": "user", "content": user_text})
-                            turn_started = time.perf_counter()
-                            assertions: list[str] = []
-                            response_text = ""
-                            try:
-                                if profile.use_tools:
-                                    response_text = str(
-                                        client.chat_with_tools(
-                                            messages,
-                                            temperature=profile.temperature,
-                                            max_tokens=profile.max_tokens,
-                                        )
-                                        or ""
-                                    ).strip()
-                                else:
-                                    response = client.chat_completion(
-                                        messages,
-                                        temperature=profile.temperature,
-                                        max_tokens=profile.max_tokens,
-                                    )
-                                    response_text = _response_content(response).strip()
-                            except Exception as exc:
-                                assertions.append(f"Model execution error: {exc}")
+                        for _k in range(k_effective):
+                            if scenario.get("reset_state", True):
+                                reset_runtime_state(clear_persistent=True)
 
-                            latency_ms = round(
-                                (time.perf_counter() - turn_started) * 1000.0, 3
-                            )
-                            turn_calls = recorder.calls[start_call_index:]
-                            usage = dict(getattr(client, "last_usage", {}) or {})
-                            if not assertions:
-                                (
-                                    passed,
-                                    extra_assertions,
-                                    exp_names,
-                                    got_names,
-                                    exp_args,
-                                    got_args,
-                                ) = _evaluate_turn(
-                                    turn=turn,
-                                    response=response_text,
-                                    tool_calls=turn_calls,
-                                    latency_ms=latency_ms,
-                                )
-                                assertions.extend(extra_assertions)
-                            else:
-                                passed = False
-                                exp_names = 0
-                                got_names = 0
-                                exp_args = 0
-                                got_args = 0
-
-                            expected_tool_calls += exp_names
-                            matched_tool_names += got_names
-                            expected_arg_checks += exp_args
-                            matched_arg_checks += got_args
-                            actual_tool_calls += len(turn_calls)
-
-                            if response_text:
-                                messages.append(
-                                    {"role": "assistant", "content": response_text}
-                                )
-                            history_chars = sum(
-                                len(str(message.get("content", "")))
-                                for message in messages
-                            )
-                            turns.append(
-                                TurnResult(
-                                    index=turn_idx,
-                                    user=user_text,
-                                    response=response_text,
-                                    passed=passed and not assertions,
-                                    assertions=assertions,
-                                    latency_ms=latency_ms,
-                                    tool_calls=[asdict(call) for call in turn_calls],
-                                    usage=usage,
-                                    history_messages=len(messages),
-                                    history_chars=history_chars,
-                                )
+                            (
+                                turns,
+                                exp_tool,
+                                matched_tool,
+                                exp_args,
+                                matched_args,
+                                actual_tools,
+                            ) = _run_scenario_once(
+                                scenario=scenario,
+                                client=client,
+                                profile=profile,
+                                system_message=system_message,
+                                recorder=recorder,
+                                judge=judge,
+                                temperature=run_temperature,
                             )
                             rss_peak = max(rss_peak, _current_rss_mb())
 
+                            run_passed = all(turn.passed for turn in turns)
+                            if run_passed:
+                                pass_count += 1
+                                if not canonical_turns:
+                                    # First passing run becomes canonical
+                                    canonical_turns = turns
+                                    canonical_exp_tool = exp_tool
+                                    canonical_matched_tool = matched_tool
+                                    canonical_exp_args = exp_args
+                                    canonical_matched_args = matched_args
+                                    canonical_actual_tools = actual_tools
+
+                            # Last run is the fallback canonical if nothing passed
+                            if _k == k_effective - 1 and not canonical_turns:
+                                canonical_turns = turns
+                                canonical_exp_tool = exp_tool
+                                canonical_matched_tool = matched_tool
+                                canonical_exp_args = exp_args
+                                canonical_matched_args = matched_args
+                                canonical_actual_tools = actual_tools
+
+                        pass_rate = pass_count / k_effective
                         scenario_results.append(
                             ScenarioResult(
                                 id=scenario["id"],
                                 name=scenario["name"],
-                                tags=list(scenario.get("tags") or []),
-                                passed=all(turn.passed for turn in turns),
-                                turns=turns,
-                                turn_count=len(turns),
-                                passed_turns=sum(1 for turn in turns if turn.passed),
-                                expected_tool_calls=expected_tool_calls,
-                                matched_tool_names=matched_tool_names,
-                                expected_arg_checks=expected_arg_checks,
-                                matched_arg_checks=matched_arg_checks,
-                                actual_tool_calls=actual_tool_calls,
+                                tags=scenario_tags,
+                                passed=pass_rate >= 0.67,
+                                turns=canonical_turns,
+                                turn_count=len(canonical_turns),
+                                passed_turns=sum(
+                                    1 for t in canonical_turns if t.passed
+                                ),
+                                expected_tool_calls=canonical_exp_tool,
+                                matched_tool_names=canonical_matched_tool,
+                                expected_arg_checks=canonical_exp_args,
+                                matched_arg_checks=canonical_matched_args,
+                                actual_tool_calls=canonical_actual_tools,
+                                pass_k=k_effective,
+                                pass_count=pass_count,
+                                pass_rate=round(pass_rate, 4),
+                                reliability_band=_reliability_band(pass_rate),
                             )
                         )
             except Exception as exc:
@@ -1254,6 +1405,12 @@ def run_benchmark(
         "runner": resolved_runner,
         "scenario_count": len(scenarios),
         "run_count": len(run_results),
+        "normalization": "v1",
+        "pass_k": pass_k,
+        "pass_k_temperature": pass_k_temperature if pass_k > 1 else None,
+        "judge_model": judge.config.model if judge is not None else None,
+        "judge_dry_run": judge.config.dry_run if judge is not None else None,
+        "judge_calls_total": judge.calls_made if judge is not None else None,
         "rubric": rubric_config,
         "context_analysis": context_analysis_config,
         "runs": [_run_to_dict(run) for run in run_results],
@@ -1370,6 +1527,25 @@ def _build_aggregate(
         if total_gen_ms > 0
         else 0.0
     )
+    # Judge aggregate: average over turns that were successfully scored
+    judge_correctness_scores = [
+        t.judge_correctness for t in all_turns if t.judge_correctness is not None
+    ]
+    judge_spoken_scores = [
+        t.judge_spoken_quality for t in all_turns if t.judge_spoken_quality is not None
+    ]
+    avg_judge_correctness = (
+        round(statistics.fmean(judge_correctness_scores), 3)
+        if judge_correctness_scores
+        else None
+    )
+    avg_judge_spoken_quality = (
+        round(statistics.fmean(judge_spoken_scores), 3)
+        if judge_spoken_scores
+        else None
+    )
+    judge_calls = len(judge_correctness_scores)
+
     return RunAggregate(
         scenario_count=scenario_count,
         scenario_passed=passed_scenarios,
@@ -1418,6 +1594,9 @@ def _build_aggregate(
         avg_gen_tok_s=avg_gen_tok_s,
         scenario_success_per_second=scenario_success_per_second,
         tag_success=tag_success,
+        avg_judge_correctness=avg_judge_correctness,
+        avg_judge_spoken_quality=avg_judge_spoken_quality,
+        judge_calls=judge_calls,
     )
 
 

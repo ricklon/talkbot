@@ -11,94 +11,7 @@ from talkbot.benchmark import (
     run_benchmark,
     write_outputs,
 )
-
-
-class FakeBenchClient:
-    supports_tools = True
-    provider_name = "fake"
-
-    def __init__(self):
-        self.tools = {}
-        self.last_usage = {}
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc, tb):
-        return False
-
-    def clear_tools(self):
-        self.tools.clear()
-
-    def register_tool(self, name, func, description, parameters):
-        del description, parameters
-        self.tools[name] = func
-
-    def chat_completion(self, messages, temperature=0.0, max_tokens=None):
-        del messages, temperature, max_tokens
-        return {"choices": [{"message": {"content": "ok"}}]}
-
-    def chat_with_tools(self, messages, temperature=0.0, max_tokens=None):
-        del temperature, max_tokens
-        user_text = str(messages[-1]["content"])
-        self.last_usage = {
-            "prompt_tokens": 10,
-            "completion_tokens": 5,
-            "total_tokens": 15,
-        }
-        lower = user_text.lower()
-        if "set a timer for 10" in lower:
-            return self.tools["set_timer"](seconds=10)
-        if "set a timer for 0" in lower:
-            return self.tools["set_timer"](seconds=0)
-        if "retry that timer with 6" in lower:
-            return self.tools["set_timer"](seconds=6)
-        if "list timers" in lower:
-            return self.tools["list_timers"]()
-        if "cancel timer 1" in lower:
-            return self.tools["cancel_timer"](timer_id="1")
-        if "create a packing list" in lower:
-            return self.tools["create_list"](list_name="packing")
-        if "add socks and charger to the packing list" in lower:
-            return self.tools["add_to_list"](
-                items=["socks", "charger"],
-                list_name="packing",
-            )
-        if "show me the packing list" in lower:
-            return self.tools["get_list"](list_name="packing")
-        if "create a grocery list" in lower:
-            return self.tools["create_list"](list_name="grocery")
-        if "add milk to the grocery list" in lower:
-            return self.tools["add_to_list"](items="milk", list_name="grocery")
-        if "what lists do you have" in lower:
-            return self.tools["list_all_lists"]()
-        if "remember that the launch codename is atlas" in lower:
-            return self.tools["remember"](key="launch_codename", value="atlas")
-        if "what launch codename did i ask you to remember" in lower:
-            return self.tools["recall"](key="launch_codename")
-        if "remember that my favorite color is blue" in lower:
-            return self.tools["remember"](key="favorite_color", value="blue")
-        if "what is my favorite color" in lower:
-            return self.tools["recall"](key="favorite_color")
-        if "what is 15 percent of 47" in lower:
-            return self.tools["calculator"]("15 * 0.01 * 47")
-        if "now divide that by 3" in lower:
-            return self.tools["calculator"]("7.05 / 3")
-        if "what time is it" in lower or "what time is it right now" in lower:
-            return self.tools["get_current_time"]()
-        if "set a timer for 5 minutes" in lower:
-            return self.tools["set_timer"](seconds=300)
-        if "add 'check the timer' to my reminders list" in lower:
-            self.tools["create_list"](list_name="reminders")
-            return self.tools["add_to_list"](items="check the timer", list_name="reminders")
-        if "what's today's date" in lower:
-            return self.tools["get_current_date"]()
-        if "cancel timer #99" in lower:
-            self.tools["set_timer"](seconds=0)  # produces error trace for tool_call_error_rate
-            return self.tools["cancel_timer"](timer_id="99")
-        if "list my timers so i can see" in lower:
-            return self.tools["list_timers"]()
-        return "Unhandled"
+from conftest import FakeBenchClient
 
 
 class ErrorBenchClient(FakeBenchClient):
@@ -537,3 +450,231 @@ def test_subset_match_treats_numeric_strings_as_equal():
     assert assertions == []
     assert expected_arg_checks == 1
     assert matched_arg_checks == 1
+
+
+# --- normalization tests for _evaluate_turn ---
+
+
+def test_evaluate_turn_response_contains_strips_markdown():
+    """Markdown in the response is normalized before contains check."""
+    turn = {
+        "user": "cancel the timer",
+        "expect": {"response_contains": ["cancel timer"]},
+    }
+    # Response has underscore identifier — normalize_for_tts converts it
+    passed, assertions, *_ = _evaluate_turn(
+        turn=turn,
+        response="I will cancel_timer for you.",
+        tool_calls=[],
+        latency_ms=1.0,
+    )
+    assert passed is True
+    assert assertions == []
+
+
+def test_evaluate_turn_response_regex_matches_normalized():
+    """response_regex is matched against normalized text."""
+    turn = {
+        "user": "cancel the timer",
+        "expect": {"response_regex": r"cancel timer"},
+    }
+    # Raw response uses underscore; normalization converts it so regex matches
+    passed, assertions, *_ = _evaluate_turn(
+        turn=turn,
+        response="I will cancel_timer now.",
+        tool_calls=[],
+        latency_ms=1.0,
+    )
+    assert passed is True
+    assert assertions == []
+
+
+def test_evaluate_turn_response_spoken_contains():
+    """response_spoken_contains matches against normalized text."""
+    turn = {
+        "user": "status",
+        "expect": {"response_spoken_contains": ["timer 3"]},
+    }
+    passed, assertions, *_ = _evaluate_turn(
+        turn=turn,
+        response="Timer ID: 3 is active.",
+        tool_calls=[],
+        latency_ms=1.0,
+    )
+    assert passed is True
+    assert assertions == []
+
+
+def test_evaluate_turn_response_spoken_regex():
+    """response_spoken_regex matches against normalized text."""
+    turn = {
+        "user": "status",
+        "expect": {"response_spoken_regex": r"(?i)timer \d+"},
+    }
+    passed, assertions, *_ = _evaluate_turn(
+        turn=turn,
+        response="Timer ID: 5 is running.",
+        tool_calls=[],
+        latency_ms=1.0,
+    )
+    assert passed is True
+    assert assertions == []
+
+
+def test_evaluate_turn_normalization_report_field(tmp_path):
+    """run_benchmark report includes normalization field."""
+    from talkbot.benchmark import run_benchmark
+
+    scenarios = [
+        {
+            "id": "s1",
+            "name": "simple",
+            "tags": [],
+            "turns": [
+                {"user": "hi", "expect": {"response_contains": ["ok"]}},
+            ],
+        }
+    ]
+    profile = BenchmarkProfile(name="test", provider="fake", model="fake")
+    report = run_benchmark(
+        profiles=[profile],
+        scenarios=scenarios,
+        output_dir=tmp_path,
+        runner_info={"label": "test", "hostname": "localhost"},
+        client_factory=lambda p: FakeBenchClient(),
+    )
+    assert report.get("normalization") == "v1"
+
+
+# --- pass^k tests ---
+
+
+def _simple_scenarios(user="hi", expect=None):
+    return [
+        {
+            "id": "s1",
+            "name": "simple",
+            "tags": [],
+            "turns": [{"user": user, "expect": expect or {"response_contains": ["ok"]}}],
+        }
+    ]
+
+
+def test_pass_k_default_is_one(tmp_path):
+    """Default run (k=1) sets pass_k=1 and pass_count 0 or 1."""
+    # use_tools=False so chat_completion() is called, returning "ok"
+    profile = BenchmarkProfile(name="test", provider="fake", model="fake", use_tools=False)
+    report = run_benchmark(
+        profiles=[profile],
+        scenarios=_simple_scenarios(),
+        output_dir=tmp_path,
+        runner_info={"label": "t", "hostname": "h"},
+        client_factory=lambda p: FakeBenchClient(),
+    )
+    assert report["pass_k"] == 1
+    scenario = report["runs"][0]["scenarios"][0]
+    assert scenario["pass_k"] == 1
+    assert scenario["pass_count"] in (0, 1)
+    assert scenario["pass_rate"] in (0.0, 1.0)
+
+
+def test_pass_k_three_all_pass(tmp_path):
+    """k=3 with a scenario that always passes → pass_count=3, pass_rate=1.0."""
+    profile = BenchmarkProfile(name="test", provider="fake", model="fake", use_tools=False)
+    report = run_benchmark(
+        profiles=[profile],
+        scenarios=_simple_scenarios(),
+        output_dir=tmp_path,
+        runner_info={"label": "t", "hostname": "h"},
+        client_factory=lambda p: FakeBenchClient(),
+        pass_k=3,
+    )
+    assert report["pass_k"] == 3
+    scenario = report["runs"][0]["scenarios"][0]
+    assert scenario["pass_k"] == 3
+    assert scenario["pass_count"] == 3
+    assert scenario["pass_rate"] == 1.0
+    assert scenario["reliability_band"] == "high"
+    assert scenario["passed"] is True
+
+
+def test_pass_k_three_all_fail(tmp_path):
+    """k=3 with a scenario that always fails → pass_count=0, reliability_band=low."""
+    profile = BenchmarkProfile(name="test", provider="fake", model="fake", use_tools=False)
+    report = run_benchmark(
+        profiles=[profile],
+        scenarios=_simple_scenarios(expect={"response_contains": ["NEVER_IN_RESPONSE"]}),
+        output_dir=tmp_path,
+        runner_info={"label": "t", "hostname": "h"},
+        client_factory=lambda p: FakeBenchClient(),
+        pass_k=3,
+    )
+    scenario = report["runs"][0]["scenarios"][0]
+    assert scenario["pass_count"] == 0
+    assert scenario["pass_rate"] == 0.0
+    assert scenario["reliability_band"] == "low"
+    assert scenario["passed"] is False
+
+
+def test_pass_k_report_metadata(tmp_path):
+    """Report includes pass_k and pass_k_temperature when k > 1."""
+    profile = BenchmarkProfile(name="test", provider="fake", model="fake", use_tools=False)
+    report = run_benchmark(
+        profiles=[profile],
+        scenarios=_simple_scenarios(),
+        output_dir=tmp_path,
+        runner_info={"label": "t", "hostname": "h"},
+        client_factory=lambda p: FakeBenchClient(),
+        pass_k=3,
+        pass_k_temperature=0.5,
+    )
+    assert report["pass_k"] == 3
+    assert report["pass_k_temperature"] == 0.5
+
+
+def test_pass_k_one_no_temperature_in_report(tmp_path):
+    """pass_k_temperature is None in report when k=1."""
+    profile = BenchmarkProfile(name="test", provider="fake", model="fake", use_tools=False)
+    report = run_benchmark(
+        profiles=[profile],
+        scenarios=_simple_scenarios(),
+        output_dir=tmp_path,
+        runner_info={"label": "t", "hostname": "h"},
+        client_factory=lambda p: FakeBenchClient(),
+    )
+    assert report["pass_k_temperature"] is None
+
+
+def test_high_variability_tag_uses_k5(tmp_path):
+    """Scenarios tagged 'high_variability' always use k=5 regardless of --pass-k."""
+    profile = BenchmarkProfile(name="test", provider="fake", model="fake", use_tools=False)
+    scenarios = [
+        {
+            "id": "s1",
+            "name": "recovery",
+            "tags": ["high_variability"],
+            "turns": [{"user": "hi", "expect": {"response_contains": ["ok"]}}],
+        }
+    ]
+    report = run_benchmark(
+        profiles=[profile],
+        scenarios=scenarios,
+        output_dir=tmp_path,
+        runner_info={"label": "t", "hostname": "h"},
+        client_factory=lambda p: FakeBenchClient(),
+        pass_k=1,  # global default is 1, but tag should override to 5
+    )
+    scenario = report["runs"][0]["scenarios"][0]
+    assert scenario["pass_k"] == 5
+    assert scenario["pass_count"] == 5
+
+
+def test_reliability_band_values(tmp_path):
+    """reliability_band is 'high' for pass_rate>=0.80, 'medium' >=0.40, 'low' below."""
+    from talkbot.benchmark import _reliability_band
+    assert _reliability_band(1.0) == "high"
+    assert _reliability_band(0.80) == "high"
+    assert _reliability_band(0.79) == "medium"
+    assert _reliability_band(0.40) == "medium"
+    assert _reliability_band(0.39) == "low"
+    assert _reliability_band(0.0) == "low"

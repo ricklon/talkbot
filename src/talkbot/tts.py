@@ -12,6 +12,8 @@ import threading
 from pathlib import Path
 from typing import Optional
 
+from talkbot.text_utils import normalize_for_tts
+
 # Keep startup noise low when local HF-backed libraries initialize without a token.
 logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 # Avoid hf-xet token warning noise in default local setup.
@@ -570,6 +572,7 @@ class TTSManager:
 
     def _do_speak(self, text: str) -> None:
         """Internal speak method."""
+        text = normalize_for_tts(text)
         if not self.backend:
             raise RuntimeError("No TTS backend available")
 
@@ -629,6 +632,7 @@ class TTSManager:
             text: Text to speak.
             filename: Output filename.
         """
+        text = normalize_for_tts(text)
         if not self.backend:
             raise RuntimeError("No TTS backend available")
 
