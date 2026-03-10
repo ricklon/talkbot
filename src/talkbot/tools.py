@@ -809,7 +809,7 @@ TOOL_DEFINITIONS = {
         },
     },
     "get_list": {
-        "description": "Get all items on a named list. Always call this tool to check list contents — do not answer from conversation context.",
+        "description": "Get all items on a named list. Always call this tool to check list contents — do not answer from conversation context. After calling, read back every item in your response.",
         "parameters": {
             "type": "object",
             "properties": {
