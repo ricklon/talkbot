@@ -1,19 +1,19 @@
 # TalkBot
 
-A talking AI assistant with local-first LLM + TTS defaults, plus optional OpenRouter for remote models. TTS supports edge-tts (online), KittenTTS (local neural), and pyttsx3.
+A talking AI assistant with local-first LLM + TTS defaults, plus optional OpenRouter for remote models. TTS supports KittenTTS (local neural, default), edge-tts (online), and pyttsx3.
 
 ## Features
 
-- 🤖 **AI Chat**: Local llama-server provider by default, with OpenRouter optional
-- 🧠 **Agent Personality**: Set a system prompt once via `TALKBOT_AGENT_PROMPT` env var or the GUI Prompt tab — all commands pick it up automatically
-- 🛠️ **19 Built-in Tools**: Calculator, timers, reminders, web search, shopping lists, memory/preferences, dice, and more
-- ⏰ **Timers & Reminders**: `set_timer` for simple countdowns; `set_reminder` for custom spoken messages — cancellable, with live GUI display
-- 📋 **Persistent Lists & Memory**: Named lists and user preferences survive across sessions (`~/.talkbot/`)
-- 🔊 **Text-to-Speech**: KittenTTS (local neural, default), Edge TTS (322 voices), or pyttsx3
-- 🖥️ **Modern GUI**: Dark-themed tkinter interface with Conversation, Timers, Lists, and Prompt tabs
-- ⏹️ **Stop Button**: Instantly stop AI responses and speech
-- 💻 **CLI Interface**: Command-line interface with Click
-- ⚙️ **Configurable**: Voice, rate, volume, model, and agent prompt settings
+- **AI Chat**: Local llama-server provider by default, with OpenRouter optional
+- **Agent Personality**: Set a system prompt once via `TALKBOT_AGENT_PROMPT` env var or the GUI Prompt tab — all commands pick it up automatically
+- **21 Built-in Tools**: Calculator, timers, reminders, web search, shopping lists, memory/preferences, dice, and more
+- **Timers & Reminders**: `set_timer` for simple countdowns; `set_reminder` for custom spoken messages — cancellable, with live GUI display
+- **Persistent Lists & Memory**: Named lists and user preferences survive across sessions (`~/.talkbot/`)
+- **Text-to-Speech**: KittenTTS (local neural, default), Edge TTS (322 voices), or pyttsx3
+- **Modern GUI**: Dark-themed tkinter interface with Conversation, Timers, Lists, and Prompt tabs
+- **Stop Button**: Instantly stop AI responses and speech
+- **CLI Interface**: Command-line interface with Click
+- **Configurable**: Voice, rate, volume, model, and agent prompt settings
 
 ## Quick Start
 
@@ -26,15 +26,22 @@ export UV_CACHE_DIR=.uv-cache
 # 1) Install dependencies
 uv sync --extra voice
 
-# 2) Download default model
-uv run python scripts/download_model.py
+# 2) Download recommended model (qwen3.5-0.8b Q8_0)
+wget "https://huggingface.co/bartowski/Qwen_Qwen3.5-0.8B-GGUF/resolve/main/Qwen_Qwen3.5-0.8B-Q8_0.gguf" \
+  -O models/qwen3.5-0.8b-q8_0.gguf
 
 # 3) Copy and edit config
 cp .env.example .env
 
 # 4) Start local llama-server (in a separate terminal)
-# Windows: use the pre-built binary in tools/llama-cpp/llama-server.exe
-llama-server -m models/qwen3-1.7b-q4_k_m.gguf --jinja -c 8192 -n 256 --temp 0.7 --port 8000 &
+llama-server \
+  -m models/qwen3.5-0.8b-q8_0.gguf \
+  --port 8000 \
+  --ctx-size 4096 \
+  --n-predict 512 \
+  --no-mmap \
+  -t 4 \
+  --reasoning-budget 0
 
 # 5) Start the GUI
 uv run talkbot-gui
@@ -44,7 +51,7 @@ uv run talkbot-gui
 
 | Component | Windows 11 | Linux / macOS | Notes |
 |---|---|---|---|
-| **local_server** (default LLM) | ✅ | ✅ | Pre-built `llama-server.exe` provided for Windows; `run-server.bat` included |
+| **local_server** (default LLM) | ✅ | ✅ | Pre-built `llama-server` binary from llama.cpp releases; see below |
 | **local** (in-process LLM) | ⚠️ | ✅ | Requires MSVC build tools on Windows to compile `llama-cpp-python`; use `local_server` instead |
 | **openrouter** (cloud LLM) | ✅ | ✅ | No platform concerns |
 | **kittentts** (default TTS) | ✅ | ✅ | fd-suppression during init silently skipped on Windows — cosmetic only, TTS works fully |
@@ -54,9 +61,8 @@ uv run talkbot-gui
 | **silero-vad** (VAD) | ✅ | ✅ | Pre-built PyPI wheels |
 | **sounddevice / soundfile** | ✅ | ✅ | PortAudio; well-tested on Windows |
 | **GUI (tkinter)** | ✅ | ✅ | tkinter bundled with Python on Windows; system package on Linux |
-| **download_model.py** | ✅ | ✅ | Platform-agnostic Python downloader for GGUF models |
 
-> **Dependency note:** TalkBot pins `kittentts==0.8.1` via direct GitHub release wheel (not on PyPI). `uv sync` fetches it automatically. `UV_SKIP_WHEEL_FILENAME_CHECK` is not required.
+> **Dependency note:** TalkBot pins `kittentts==0.8.1` via direct GitHub release wheel (not on PyPI). `uv sync` fetches it automatically.
 
 ## Installation
 
@@ -90,7 +96,7 @@ The recommended Windows setup uses the pre-built `llama-server.exe` binary (no M
 
 1. Download a pre-built llama.cpp release from https://github.com/ggerganov/llama.cpp/releases
 2. Extract and place `llama-server.exe` (and its `.dll` files) in `tools/llama-cpp/`
-3. Run the server manually: `tools\llama-cpp\llama-server.exe -m models\qwen3-1.7b-q4_k_m.gguf --jinja -c 8192 -n 256 --temp 0.7 --port 8000`
+3. Run the server manually: `tools\llama-cpp\llama-server.exe -m models\qwen3.5-0.8b-q8_0.gguf --ctx-size 4096 --n-predict 512 --no-mmap -t 4 --reasoning-budget 0 --port 8000`
 4. Use `uv run talkbot-gui` to launch the GUI.
 
 > **KittenTTS note:** install eSpeak NG and ensure `espeak-ng.exe` (or `espeak.exe`) is on your `PATH`.
@@ -157,23 +163,42 @@ rm -rf .uv-cache
 uv sync
 ```
 
-### Local LLM Prerequisites
+### Local LLM: llama-server (recommended)
 
-**Recommended: `local_server` provider (llama-server)**
+The default provider is `local_server`, which requires llama-server to be running before TalkBot starts.
 
-The default provider is `local_server`, which requires llama-server to be running before TalkBot starts. This enables proper tool calling, conversation memory, and correct Qwen3 chat templates via `--jinja`.
+**Recommended model: `qwen3.5-0.8b-q8_0.gguf`** (774 MB, 90% benchmark success, 21 tok/s on i7-10610U)
+
+Download:
+```bash
+wget "https://huggingface.co/bartowski/Qwen_Qwen3.5-0.8B-GGUF/resolve/main/Qwen_Qwen3.5-0.8B-Q8_0.gguf" \
+  -O models/qwen3.5-0.8b-q8_0.gguf
+```
+
+Start the server (Linux/macOS):
+```bash
+llama-server \
+  -m models/qwen3.5-0.8b-q8_0.gguf \
+  --port 8000 \
+  --ctx-size 4096 \
+  --n-predict 512 \
+  --no-mmap \
+  -t 4 \
+  --reasoning-budget 0
+```
 
 Start the server (Windows):
 ```bat
-tools\llama-cpp\llama-server.exe -m models\qwen3-1.7b-q4_k_m.gguf --jinja -c 8192 -n 512 --temp 0.6 --top-p 0.95 --min-p 0.0 --port 8000
+tools\llama-cpp\llama-server.exe -m models\qwen3.5-0.8b-q8_0.gguf --port 8000 --ctx-size 4096 --n-predict 512 --no-mmap -t 4 --reasoning-budget 0
 ```
 
-Start the server (Linux/macOS — example):
-```bash
-llama-server -m models/qwen3-1.7b-q4_k_m.gguf --jinja -c 8192 -n 512 --temp 0.6 --top-p 0.95 --min-p 0.0 --port 8000
-```
+**Flag notes:**
+- `--no-mmap`: loads weights into RAM entirely — better performance on CPU
+- `--reasoning-budget 0`: disables extended thinking mode (faster, cleaner tool responses)
+- `-t 4`: thread count — tune to your CPU core count
+- `--ctx-size 4096`: supports 16-tool prompts (~2400 tokens) plus conversation history
 
-**Alternative: `local` provider (llama-cpp-python or llama-cli)**
+**Alternative: `local` provider (llama-cpp-python)**
 
 If you prefer in-process inference without a server:
 
@@ -183,26 +208,12 @@ uv add llama-cpp-python
 echo 'TALKBOT_LLAMACPP_BIN=/full/path/to/llama-cli' >> .env
 ```
 
-Note: the `local` provider does not support the standard tools loop. Use `local_server` for tool calling.
+Note: `llama-cpp-python` 0.3.16 (current PyPI release) does not support Qwen3.5 models. Use `local_server` with a pre-built llama-server binary for Qwen3.5.
 
 ### Install voice pipeline extras (VAD + STT + audio I/O)
 
 ```bash
 uv sync --extra voice
-```
-
-### Download a default local GGUF
-
-```bash
-uv run python scripts/download_model.py
-```
-
-Default model: `Qwen/Qwen3-1.7B-GGUF` → `Qwen3-1.7B-Q4_K_M.gguf`, saved as `models/qwen3-1.7b-q4_k_m.gguf`
-
-Override URL or output path:
-
-```bash
-uv run python scripts/download_model.py --output models/my-model.gguf --url "https://..."
 ```
 
 ## Configuration
@@ -216,13 +227,11 @@ cp .env.example .env
 ```bash
 TALKBOT_LLM_PROVIDER=local_server
 TALKBOT_LOCAL_SERVER_URL=http://127.0.0.1:8000/v1
-TALKBOT_LOCAL_SERVER_MODEL=models/qwen3-1.7b-q4_k_m.gguf
-TALKBOT_LOCAL_MODEL_PATH=./models/qwen3-1.7b-q4_k_m.gguf
-TALKBOT_LOCAL_N_CTX=8192
+TALKBOT_LOCAL_SERVER_MODEL=qwen3.5-0.8b-q8_0
+TALKBOT_LOCAL_MODEL_PATH=./models/qwen3.5-0.8b-q8_0.gguf
 TALKBOT_MAX_TOKENS=512
 TALKBOT_DEFAULT_USE_TOOLS=1
 TALKBOT_ENABLE_THINKING=0
-TALKBOT_DEFAULT_MODEL=qwen3-1.7b-q4_k_m
 TALKBOT_DEFAULT_TTS_BACKEND=kittentts
 
 # Agent personality (optional) — applied to all CLI commands and GUI Prompt tab
@@ -240,42 +249,16 @@ OPENROUTER_API_KEY=your_api_key_here
 
 Get OpenRouter keys at [OpenRouter](https://openrouter.ai/keys).
 
-The application automatically loads environment variables from `.env` using python-dotenv, so you don't need to manually export them.
+The application automatically loads environment variables from `.env` using python-dotenv.
 
 ### Default Runtime Behavior
 
-- Default LLM provider is `local_server`.
-- Default TTS backend is `kittentts`.
-- Default model is `qwen3-1.7b-q4_k_m`.
-- Default context window is `8192` tokens.
-- Default thinking mode is OFF (`TALKBOT_ENABLE_THINKING=0`) for faster conversational turns.
-- Default tools toggle is ON in GUI (`TALKBOT_DEFAULT_USE_TOOLS=1`).
-
-`TALKBOT_LOCAL_N_CTX` controls local llama context size. 8192 is recommended for tool calling with conversation history.
-`TALKBOT_MAX_TOKENS` sets the default generation cap used by the GUI `Max Tokens` field.
-`TALKBOT_LOCAL_DIRECT_TOOL_ROUTING=1` enables deterministic local intent routing for a few common voice/tool intents (off by default).
-
-## Recent Changes
-
-- **`add_items_to_list`**: add multiple items in one call — "add lettuce, tomato, and onion to the grocery list".
-- **`create_list`**: explicit empty-list creation prevents the model from hallucinating items.
-- **Calculator percentage support**: `15% of 84` now correctly returns `12.6` (was treated as modulo).
-- **Timer dedup**: prevents the same timer from firing multiple times if the model repeats a tool call.
-- **Python-style tool call fallback**: model output like `set_timer(seconds=10, label="pasta")` is now parsed and executed rather than displayed as raw text.
-- **Timestamps on conversation messages**: every chat entry shows `[HH:MM:SS]`.
-- **Token counter**: toolbar shows prompt/completion token counts after each response.
-- **GUI max tokens control**: Configuration panel now includes `Max Tokens` (default from `TALKBOT_MAX_TOKENS`, clamped 32-8192).
-- **Timer alerts in GUI**: timer alerts appear in the conversation panel instead of being spoken (prevents mic echo loop during voice chat).
-- **`</think>` tag stripping**: lone closing think tags no longer leak into displayed responses.
-- **Date/time injection**: `LocalServerClient` now injects current date and time into the system prompt so day-of-week and time queries work without a tool call.
-- **`local` provider tools**: in-process local mode now supports tool calling with text-call parsing and `<think>`-safe output cleaning.
-- **19 built-in tools**: added `set_reminder` (custom spoken message on fire), `list_all_lists` (show all named lists at once).
-- **Lists tab**: GUI now has a live Lists tab showing all named lists and their contents (updates every 2s).
-- **`local_server` is now the default provider**: enables proper tool calling, KV cache, and Qwen3 chat templates via `--jinja`.
-- **Agent personality prompt**: `TALKBOT_AGENT_PROMPT` env var applies a system prompt to all CLI commands and pre-populates the GUI Prompt tab.
-- **Timers tab**: live countdown display in GUI (updates every second).
-- **Cancellable timers**: `set_timer` returns a timer ID; `cancel_timer` and `list_timers` manage active timers.
-- **Persistent lists & memory**: `~/.talkbot/lists.json` and `~/.talkbot/memory.json` survive across sessions.
+- Default LLM provider: `local_server`
+- Default TTS backend: `kittentts`
+- Default thinking mode: OFF (`TALKBOT_ENABLE_THINKING=0`) — faster conversational turns
+- Default tools toggle: ON in GUI (`TALKBOT_DEFAULT_USE_TOOLS=1`)
+- `TALKBOT_MAX_TOKENS`: generation cap used by the GUI Max Tokens field (default 512)
+- `TALKBOT_LOCAL_DIRECT_TOOL_ROUTING=1`: enables deterministic local intent routing (off by default)
 
 ## Usage
 
@@ -283,24 +266,18 @@ The application automatically loads environment variables from `.env` using pyth
 
 | Provider | Runs Where | Tool Calling | Setup Complexity | Recommended For |
 |---|---|---|---|---|
-| `local_server` | OpenAI-compatible local server (`llama-server` / `llama_cpp.server`) | Yes (standard tools flow; includes `<tool_call>` text fallback) | Medium | **Default — best local option for tool-calling** |
+| `local_server` | OpenAI-compatible local server (`llama-server`) | Yes (standard tools flow; includes `<tool_call>` text fallback) | Medium | **Default — best local option for tool-calling** |
 | `local` | In-process (`llama-cpp-python` or `llama-cli`) | Yes (text-call tool parsing + local execution) | Low | Fastest local CPU path without server |
 | `openrouter` | Remote API | Yes | Low | Easiest cloud setup / strongest tool reliability |
-
-Quick guidance:
-
-- Use `local_server` (default) for local inference with tool calling.
-- Use `local` for lowest overhead local inference (tools supported via text-call parsing).
-- Use `openrouter` when you want managed reliability and broader model access.
 
 ### LLM Provider Selection
 
 ```bash
 # Local server (default)
-talkbot --provider local_server --local-server-url http://127.0.0.1:8000/v1 --model models/qwen3-1.7b-q4_k_m.gguf chat "Hello"
+talkbot --provider local_server --local-server-url http://127.0.0.1:8000/v1 --model qwen3.5-0.8b-q8_0 chat "Hello"
 
 # Local in-process
-talkbot --provider local --local-model-path ./models/qwen3-1.7b-q4_k_m.gguf chat "Hello"
+talkbot --provider local --local-model-path ./models/qwen3.5-0.8b-q8_0.gguf chat "Hello"
 
 # OpenRouter
 talkbot --provider openrouter --api-key "$OPENROUTER_API_KEY" --model openai/gpt-4o-mini chat "Hello"
@@ -308,49 +285,6 @@ talkbot --provider openrouter --api-key "$OPENROUTER_API_KEY" --model openai/gpt
 # Toggle thinking mode (default is --no-thinking)
 talkbot --thinking chat "Think deeply"
 talkbot --no-thinking chat "Respond quickly"
-```
-
-In GUI:
-- `Provider` dropdown chooses `local`, `local_server`, or `openrouter`.
-- `Local GGUF` field sets the local model path when provider is `local`.
-- `Llama Bin` field overrides the local llama.cpp executable path when using CLI mode.
-- `Use Tools` checkbox controls tool calling per request (unchecked means no tool loop).
-- `Thinking` checkbox controls deliberate thinking mode.
-
-### Local Server Provider
-
-`local_server` uses an OpenAI-compatible local endpoint. Start the server before launching TalkBot.
-
-**Windows:**
-```bat
-run-server.bat
-```
-
-**Linux/macOS (llama-server):**
-```bash
-llama-server \
-  -m models/qwen3-1.7b-q4_k_m.gguf \
-  --jinja \
-  -c 8192 \
-  -n 256 \
-  --temp 0.7 --top-k 20 --top-p 0.8 \
-  --port 8000
-```
-
-**Linux/macOS (llama_cpp.server python wrapper):**
-```bash
-uv run --with uvicorn --with fastapi --with sse-starlette --with starlette-context --with pydantic-settings \
-  python -m llama_cpp.server --model models/qwen3-1.7b-q4_k_m.gguf --n_ctx 8192 --host 127.0.0.1 --port 8000
-```
-
-Quick verification checks:
-
-```bash
-# 1) plain response
-talkbot --provider local_server --local-server-url http://127.0.0.1:8000/v1 --model models/qwen3-1.7b-q4_k_m.gguf chat --no-speak "Reply with OK"
-
-# 2) tools on
-talkbot --provider local_server --local-server-url http://127.0.0.1:8000/v1 --model models/qwen3-1.7b-q4_k_m.gguf chat --tools --no-speak "What is 2+2? Use calculator tool."
 ```
 
 ### Troubleshooting: `llama.cpp binary not found ... TALKBOT_LLAMACPP_BIN`
@@ -365,17 +299,6 @@ uv add llama-cpp-python
 echo 'TALKBOT_LLAMACPP_BIN=/full/path/to/llama-cli' >> .env
 ```
 
-### Memory Sizing Guide (local_server mode)
-
-Measured on a host with the `qwen3-1.7b-q4_k_m.gguf` model (~`1.1 GiB`), CPU inference:
-
-- `TALKBOT_LOCAL_N_CTX=2048`: lower memory, shorter context
-- `TALKBOT_LOCAL_N_CTX=8192`: recommended — ~`+0.66 GiB` vs 2k, safe on 8+ GiB RAM systems
-
-Rough rule of thumb for this model: ~`112 MB` per additional `+1k` context tokens.
-
-Actual memory depends on model size/quantization, STT model choice, TTS backend, and concurrent load.
-
 ### CLI Commands
 
 #### Single Message
@@ -383,18 +306,8 @@ Actual memory depends on model size/quantization, STT model choice, TTS backend,
 # Basic chat
 talkbot chat "Hello, how are you?"
 
-# With explicit provider/model
-talkbot --provider local_server --local-server-url http://127.0.0.1:8000/v1 --model models/qwen3-1.7b-q4_k_m.gguf chat "Local run"
-talkbot --provider openrouter --api-key "$OPENROUTER_API_KEY" --model openai/gpt-4o-mini chat "Remote run"
-
 # Without speaking
 talkbot chat --no-speak "Just text please"
-
-# Force a TTS backend
-talkbot chat --backend pyttsx3 "Use offline system TTS"
-
-# With custom voice settings
-talkbot chat --rate 200 --volume 0.8 "Hello world"
 
 # Enable built-in tools in chat mode
 talkbot chat --tools "What's 15 percent of 240?"
@@ -412,9 +325,6 @@ talkbot say --tools --system "You are a brief voice assistant."
 # Or set TALKBOT_AGENT_PROMPT in .env / env and omit --system
 export TALKBOT_AGENT_PROMPT="You are a brief voice assistant."
 talkbot say --tools
-
-# For multiline markdown prompts, keep them in a file
-talkbot say --tools --system "$(cat prompts/agent.md)"
 ```
 
 #### Local Voice Chat (Half-Duplex, VAD-Gated)
@@ -422,11 +332,11 @@ talkbot say --tools --system "$(cat prompts/agent.md)"
 # Start local voice loop (Ctrl+C to stop)
 talkbot voice-chat
 
-# Choose TTS backend and tune VAD
-talkbot voice-chat --backend pyttsx3 --vad-threshold 0.30 --energy-threshold 0.003 --vad-min-silence-ms 1200
-
 # Enable tools while in voice loop
 talkbot voice-chat --tools
+
+# Choose TTS backend and tune VAD
+talkbot voice-chat --backend pyttsx3 --vad-threshold 0.30 --energy-threshold 0.003 --vad-min-silence-ms 1200
 
 # Select devices by index
 talkbot voice-chat --device-in 2 --device-out 3
@@ -440,34 +350,21 @@ talkbot voices --backend edge-tts
 
 #### Diagnose TTS Backends
 ```bash
-# Fast health check (init + voice listing)
 talkbot doctor-tts
-
-# Check specific backend
 talkbot doctor-tts --backend kittentts
-
-# Deep check with real synthesis to temp files
-talkbot doctor-tts --synthesize
+talkbot doctor-tts --synthesize   # deep check with real synthesis
 ```
 
 #### Diagnose Voice Pipeline
 ```bash
-# Check mic/speaker devices + silero-vad + faster-whisper model load
 talkbot doctor-voice
-
-# Test a specific STT model load
 talkbot doctor-voice --stt-model small.en
 ```
 
 #### Test Transcription Only (No LLM/TTS)
 ```bash
-# Mic one-shot test: speak once, then pause
 talkbot test-stt
-
-# Transcribe an existing file
 talkbot test-stt --file sample.wav
-
-# Simulated test: play a prompt phrase, then listen/transcribe once
 talkbot test-stt --simulate --prompt-text "What time is it?"
 ```
 
@@ -483,6 +380,7 @@ talkbot save --backend pyttsx3 "Hello, this is offline speech" output.wav
 # Utility
 talkbot tool "What time is it?"
 talkbot tool "What is 15% of 240?"
+talkbot tool "How long until 5pm?"
 talkbot tool "Roll a 20-sided die"
 talkbot tool "Flip a coin"
 talkbot tool "Pick a random number between 1 and 100"
@@ -499,6 +397,7 @@ talkbot tool "What is the speed of light?"
 
 # Shopping / named lists
 talkbot tool "Add milk to my shopping list"
+talkbot tool "Add eggs, butter, and flour to my grocery list"
 talkbot tool "What's on my shopping list?"
 talkbot tool "Show me all my lists"
 talkbot tool "Remove milk from my shopping list"
@@ -515,18 +414,18 @@ talkbot tool "What do you remember about me?"
 |---|---|---|
 | `get_current_time` | Utility | Current date and time |
 | `get_current_date` | Utility | Current date |
+| `time_until` | Utility | Time remaining until a given time or date |
 | `calculator` | Utility | Safe math: `+`, `-`, `*`, `/`, `sqrt`, `sin`, `log`, `pi`, … |
 | `roll_dice` | Utility | Roll N dice with D sides |
 | `flip_coin` | Utility | Heads or tails |
 | `random_number` | Utility | Random integer in a range |
+| `web_search` | Search | DuckDuckGo instant answers (facts, definitions, conversions) |
 | `set_timer` | Timer | Named countdown — fires spoken "{label} is done!" alert |
 | `set_reminder` | Timer | Custom spoken message fires at a future time |
 | `cancel_timer` | Timer | Cancel an active timer or reminder by ID |
 | `list_timers` | Timer | Show all running timers/reminders with remaining time |
-| `web_search` | Search | DuckDuckGo instant answers (facts, definitions, conversions) |
 | `create_list` | Lists | Create a new empty named list |
-| `add_to_list` | Lists | Add a single item to a named list (default: `shopping`) |
-| `add_items_to_list` | Lists | Add multiple items at once (e.g. "add lettuce, tomato, and onion") |
+| `add_to_list` | Lists | Add one or more items to a named list (accepts string or array) |
 | `get_list` | Lists | Read all items from a named list |
 | `remove_from_list` | Lists | Remove an item from a named list (case-insensitive) |
 | `clear_list` | Lists | Empty a named list |
@@ -537,11 +436,32 @@ talkbot tool "What do you remember about me?"
 
 Lists are stored in `~/.talkbot/lists.json`; memory in `~/.talkbot/memory.json`.
 
+## Available Models
+
+### Recommended Local Models (llama-server, CPU)
+
+Benchmarked on i7-10610U (15W, CPU-only, ~40 GB/s memory bandwidth). See `benchmarks/published/latest/leaderboard.md` for current results.
+
+| Model | File | Size | Success | Gen/s | Notes |
+|---|---|---|---|---|---|
+| qwen3.5-0.8b Q8_0 | `qwen3.5-0.8b-q8_0.gguf` | 775 MB | **90%** | 21 | **Recommended default** |
+| qwen3.5-0.8b Q4_K_M | `qwen3.5-0.8b-q4_k_m.gguf` | 508 MB | 80% | 23 | Fastest; slight arg precision loss |
+| qwen3.5-2b Q4_K_M | `qwen3.5-2b-q4_k_m.gguf` | 1.2 GB | 90% | 11 | Ties 0.8b, 2× slower |
+| qwen3.5-4b Q4_K_M | `qwen3.5-4b-q4_k_m.gguf` | 2.7 GB | 70% | 6 | Borderline for voice; not recommended |
+
+> **Non-monotonic scaling:** larger models are not better for tool use on this hardware class. The 0.8b Q8_0 matches or beats larger models while using 3–4× less memory.
+
+Download models from [bartowski/Qwen_Qwen3.5 GGUF](https://huggingface.co/bartowski) on HuggingFace.
+
+### Remote Models (OpenRouter)
+
+Any model available on OpenRouter can be used. See [OpenRouter Models](https://openrouter.ai/models) for the full list.
+
 ## TTS Backends
 
 The application automatically selects the best available TTS backend:
 
-### 1. KittenTTS (Local Neural) ★ Default
+### 1. KittenTTS (Local Neural) — Default
 - **8 neural voices** (model-defined IDs, shown in `talkbot voices --backend kittentts`)
 - Runs fully offline — no internet required after model download
 - Lightweight models (15–80MB), CPU-optimized
@@ -557,7 +477,6 @@ The application automatically selects the best available TTS backend:
 - **322 high-quality voices** in 100+ languages
 - Neural voices sound very natural
 - Requires internet connection
-- Fast synthesis
 
 **Example voices:**
 - `en-US-AriaNeural` - English (US) Female
@@ -572,22 +491,16 @@ The application automatically selects the best available TTS backend:
 ### GUI Mode
 
 The GUI features a modern dark theme with:
-- 🎨 Beautiful dark color scheme
-- 🔘 Rounded buttons with hover effects
-- ⏹️ Stop button to interrupt AI responses
-- 🎚️ Real-time sliders for rate and volume
-- 💬 Styled chat history with user/AI colors
-- 🔄 **Backend switcher** — Toggle between online/offline TTS modes
-- 🧰 **Use Tools toggle** — Enable all 19 built-in tools for chat and voice
-- ⏰ **Timers tab** — Live countdown display, updates every second
-- 📋 **Lists tab** — Live view of all named lists, updates every 2 seconds
-- 📝 **Prompt tab** — Edit the agent system prompt live; pre-populated from `TALKBOT_AGENT_PROMPT` on launch
-
-**Backend Selection:**
-The GUI includes a dropdown to switch between TTS backends:
-- 🐱 **KittenTTS** (Local) — Neural voices, fully offline, CPU-optimized (default)
-- 🌐 **Edge-TTS** (Online) — 322 voices, requires internet
-- 💻 **pyttsx3** (Offline) — System voices, always available
+- Beautiful dark color scheme
+- Rounded buttons with hover effects
+- Stop button to interrupt AI responses
+- Real-time sliders for rate and volume
+- Styled chat history with user/AI colors
+- **Backend switcher** — Toggle between online/offline TTS modes
+- **Use Tools toggle** — Enable all 21 built-in tools for chat and voice
+- **Timers tab** — Live countdown display, updates every second
+- **Lists tab** — Live view of all named lists, updates every 2 seconds
+- **Prompt tab** — Edit the agent system prompt live; pre-populated from `TALKBOT_AGENT_PROMPT` on launch
 
 ```bash
 uv run talkbot-gui
@@ -611,182 +524,68 @@ tts.speak("Hello, world!")
 tts.list_voices()
 ```
 
-## Available Models
-
-Any model available on OpenRouter can be used. See [OpenRouter Models](https://openrouter.ai/models) for the full list.
-
-For local inference, any GGUF-format model supported by llama.cpp works. Default: `Qwen3-1.7B-Q4_K_M`.
-
 ## Conversation Benchmarking
 
 Use scripted multi-turn conversations to score tool reliability, latency, context usage, and memory footprint.
 
-### Preflight (run before any benchmark)
+### Run a benchmark
 
 ```bash
-export UV_CACHE_DIR=.uv-cache
-uv run -- python scripts/check_benchmark_prereqs.py --check-kittentts
-```
-
-Only run benchmarks after this reports `PASS`.
-
-### Run a single profile
-
-```bash
-uv run -- python scripts/benchmark_conversations.py \
-  --scenarios tests/conversations \
-  --provider local \
-  --model qwen/qwen3-1.7b \
-  --local-model-path models/default.gguf \
-  --n-ctx 2048 \
-  --output benchmark_results/local-qwen3-1.7b-ctx2048
-```
-
-### Prompt-driven capability runs
-
-Use a strict tool-use system prompt (instead of direct intent routing) to evaluate what the model can do on its own:
-
-```bash
-uv run -- python scripts/benchmark_conversations.py \
-  --scenarios tests/conversations \
-  --provider local \
-  --model qwen/qwen3-1.7b \
-  --local-model-path models/qwen3-1.7b-q4_k_m.gguf \
-  --system-prompt-file prompts/tool_benchmark.md \
-  --output benchmark_results/capability-prompt
+# Start llama-server first (see above), then:
+uv run python scripts/benchmark_conversations.py \
+  --provider local_server \
+  --local-server-url "http://127.0.0.1:8000/v1" \
+  --local-model-path "models/qwen3.5-0.8b-q8_0.gguf" \
+  --model "qwen3.5-0.8b-q8_0" \
+  --run-name "my-run" \
+  --runner-label "my-machine"
 ```
 
 ### Run a model matrix
 
 ```bash
-uv run -- python scripts/benchmark_conversations.py \
-  --scenarios tests/conversations \
+uv run python scripts/benchmark_conversations.py \
   --matrix benchmarks/model_matrix.example.json \
-  --runner-label linux-main \
-  --output benchmark_results/matrix
+  --runner-label my-machine
 ```
 
-For cross-system comparisons (Linux, Windows, Raspberry Pi), set a stable runner label per machine:
+See `benchmarks/model_matrix.example.json` for the current active model set and `benchmarks/decision_strategy.md` for hardware-specific decisions.
 
-```bash
-# Linux workstation
-uv run -- python scripts/benchmark_conversations.py --matrix benchmarks/model_matrix.example.json --runner-label linux-main
+### Benchmark outputs
 
-# Windows workstation
-uv run -- python scripts/benchmark_conversations.py --matrix benchmarks/model_matrix.example.json --runner-label windows-dev
+- `benchmark_results/latest/results.json` — per-run traces + metrics
+- `benchmark_results/latest/leaderboard.md` — ranking board
+- `benchmarks/published/latest/leaderboard.md` — repo-published snapshot (check this for "what model to use")
+- `benchmarks/published/runs/<run_name>/` — archived run history
 
-# Raspberry Pi
-uv run -- python scripts/benchmark_conversations.py --matrix benchmarks/model_matrix.example.json --runner-label pi5-lab
-```
+Key metrics: `task_success_rate`, `tool_selection_accuracy`, `argument_accuracy`, `avg_turn_latency_ms`, `avg_gen_tok_s`, `peak_memory_mb`.
 
-Each `results.json` now stores runner metadata (label, OS/release, machine arch, CPU counts, Python version, and Raspberry Pi model when detected), and the leaderboard shows runner identity in the Scope section.
+### Benchmark scenario suite (10 scenarios)
 
-Outputs:
-- `results.json`: per-run traces + metrics (`task_success_rate`, tool/arg accuracy, tool error rate, tokens/sec, latency, memory)
-- `leaderboard.md`: ranking board that tracks best-performing models across local and remote runs (quality, remote rank, latency snapshot, efficiency, and context-dropoff recommendations)
-- One-stop latest mirror (auto-updated): `benchmark_results/results.json` and `benchmark_results/leaderboard.md`
-- Repo-published latest snapshot: `benchmarks/published/latest/results.json` and `benchmarks/published/latest/leaderboard.md`
-- Repo-published run history: `benchmarks/published/runs/<run_name>/...`
+Scenarios live in `tests/conversations/` and support per-turn assertions:
+- expected tool names (`name` or `name_any`)
+- argument subset checks (`args_contains`)
+- response checks (`response_contains`, `response_regex`)
 
-If you only check one file for "what model should we use right now?", use:
-- `benchmarks/published/latest/leaderboard.md`
+Categories:
+- `core`: timer/list/memory tool correctness
+- `recovery`: invalid request then retry/fix behavior
+- `multistep`: chained workflows across multiple turns
+- `context`: retrieval under longer conversational history
+- `robustness`: noisy/edge-case prompts
 
-`scripts/benchmark_conversations.py` publishes to `benchmarks/published/` by default.
-Use `--no-publish` to skip, or override destination with `--publish-root`.
+Decision policy and hardware notes: `benchmarks/decision_strategy.md`
 
-Manual publish command:
+### OpenRouter benchmarking (apples-to-apples)
 
-```bash
-uv run -- python scripts/publish_benchmark_results.py \
-  --source-root benchmark_results \
-  --published-root benchmarks/published
-```
-
-For apples-to-apples OpenRouter benchmarking (standard OpenAI tool format only), set:
+To force native tool-calling compatibility:
 
 ```bash
 export TALKBOT_OPENROUTER_TOOL_TRANSPORT=native
 export TALKBOT_OPENROUTER_TOOL_PREFLIGHT=1
 ```
 
-With this mode, models/routes that do not advertise native `tools` + `tool_choice` will fail fast instead of using prompt-tool fallback.
-
-The leaderboard includes an A/B section:
-- `LLM` mode: prompt-directed tool choice (will it use tools?)
-- `Intent` mode: deterministic routing (can it use tools with enforced intents?)
-- Use paired profiles (same model + same `n_ctx`) with:
-  - `TALKBOT_LOCAL_DIRECT_TOOL_ROUTING=0` for `LLM`
-  - `TALKBOT_LOCAL_DIRECT_TOOL_ROUTING=1` for `Intent`
-
-Matrix files can also define benchmark rubric and context-window sweeps:
-
-```json
-{
-  "benchmark": {
-    "schema_version": "2026.1",
-    "rubric": {
-      "version": "2026.small-models.v1",
-      "weights": {
-        "task_success_rate": 0.35,
-        "tool_selection_accuracy": 0.2,
-        "argument_accuracy": 0.15,
-        "recovery_success_rate": 0.1,
-        "multistep_success_rate": 0.1,
-        "robustness_success_rate": 0.05,
-        "context_success_rate": 0.05
-      }
-    },
-    "context_analysis": {
-      "near_peak_ratio": 0.95,
-      "dropoff_ratio": 0.9
-    }
-  },
-  "profiles": [
-    {
-      "name": "local-qwen3-1.7b",
-      "context_windows": [2048, 4096]
-    }
-  ]
-}
-```
-
-Team benchmark values and decision policy are tracked in:
-- `benchmarks/evaluation_values.json`
-- `benchmarks/decision_strategy.md`
-- `benchmarks/voice_recording_guide.md` (how to record spoken benchmark datasets)
-
-That file explicitly defines:
-- Primary goal: prompt-driven tool choice (`llm` mode, no intent routing)
-- Secondary goal: deterministic fallback ceiling (`intent` mode)
-- How to interpret `llm` vs `intent` gaps
-- Context-dropoff policy (coherence-first, efficiency separate)
-
-Scenario files are JSON scripts in `tests/conversations/` and support per-turn assertions:
-- expected tool names (`name` or `name_any`)
-- argument subset checks (`args_contains`)
-- response checks (`response_contains`, `response_regex`)
-
-Included benchmark tracks now cover:
-- `core`: basic timer/list/memory tool correctness
-- `recovery`: invalid request then retry/fix behavior
-- `multistep`: chained workflows across multiple turns
-- `context`: retrieval behavior under longer conversational history
-- `robustness`: noisy/edge-case prompts
-
-For spoken-text dataset creation (dates/times/years/STEM), use:
-
-```bash
-uv run -- python scripts/record_voice_benchmark.py \
-  --prompts benchmarks/voice_prompts.template.json \
-  --output-dir benchmarks/voice_dataset/raw \
-  --manifest benchmarks/voice_dataset/manifest.json \
-  --speaker-id speaker_a \
-  --takes 2
-```
-
-Included memory tracks:
-- `memory_persistent_strict`: requires `remember` + `recall` tool calls (capability score)
-- `memory_context_flexible`: accepts correct contextual answer even without `recall` (practical score)
+Models/routes that do not advertise native `tools` + `tool_choice` will fail fast instead of using prompt-tool fallback.
 
 ## Project Structure
 
@@ -796,22 +595,23 @@ talkbot/
 │   ├── __init__.py        # Package initialization
 │   ├── openrouter.py      # OpenRouter API client with tool support
 │   ├── llm.py             # LLM provider abstraction (local, local_server, openrouter)
-│   ├── tools.py           # Built-in tools (calculator, timers, lists, memory, etc.)
+│   ├── tools.py           # 21 built-in tools (calculator, timers, lists, memory, etc.)
 │   ├── tts.py             # Text-to-speech manager
 │   ├── voice.py           # Voice pipeline (VAD + STT + LLM + TTS)
 │   ├── cli.py             # Click CLI interface
 │   └── gui.py             # Modern themed tkinter GUI
 ├── models/                # GGUF model files (git-ignored)
-├── tools/llama-cpp/       # llama-server binary and DLLs (Windows)
 ├── scripts/
-│   ├── download-model.sh  # Download default GGUF (Linux/macOS)
-│   ├── download-model.bat # Download default GGUF (Windows)
-│   └── benchmark_conversations.py # Conversation benchmark runner
+│   ├── benchmark_conversations.py  # Conversation benchmark runner
+│   ├── ollama_nothink_proxy.py     # Ollama think:false proxy (comparison baseline)
+│   └── download_model.py           # GGUF downloader
 ├── benchmarks/
-│   └── model_matrix.example.json  # Example benchmark matrix
-├── tests/conversations/   # Benchmark conversation scenarios
-├── run-server.bat         # Start llama-server (Windows)
-├── run-gui.bat            # Start GUI with correct env vars (Windows)
+│   ├── model_matrix.example.json   # Active benchmark model set
+│   ├── decision_strategy.md        # Hardware-specific model decisions
+│   └── published/                  # Published benchmark results
+│       ├── latest/                 # Current best result
+│       └── runs/                   # Per-run history
+├── tests/conversations/   # Benchmark conversation scenarios (10 scenarios)
 ├── pyproject.toml         # Project configuration
 ├── .env.example           # Environment template
 └── README.md              # This file
