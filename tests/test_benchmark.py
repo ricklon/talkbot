@@ -1,10 +1,14 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from talkbot.benchmark import (
     BenchmarkProfile,
+    TTS_VOICE_DIRECTIVE,
     ToolCallTrace,
     _evaluate_turn,
+    _tts_directive_ab_rows,
     build_leaderboard_markdown,
     load_matrix_config,
     load_scenarios,
@@ -899,3 +903,98 @@ def test_linear_slope_short_returns_zero():
     from talkbot.benchmark import _linear_slope
     assert _linear_slope([100.0]) == 0.0
     assert _linear_slope([100.0, 200.0]) == 0.0
+
+
+# --- TTS directive A/B tests ---
+
+def _make_run(name, provider, model, tts_directive, friction, clean_rate, success_rate, spoken=None):
+    """Build a minimal run dict for _tts_directive_ab_rows tests."""
+    agg = {
+        "task_success_rate": success_rate,
+        "tool_selection_accuracy": success_rate,
+        "argument_accuracy": success_rate,
+        "recovery_success_rate": success_rate,
+        "avg_turn_latency_ms": 500.0,
+        "memory_peak_mb": 200.0,
+        "tool_call_error_rate": 0.0,
+        "avg_prefill_tok_s": 0.0,
+        "avg_gen_tok_s": 0.0,
+        "total_tokens": 0,
+        "avg_tts_friction_score": friction,
+        "tts_friction_zero_rate": clean_rate,
+        "avg_judge_spoken_quality": spoken,
+        "avg_judge_correctness": None,
+        "judge_calls": 0,
+        "endurance_scenario_count": 0,
+    }
+    return {
+        "status": "ok",
+        "profile": {
+            "name": name,
+            "provider": provider,
+            "model": model,
+            "tts_directive": tts_directive,
+            "temperature": 0.0,
+        },
+        "aggregate": agg,
+        "scenarios": [],
+    }
+
+
+def test_tts_directive_ab_rows_produces_row_for_matched_pair():
+    runs = [
+        _make_run("qwen-baseline", "local_server", "qwen3.5", False, friction=4.0, clean_rate=0.2, success_rate=0.9),
+        _make_run("qwen-tts",      "local_server", "qwen3.5", True,  friction=1.0, clean_rate=0.7, success_rate=0.88),
+    ]
+    rows = _tts_directive_ab_rows(runs)
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["friction_delta"] == pytest.approx(-3.0)
+    assert row["clean_delta"] == pytest.approx(0.5)
+    assert row["success_delta"] == pytest.approx(-0.02)
+
+
+def test_tts_directive_ab_rows_no_row_without_pair():
+    # Only a baseline — no tts counterpart
+    runs = [
+        _make_run("qwen-baseline", "local_server", "qwen3.5", False, 4.0, 0.2, 0.9),
+    ]
+    rows = _tts_directive_ab_rows(runs)
+    assert rows == []
+
+
+def test_tts_directive_ab_rows_sorted_by_friction_improvement():
+    runs = [
+        _make_run("a-baseline", "local_server", "model-a", False, 5.0, 0.1, 0.9),
+        _make_run("a-tts",      "local_server", "model-a", True,  1.0, 0.8, 0.88),
+        _make_run("b-baseline", "openrouter",   "model-b", False, 3.0, 0.3, 0.95),
+        _make_run("b-tts",      "openrouter",   "model-b", True,  2.5, 0.4, 0.94),
+    ]
+    rows = _tts_directive_ab_rows(runs)
+    assert len(rows) == 2
+    # Most improvement (most negative delta) first
+    assert rows[0]["friction_delta"] <= rows[1]["friction_delta"]
+
+
+def test_tts_directive_constant_is_non_empty():
+    assert len(TTS_VOICE_DIRECTIVE) > 20
+    assert "markdown" in TTS_VOICE_DIRECTIVE.lower()
+
+
+def test_tts_directive_ab_leaderboard_section_rendered(tmp_path):
+    runs = [
+        _make_run("q-baseline", "local_server", "qwen3.5", False, 4.0, 0.2, 0.9),
+        _make_run("q-tts",      "local_server", "qwen3.5", True,  1.0, 0.7, 0.88),
+    ]
+    report = {
+        "finished_at": "2026-01-01T00:00:00Z",
+        "run_count": 2,
+        "scenario_count": 3,
+        "runs": runs,
+        "meta": {},
+        "runner": {},
+    }
+    md = build_leaderboard_markdown(report)
+    assert "## TTS Directive A/B" in md
+    assert "Friction" in md
+    assert "-3.00" in md  # friction_delta

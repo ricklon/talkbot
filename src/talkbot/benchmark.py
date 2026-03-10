@@ -26,6 +26,16 @@ from talkbot.llm import create_llm_client, supports_tools
 from talkbot.text_utils import normalize_for_tts, tts_friction_score
 from talkbot.tools import TOOL_DEFINITIONS, TOOLS, get_tool_definitions_for_variant, reset_runtime_state
 
+# The TTS voice directive that can be appended to a system prompt to encourage
+# spoken-language output.  Set tts_directive: true in a benchmark profile to
+# signal that this directive was added (used by the leaderboard A/B section).
+TTS_VOICE_DIRECTIVE = (
+    "Respond in plain spoken language. "
+    "Do not use markdown formatting, bullet points, numbered lists, headers, or code blocks. "
+    "Do not use underscores in your responses. "
+    "Write as if speaking aloud to someone."
+)
+
 try:
     import resource
 except Exception:  # pragma: no cover - platform-dependent
@@ -1911,6 +1921,84 @@ def _routing_mode(profile: dict[str, Any]) -> str:
     return "llm"
 
 
+def _tts_directive_mode(profile: dict[str, Any]) -> str:
+    """Return 'tts' if profile has tts_directive enabled, else 'baseline'."""
+    val = profile.get("tts_directive")
+    if val is True or str(val).lower() in {"true", "1", "yes", "on"}:
+        return "tts"
+    return "baseline"
+
+
+def _tts_directive_ab_rows(runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Pair baseline vs tts-directive runs by (provider, model, context_window).
+
+    Returns rows suitable for rendering the TTS Directive A/B table.
+    Only produces rows where both a baseline and a tts-directive run exist.
+    """
+    grouped: dict[tuple[str, str, str, int], dict[str, list[dict[str, Any]]]] = {}
+    for run in runs:
+        profile = run.get("profile") or {}
+        agg = run.get("aggregate") or {}
+        key = _ab_compare_key(profile)
+        mode = _tts_directive_mode(profile)
+        grouped.setdefault(key, {}).setdefault(mode, []).append(
+            {
+                "task_success_rate": _coerce_float(agg.get("task_success_rate"), 0.0),
+                "avg_tts_friction_score": _coerce_float(
+                    agg.get("avg_tts_friction_score"), 0.0
+                ),
+                "tts_friction_zero_rate": _coerce_float(
+                    agg.get("tts_friction_zero_rate"), 0.0
+                ),
+                "avg_judge_spoken_quality": agg.get("avg_judge_spoken_quality"),
+                "avg_judge_correctness": agg.get("avg_judge_correctness"),
+            }
+        )
+
+    def _avg(samples: list[dict[str, Any]], metric: str) -> float:
+        vals = [s[metric] for s in samples if s.get(metric) is not None]
+        return statistics.fmean(vals) if vals else 0.0
+
+    def _avg_or_none(
+        samples: list[dict[str, Any]], metric: str
+    ) -> float | None:
+        vals = [s[metric] for s in samples if s.get(metric) is not None]
+        return statistics.fmean(vals) if vals else None
+
+    rows: list[dict[str, Any]] = []
+    for key, modes in grouped.items():
+        baseline = modes.get("baseline") or []
+        tts = modes.get("tts") or []
+        if not baseline or not tts:
+            continue
+        base_friction = _avg(baseline, "avg_tts_friction_score")
+        tts_friction = _avg(tts, "avg_tts_friction_score")
+        base_clean = _avg(baseline, "tts_friction_zero_rate")
+        tts_clean = _avg(tts, "tts_friction_zero_rate")
+        base_success = _avg(baseline, "task_success_rate")
+        tts_success = _avg(tts, "task_success_rate")
+        base_spoken = _avg_or_none(baseline, "avg_judge_spoken_quality")
+        tts_spoken = _avg_or_none(tts, "avg_judge_spoken_quality")
+        rows.append(
+            {
+                "label": _ab_compare_label(key),
+                "baseline_friction": base_friction,
+                "tts_friction": tts_friction,
+                "friction_delta": tts_friction - base_friction,
+                "baseline_clean": base_clean,
+                "tts_clean": tts_clean,
+                "clean_delta": tts_clean - base_clean,
+                "baseline_success": base_success,
+                "tts_success": tts_success,
+                "success_delta": tts_success - base_success,
+                "baseline_spoken": base_spoken,
+                "tts_spoken": tts_spoken,
+            }
+        )
+    rows.sort(key=lambda r: r["friction_delta"])  # most improvement first
+    return rows
+
+
 def _ab_compare_key(profile: dict[str, Any]) -> tuple[str, str, str, int]:
     provider = str(profile.get("provider") or "")
     model = str(profile.get("model") or "")
@@ -2127,6 +2215,7 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
     latest_run_text = latest_run if latest_run else "not provided"
     context_rows = _context_sweep_summary(runs, rubric, context_analysis)
     ab_rows = _ab_comparison_rows(runs, rubric)
+    tts_ab_rows = _tts_directive_ab_rows(runs)
 
     quality_rank = sorted(
         runs,
@@ -2550,6 +2639,62 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
                 f"- Routing gap summary: intent minus llm avg score delta = {avg_score_gap:+.3f}",
             ]
         )
+
+    # --- TTS Directive A/B ---
+    if tts_ab_rows:
+        has_judge_spoken = any(
+            r["baseline_spoken"] is not None or r["tts_spoken"] is not None
+            for r in tts_ab_rows
+        )
+        lines.extend(
+            [
+                "",
+                "## TTS Directive A/B (Baseline vs Directive)",
+                "",
+                "- **Baseline**: standard system prompt.",
+                "- **Directive**: same prompt + *\"Respond in plain spoken language. Avoid markdown, "
+                "bullet points, numbered lists, headers, and code blocks. Do not use underscores "
+                "in your responses. Write as if speaking aloud.\"*",
+                "- `Friction Δ`: tts minus baseline (negative = directive reduced friction).",
+                "- `Clean Δ`: tts minus baseline clean-turn rate (positive = more clean turns).",
+                "- `Success Δ`: task success change (watch for regressions).",
+                "",
+            ]
+        )
+        if has_judge_spoken:
+            lines.extend(
+                [
+                    "| Model | Base Friction | TTS Friction | Friction Δ | "
+                    "Base Clean | TTS Clean | Clean Δ | Base Success | TTS Success | Success Δ | "
+                    "Base Spoken | TTS Spoken |",
+                    "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+                ]
+            )
+            for r in tts_ab_rows:
+                base_spoken = f"{r['baseline_spoken']:.2f}" if r["baseline_spoken"] is not None else "n/a"
+                tts_spoken = f"{r['tts_spoken']:.2f}" if r["tts_spoken"] is not None else "n/a"
+                lines.append(
+                    f"| {r['label']} | "
+                    f"{r['baseline_friction']:.2f} | {r['tts_friction']:.2f} | {r['friction_delta']:+.2f} | "
+                    f"{r['baseline_clean']:.1%} | {r['tts_clean']:.1%} | {r['clean_delta']:+.1%} | "
+                    f"{r['baseline_success']:.2%} | {r['tts_success']:.2%} | {r['success_delta']:+.2%} | "
+                    f"{base_spoken} | {tts_spoken} |"
+                )
+        else:
+            lines.extend(
+                [
+                    "| Model | Base Friction | TTS Friction | Friction Δ | "
+                    "Base Clean | TTS Clean | Clean Δ | Base Success | TTS Success | Success Δ |",
+                    "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+                ]
+            )
+            for r in tts_ab_rows:
+                lines.append(
+                    f"| {r['label']} | "
+                    f"{r['baseline_friction']:.2f} | {r['tts_friction']:.2f} | {r['friction_delta']:+.2f} | "
+                    f"{r['baseline_clean']:.1%} | {r['tts_clean']:.1%} | {r['clean_delta']:+.1%} | "
+                    f"{r['baseline_success']:.2%} | {r['tts_success']:.2%} | {r['success_delta']:+.2%} |"
+                )
 
     # --- Voice Quality & Reliability ---
     lines.extend(
