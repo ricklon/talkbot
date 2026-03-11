@@ -1,0 +1,1609 @@
+{
+  "started_at": "2026-03-10T08:35:41-0400",
+  "finished_at": "2026-03-10T08:36:14-0400",
+  "runner": {
+    "label": "mac-m3max-metal",
+    "hostname": "UOES-0002.local",
+    "os": "Darwin",
+    "os_release": "25.3.0",
+    "machine": "arm64",
+    "processor": "arm",
+    "python_version": "3.12.8",
+    "cpu_count_logical": 14,
+    "cpu_count_physical": null,
+    "is_raspberry_pi": false,
+    "raspberry_pi_model": null,
+    "network_type": "wifi (Wi-Fi)",
+    "inference_env": "macos-native",
+    "endpoint_probes": [
+      {
+        "label": "openrouter",
+        "url": "https://openrouter.ai/api/v1/models",
+        "ttfb_ms_median": 146.6,
+        "ttfb_ms_min": 132.1,
+        "ttfb_ms_max": 190.0,
+        "samples": 3,
+        "http_status": 200,
+        "error": null
+      },
+      {
+        "label": "ollama-local",
+        "url": "http://localhost:11434/api/tags",
+        "ttfb_ms_median": 23.7,
+        "ttfb_ms_min": 20.7,
+        "ttfb_ms_max": 46.5,
+        "samples": 3,
+        "http_status": 200,
+        "error": null
+      }
+    ],
+    "notes": null
+  },
+  "scenario_count": 10,
+  "run_count": 1,
+  "rubric": {
+    "version": "2026.1",
+    "weights": {
+      "task_success_rate": 0.35,
+      "tool_selection_accuracy": 0.2,
+      "argument_accuracy": 0.15,
+      "recovery_success_rate": 0.1,
+      "multistep_success_rate": 0.1,
+      "robustness_success_rate": 0.05,
+      "context_success_rate": 0.05
+    },
+    "penalties": {
+      "latency_ms_multiplier": 0.002,
+      "memory_mb_multiplier": 0.002,
+      "tool_error_rate_multiplier": 20.0,
+      "model_error_rate_multiplier": 30.0
+    }
+  },
+  "context_analysis": {
+    "near_peak_ratio": 0.95,
+    "dropoff_ratio": 0.9
+  },
+  "runs": [
+    {
+      "profile": {
+        "name": "local_server-qwen3.5-0.8b-q8_0",
+        "provider": "local_server",
+        "model": "qwen3.5-0.8b-q8_0",
+        "local_model_path": "models/qwen3.5-0.8b-q8_0.gguf",
+        "llamacpp_bin": "llama-cli",
+        "local_server_url": "http://127.0.0.1:8000/v1",
+        "enable_thinking": false,
+        "use_tools": true,
+        "system_prompt": null,
+        "max_tokens": 512,
+        "temperature": 0.0,
+        "env": {},
+        "tool_filter": null,
+        "tool_schema_variant": "standard",
+        "tool_use_directive": null
+      },
+      "status": "ok",
+      "error": null,
+      "started_at": "2026-03-10T08:36:14-0400",
+      "duration_s": 32.879,
+      "aggregate": {
+        "scenario_count": 10,
+        "scenario_passed": 8,
+        "task_success_rate": 0.8,
+        "total_turns": 25,
+        "avg_turn_latency_ms": 1305.243,
+        "p95_turn_latency_ms": 8066.393,
+        "avg_turns_to_success": 2.5,
+        "expected_tool_calls": 21,
+        "matched_tool_names": 21,
+        "tool_selection_accuracy": 1.0,
+        "expected_arg_checks": 3,
+        "matched_arg_checks": 3,
+        "argument_accuracy": 1.0,
+        "actual_tool_calls": 32,
+        "prompt_tokens": 59028,
+        "completion_tokens": 417,
+        "total_tokens": 59445,
+        "max_history_messages": 7,
+        "max_history_chars": 666,
+        "cpu_time_s": 0.1,
+        "python_peak_mb": 0.393,
+        "process_rss_delta_mb": 775.9,
+        "memory_peak_mb": 775.9,
+        "avg_tool_latency_ms": 0.192,
+        "p95_tool_latency_ms": 0.449,
+        "tool_call_error_count": 0,
+        "tool_call_error_rate": 0.0,
+        "tool_failure_summary": [],
+        "model_execution_error_count": 1,
+        "model_execution_error_rate": 0.04,
+        "first_turn_latency_ms": 2087.236,
+        "tokens_per_second": 1821.73,
+        "avg_prefill_tok_s": 16747.0,
+        "avg_gen_tok_s": 107.2,
+        "scenario_success_per_second": 0.2452,
+        "tag_success": {
+          "calculator": 1.0,
+          "context": 1.0,
+          "core": 0.8333,
+          "lists": 0.5,
+          "memory": 1.0,
+          "multistep": 1.0,
+          "practical": 1.0,
+          "recovery": 0.0,
+          "robustness": 0.0,
+          "timers": 0.5,
+          "tools": 0.8,
+          "utility": 1.0
+        }
+      },
+      "scenarios": [
+        {
+          "id": "calculator_basic",
+          "name": "Calculator: Basic Arithmetic",
+          "tags": [
+            "utility",
+            "tools",
+            "calculator"
+          ],
+          "passed": true,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What is 15 percent of 47 dollars?",
+              "response": "7.05",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 1313.422,
+              "tool_calls": [
+                {
+                  "scenario_id": "calculator_basic",
+                  "turn_index": 0,
+                  "name": "calculator",
+                  "args": {
+                    "formula": "0.15 * 47"
+                  },
+                  "result": "7.05",
+                  "error": null,
+                  "latency_ms": 0.487,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "completion_tokens": 5,
+                "prompt_tokens": 2512,
+                "total_tokens": 2517,
+                "x_prompt_eval_ms": 167.7,
+                "x_gen_ms": 41.0
+              },
+              "history_messages": 3,
+              "history_chars": 159
+            },
+            {
+              "index": 1,
+              "user": "Now divide that by 3.",
+              "response": "2.35",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 720.63,
+              "tool_calls": [
+                {
+                  "scenario_id": "calculator_basic",
+                  "turn_index": 1,
+                  "name": "calculator",
+                  "args": {
+                    "formula": "7.05 / 3"
+                  },
+                  "result": "2.35",
+                  "error": null,
+                  "latency_ms": 0.061,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "completion_tokens": 5,
+                "prompt_tokens": 2541,
+                "total_tokens": 2546,
+                "x_prompt_eval_ms": 173.5,
+                "x_gen_ms": 41.5
+              },
+              "history_messages": 5,
+              "history_chars": 184
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 2,
+          "expected_tool_calls": 2,
+          "matched_tool_names": 2,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 2
+        },
+        {
+          "id": "cross_tool_mix",
+          "name": "Cross-Tool Mix: Time, Timer, List",
+          "tags": [
+            "utility",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": true,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What time is it?",
+              "response": "The current time is **2026-03-10 08:35:44 EDT**.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 720.623,
+              "tool_calls": [
+                {
+                  "scenario_id": "cross_tool_mix",
+                  "turn_index": 0,
+                  "name": "get_current_time",
+                  "args": {},
+                  "result": "2026-03-10 08:35:44 EDT",
+                  "error": null,
+                  "latency_ms": 0.037,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "completion_tokens": 27,
+                "prompt_tokens": 2521,
+                "total_tokens": 2548,
+                "x_prompt_eval_ms": 159.0,
+                "x_gen_ms": 252.5
+              },
+              "history_messages": 3,
+              "history_chars": 186
+            },
+            {
+              "index": 1,
+              "user": "Set a timer for 5 minutes.",
+              "response": "The timer for 5 minutes has been set. It will fire in 300 seconds.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 956.984,
+              "tool_calls": [
+                {
+                  "scenario_id": "cross_tool_mix",
+                  "turn_index": 1,
+                  "name": "set_timer",
+                  "args": {
+                    "seconds": 300,
+                    "label": "5-minute break"
+                  },
+                  "result": "Timer #1 set. '5-minute break' will fire in 300 seconds.",
+                  "error": null,
+                  "latency_ms": 0.166,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "completion_tokens": 21,
+                "prompt_tokens": 2572,
+                "total_tokens": 2593,
+                "x_prompt_eval_ms": 175.7,
+                "x_gen_ms": 196.9
+              },
+              "history_messages": 5,
+              "history_chars": 278
+            },
+            {
+              "index": 2,
+              "user": "Add 'check the timer' to my reminders list.",
+              "response": "I've added 'check the timer' to your reminders list.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 1352.25,
+              "tool_calls": [
+                {
+                  "scenario_id": "cross_tool_mix",
+                  "turn_index": 2,
+                  "name": "create_list",
+                  "args": {
+                    "list_name": "reminders"
+                  },
+                  "result": "Created 'reminders' list.",
+                  "error": null,
+                  "latency_ms": 0.428,
+                  "failure_reason": null
+                },
+                {
+                  "scenario_id": "cross_tool_mix",
+                  "turn_index": 2,
+                  "name": "add_to_list",
+                  "args": {
+                    "items": [
+                      "check the timer"
+                    ],
+                    "list_name": "reminders"
+                  },
+                  "result": "Added 'check the timer' to the reminders list.",
+                  "error": null,
+                  "latency_ms": 0.412,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "completion_tokens": 14,
+                "prompt_tokens": 2625,
+                "total_tokens": 2639,
+                "x_prompt_eval_ms": 167.0,
+                "x_gen_ms": 130.0
+              },
+              "history_messages": 7,
+              "history_chars": 373
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 3,
+          "expected_tool_calls": 3,
+          "matched_tool_names": 3,
+          "expected_arg_checks": 1,
+          "matched_arg_checks": 1,
+          "actual_tool_calls": 4
+        },
+        {
+          "id": "list_basics",
+          "name": "List Basics",
+          "tags": [
+            "lists",
+            "tools",
+            "core"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a grocery list.",
+              "response": "",
+              "passed": false,
+              "assertions": [
+                "Model execution error: Local server request failed: Server error '500 Internal Server Error' for url 'http://127.0.0.1:8000/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500"
+              ],
+              "latency_ms": 10606.109,
+              "tool_calls": [
+                {
+                  "scenario_id": "list_basics",
+                  "turn_index": 0,
+                  "name": "create_list",
+                  "args": {
+                    "list_name": "grocery"
+                  },
+                  "result": "Created 'grocery' list.",
+                  "error": null,
+                  "latency_ms": 0.318,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "completion_tokens": 27,
+                "prompt_tokens": 2492,
+                "total_tokens": 2519,
+                "x_prompt_eval_ms": 123.5,
+                "x_gen_ms": 258.7
+              },
+              "history_messages": 2,
+              "history_chars": 144
+            },
+            {
+              "index": 1,
+              "user": "Add milk to the grocery list.",
+              "response": "I've successfully added milk to your shopping list.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 1211.877,
+              "tool_calls": [
+                {
+                  "scenario_id": "list_basics",
+                  "turn_index": 1,
+                  "name": "add_to_list",
+                  "args": {
+                    "items": [
+                      "milk"
+                    ],
+                    "list_name": "shopping"
+                  },
+                  "result": "Added 'milk' to the shopping list.",
+                  "error": null,
+                  "latency_ms": 0.381,
+                  "failure_reason": null
+                },
+                {
+                  "scenario_id": "list_basics",
+                  "turn_index": 1,
+                  "name": "get_list",
+                  "args": {
+                    "list_name": "shopping"
+                  },
+                  "result": "Shopping list:\n- milk",
+                  "error": null,
+                  "latency_ms": 0.159,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "completion_tokens": 11,
+                "prompt_tokens": 2542,
+                "total_tokens": 2553,
+                "x_prompt_eval_ms": 140.5,
+                "x_gen_ms": 99.5
+              },
+              "history_messages": 4,
+              "history_chars": 224
+            },
+            {
+              "index": 2,
+              "user": "What lists do you have?",
+              "response": "I have successfully added milk to your shopping list.",
+              "passed": false,
+              "assertions": [
+                "Response does not match regex: '(?i)grocery'"
+              ],
+              "latency_ms": 764.331,
+              "tool_calls": [
+                {
+                  "scenario_id": "list_basics",
+                  "turn_index": 2,
+                  "name": "list_all_lists",
+                  "args": {},
+                  "result": "grocery: (empty)\nshopping: [\"milk\"]",
+                  "error": null,
+                  "latency_ms": 0.17,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "completion_tokens": 11,
+                "prompt_tokens": 173,
+                "total_tokens": 184,
+                "x_prompt_eval_ms": 61.5,
+                "x_gen_ms": 99.2
+              },
+              "history_messages": 6,
+              "history_chars": 300
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 1,
+          "expected_tool_calls": 2,
+          "matched_tool_names": 2,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 4
+        },
+        {
+          "id": "list_multistep_packing",
+          "name": "Multistep: Packing List Workflow",
+          "tags": [
+            "lists",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": true,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a packing list.",
+              "response": "I've added the following items to the packing list:\n- Essentials\n- Food\n- Clothing\n- Travel\n- Documents\n\nThe list is now complete.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 2140.388,
+              "tool_calls": [
+                {
+                  "scenario_id": "list_multistep_packing",
+                  "turn_index": 0,
+                  "name": "create_list",
+                  "args": {
+                    "list_name": "packing"
+                  },
+                  "result": "Created 'packing' list.",
+                  "error": null,
+                  "latency_ms": 0.376,
+                  "failure_reason": null
+                },
+                {
+                  "scenario_id": "list_multistep_packing",
+                  "turn_index": 0,
+                  "name": "get_list",
+                  "args": {
+                    "list_name": "packing"
+                  },
+                  "result": "The packing list is empty.",
+                  "error": null,
+                  "latency_ms": 0.153,
+                  "failure_reason": null
+                },
+                {
+                  "scenario_id": "list_multistep_packing",
+                  "turn_index": 0,
+                  "name": "add_to_list",
+                  "args": {
+                    "items": [
+                      "Essentials",
+                      "Food",
+                      "Clothing",
+                      "Travel",
+                      "Documents"
+                    ],
+                    "list_name": "packing"
+                  },
+                  "result": "Added Essentials, Food, Clothing, Travel, Documents to the packing list.",
+                  "error": null,
+                  "latency_ms": 0.34,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "completion_tokens": 34,
+                "prompt_tokens": 2570,
+                "total_tokens": 2604,
+                "x_prompt_eval_ms": 141.6,
+                "x_gen_ms": 329.1
+              },
+              "history_messages": 3,
+              "history_chars": 274
+            },
+            {
+              "index": 1,
+              "user": "Add socks and charger to the packing list.",
+              "response": "I've added socks and charger to the packing list.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 857.17,
+              "tool_calls": [
+                {
+                  "scenario_id": "list_multistep_packing",
+                  "turn_index": 1,
+                  "name": "add_to_list",
+                  "args": {
+                    "items": [
+                      "socks",
+                      "charger"
+                    ],
+                    "list_name": "packing"
+                  },
+                  "result": "Added socks, charger to the packing list.",
+                  "error": null,
+                  "latency_ms": 0.374,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "completion_tokens": 12,
+                "prompt_tokens": 2570,
+                "total_tokens": 2582,
+                "x_prompt_eval_ms": 141.9,
+                "x_gen_ms": 109.8
+              },
+              "history_messages": 5,
+              "history_chars": 365
+            },
+            {
+              "index": 2,
+              "user": "Show me the packing list.",
+              "response": "The packing list is now complete. It includes:\n- Essentials\n- Food\n- Clothing\n- Travel\n- Documents\n- socks\n- charger",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 926.894,
+              "tool_calls": [
+                {
+                  "scenario_id": "list_multistep_packing",
+                  "turn_index": 2,
+                  "name": "get_list",
+                  "args": {
+                    "list_name": "packing"
+                  },
+                  "result": "Packing list:\n- Essentials\n- Food\n- Clothing\n- Travel\n- Documents\n- socks\n- charger",
+                  "error": null,
+                  "latency_ms": 0.179,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "completion_tokens": 32,
+                "prompt_tokens": 2621,
+                "total_tokens": 2653,
+                "x_prompt_eval_ms": 167.8,
+                "x_gen_ms": 308.6
+              },
+              "history_messages": 7,
+              "history_chars": 506
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 3,
+          "expected_tool_calls": 3,
+          "matched_tool_names": 3,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 5
+        },
+        {
+          "id": "memory_persistent_strict",
+          "name": "Memory Persistent (Strict)",
+          "tags": [
+            "memory",
+            "tools",
+            "core"
+          ],
+          "passed": true,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "I've remembered that your favorite color is blue.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 1139.346,
+              "tool_calls": [
+                {
+                  "scenario_id": "memory_persistent_strict",
+                  "turn_index": 0,
+                  "name": "remember",
+                  "args": {
+                    "key": "favorite_color",
+                    "value": "blue"
+                  },
+                  "result": "Remembered: favorite_color = blue",
+                  "error": null,
+                  "latency_ms": 0.34,
+                  "failure_reason": null
+                },
+                {
+                  "scenario_id": "memory_persistent_strict",
+                  "turn_index": 0,
+                  "name": "recall",
+                  "args": {
+                    "key": "favorite_color"
+                  },
+                  "result": "favorite_color: blue",
+                  "error": null,
+                  "latency_ms": 0.145,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "completion_tokens": 11,
+                "prompt_tokens": 2520,
+                "total_tokens": 2531,
+                "x_prompt_eval_ms": 134.1,
+                "x_gen_ms": 100.0
+              },
+              "history_messages": 3,
+              "history_chars": 211
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "My favorite color is blue.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 615.709,
+              "tool_calls": [
+                {
+                  "scenario_id": "memory_persistent_strict",
+                  "turn_index": 1,
+                  "name": "recall",
+                  "args": {
+                    "key": "favorite_color"
+                  },
+                  "result": "favorite_color: blue",
+                  "error": null,
+                  "latency_ms": 0.153,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "completion_tokens": 7,
+                "prompt_tokens": 2542,
+                "total_tokens": 2549,
+                "x_prompt_eval_ms": 139.3,
+                "x_gen_ms": 62.1
+              },
+              "history_messages": 5,
+              "history_chars": 263
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 2,
+          "expected_tool_calls": 2,
+          "matched_tool_names": 2,
+          "expected_arg_checks": 1,
+          "matched_arg_checks": 1,
+          "actual_tool_calls": 3
+        },
+        {
+          "id": "memory_context_flexible",
+          "name": "Memory Context (Flexible)",
+          "tags": [
+            "memory",
+            "tools",
+            "practical"
+          ],
+          "passed": true,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "I've remembered that your favorite color is blue.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 1141.899,
+              "tool_calls": [
+                {
+                  "scenario_id": "memory_context_flexible",
+                  "turn_index": 0,
+                  "name": "remember",
+                  "args": {
+                    "key": "favorite_color",
+                    "value": "blue"
+                  },
+                  "result": "Remembered: favorite_color = blue",
+                  "error": null,
+                  "latency_ms": 0.362,
+                  "failure_reason": null
+                },
+                {
+                  "scenario_id": "memory_context_flexible",
+                  "turn_index": 0,
+                  "name": "recall",
+                  "args": {
+                    "key": "favorite_color"
+                  },
+                  "result": "favorite_color: blue",
+                  "error": null,
+                  "latency_ms": 0.137,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "completion_tokens": 11,
+                "prompt_tokens": 2520,
+                "total_tokens": 2531,
+                "x_prompt_eval_ms": 133.5,
+                "x_gen_ms": 100.4
+              },
+              "history_messages": 3,
+              "history_chars": 211
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "My favorite color is blue.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 614.065,
+              "tool_calls": [
+                {
+                  "scenario_id": "memory_context_flexible",
+                  "turn_index": 1,
+                  "name": "recall",
+                  "args": {
+                    "key": "favorite_color"
+                  },
+                  "result": "favorite_color: blue",
+                  "error": null,
+                  "latency_ms": 0.167,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "completion_tokens": 7,
+                "prompt_tokens": 2542,
+                "total_tokens": 2549,
+                "x_prompt_eval_ms": 138.5,
+                "x_gen_ms": 61.0
+              },
+              "history_messages": 5,
+              "history_chars": 263
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 2,
+          "expected_tool_calls": 1,
+          "matched_tool_names": 1,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 3
+        },
+        {
+          "id": "memory_context_pressure",
+          "name": "Context: Long-Context Memory Retrieval",
+          "tags": [
+            "memory",
+            "tools",
+            "context",
+            "multistep"
+          ],
+          "passed": true,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that the launch codename is atlas.",
+              "response": "The launch codename is confirmed as **atlas**.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 1177.108,
+              "tool_calls": [
+                {
+                  "scenario_id": "memory_context_pressure",
+                  "turn_index": 0,
+                  "name": "remember",
+                  "args": {
+                    "key": "launch_codename",
+                    "value": "atlas"
+                  },
+                  "result": "Remembered: launch_codename = atlas",
+                  "error": null,
+                  "latency_ms": 0.29,
+                  "failure_reason": null
+                },
+                {
+                  "scenario_id": "memory_context_pressure",
+                  "turn_index": 0,
+                  "name": "recall",
+                  "args": {
+                    "key": "launch_codename"
+                  },
+                  "result": "launch_codename: atlas",
+                  "error": null,
+                  "latency_ms": 0.14,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "completion_tokens": 12,
+                "prompt_tokens": 2523,
+                "total_tokens": 2535,
+                "x_prompt_eval_ms": 133.5,
+                "x_gen_ms": 109.8
+              },
+              "history_messages": 3,
+              "history_chars": 211
+            },
+            {
+              "index": 1,
+              "user": "Read this long note: project timeline, ownership, and milestone details repeated for context pressure. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated.",
+              "response": "The launch codename is confirmed as **atlas**.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 704.04,
+              "tool_calls": [
+                {
+                  "scenario_id": "memory_context_pressure",
+                  "turn_index": 1,
+                  "name": "recall",
+                  "args": {
+                    "key": "launch_codename"
+                  },
+                  "result": "launch_codename: atlas",
+                  "error": null,
+                  "latency_ms": 0.148,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "completion_tokens": 12,
+                "prompt_tokens": 2581,
+                "total_tokens": 2593,
+                "x_prompt_eval_ms": 162.5,
+                "x_gen_ms": 110.7
+              },
+              "history_messages": 5,
+              "history_chars": 551
+            },
+            {
+              "index": 2,
+              "user": "After that long note, what launch codename did I ask you to remember?",
+              "response": "The launch codename is confirmed as **atlas**.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 295.84,
+              "tool_calls": [],
+              "usage": {
+                "completion_tokens": 12,
+                "prompt_tokens": 2612,
+                "total_tokens": 2624,
+                "x_prompt_eval_ms": 168.4,
+                "x_gen_ms": 110.6
+              },
+              "history_messages": 7,
+              "history_chars": 666
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 3,
+          "expected_tool_calls": 1,
+          "matched_tool_names": 1,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 3
+        },
+        {
+          "id": "recovery_timer_retry",
+          "name": "Recovery: Cancel Nonexistent Timer",
+          "tags": [
+            "timers",
+            "tools",
+            "recovery",
+            "robustness"
+          ],
+          "passed": false,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Cancel timer #99.",
+              "response": "I cannot cancel a timer or access the list of active timers. I can only provide information about the current date and time.",
+              "passed": false,
+              "assertions": [
+                "Response does not match regex: '(?i)(no timer|not found|couldn.t find|can.t find|doesn.t exist|no active|timer 99|couldn.t cancel|can.t cancel|unable to cancel|there is no)'"
+              ],
+              "latency_ms": 1291.346,
+              "tool_calls": [
+                {
+                  "scenario_id": "recovery_timer_retry",
+                  "turn_index": 0,
+                  "name": "cancel_timer",
+                  "args": {
+                    "timer_id": "99"
+                  },
+                  "result": "No active timer with ID '99'. Use list_timers to see active timers.",
+                  "error": null,
+                  "latency_ms": 0.008,
+                  "failure_reason": null
+                },
+                {
+                  "scenario_id": "recovery_timer_retry",
+                  "turn_index": 0,
+                  "name": "list_timers",
+                  "args": {},
+                  "result": "No active timers.",
+                  "error": null,
+                  "latency_ms": 0.004,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "completion_tokens": 26,
+                "prompt_tokens": 125,
+                "total_tokens": 151,
+                "x_prompt_eval_ms": 45.7,
+                "x_gen_ms": 239.7
+              },
+              "history_messages": 3,
+              "history_chars": 263
+            },
+            {
+              "index": 1,
+              "user": "List my timers so I can see what's actually running.",
+              "response": "I apologize, but I cannot list timers or cancel them. I can only provide information about the current date and time.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 690.858,
+              "tool_calls": [
+                {
+                  "scenario_id": "recovery_timer_retry",
+                  "turn_index": 1,
+                  "name": "list_timers",
+                  "args": {},
+                  "result": "No active timers.",
+                  "error": null,
+                  "latency_ms": 0.004,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "completion_tokens": 25,
+                "prompt_tokens": 2561,
+                "total_tokens": 2586,
+                "x_prompt_eval_ms": 140.0,
+                "x_gen_ms": 237.6
+              },
+              "history_messages": 5,
+              "history_chars": 432
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 1,
+          "expected_tool_calls": 2,
+          "matched_tool_names": 2,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 3
+        },
+        {
+          "id": "timer_basics",
+          "name": "Timer Basics",
+          "tags": [
+            "timers",
+            "tools",
+            "core"
+          ],
+          "passed": true,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Set a timer for 10 seconds.",
+              "response": "The timer has been set for 10 seconds. The timer will fire in 10 seconds.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 753.26,
+              "tool_calls": [
+                {
+                  "scenario_id": "timer_basics",
+                  "turn_index": 0,
+                  "name": "set_timer",
+                  "args": {
+                    "seconds": 10
+                  },
+                  "result": "Timer #1 set. '10-second timer' will fire in 10 seconds.",
+                  "error": null,
+                  "latency_ms": 0.105,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "completion_tokens": 22,
+                "prompt_tokens": 2524,
+                "total_tokens": 2546,
+                "x_prompt_eval_ms": 133.5,
+                "x_gen_ms": 207.9
+              },
+              "history_messages": 3,
+              "history_chars": 222
+            },
+            {
+              "index": 1,
+              "user": "List timers.",
+              "response": "The timer has been set for 10 seconds. The timer will fire in 10 seconds.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 655.879,
+              "tool_calls": [
+                {
+                  "scenario_id": "timer_basics",
+                  "turn_index": 1,
+                  "name": "list_timers",
+                  "args": {},
+                  "result": "#1: '10-second timer' \u2014 9s remaining",
+                  "error": null,
+                  "latency_ms": 0.036,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "completion_tokens": 22,
+                "prompt_tokens": 2561,
+                "total_tokens": 2583,
+                "x_prompt_eval_ms": 140.4,
+                "x_gen_ms": 207.9
+              },
+              "history_messages": 5,
+              "history_chars": 307
+            },
+            {
+              "index": 2,
+              "user": "Cancel timer 1.",
+              "response": "The timer has been cancelled.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 688.522,
+              "tool_calls": [
+                {
+                  "scenario_id": "timer_basics",
+                  "turn_index": 2,
+                  "name": "cancel_timer",
+                  "args": {
+                    "timer_id": "1"
+                  },
+                  "result": "Timer #1 ('10-second timer') cancelled.",
+                  "error": null,
+                  "latency_ms": 0.013,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "completion_tokens": 7,
+                "prompt_tokens": 2602,
+                "total_tokens": 2609,
+                "x_prompt_eval_ms": 164.1,
+                "x_gen_ms": 61.2
+              },
+              "history_messages": 7,
+              "history_chars": 351
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 3,
+          "expected_tool_calls": 3,
+          "matched_tool_names": 3,
+          "expected_arg_checks": 1,
+          "matched_arg_checks": 1,
+          "actual_tool_calls": 3
+        },
+        {
+          "id": "utility_time_date",
+          "name": "Utility: Date and Time",
+          "tags": [
+            "utility",
+            "tools",
+            "core"
+          ],
+          "passed": true,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What's today's date?",
+              "response": "Today's date is **March 10, 2026**.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 588.863,
+              "tool_calls": [
+                {
+                  "scenario_id": "utility_time_date",
+                  "turn_index": 0,
+                  "name": "get_current_date",
+                  "args": {},
+                  "result": "2026-03-10",
+                  "error": null,
+                  "latency_ms": 0.013,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "completion_tokens": 17,
+                "prompt_tokens": 2512,
+                "total_tokens": 2529,
+                "x_prompt_eval_ms": 132.8,
+                "x_gen_ms": 158.9
+              },
+              "history_messages": 3,
+              "history_chars": 177
+            },
+            {
+              "index": 1,
+              "user": "And what time is it right now?",
+              "response": "The current time is **2026-03-10 08:36:13 EDT**.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 703.655,
+              "tool_calls": [
+                {
+                  "scenario_id": "utility_time_date",
+                  "turn_index": 1,
+                  "name": "get_current_time",
+                  "args": {},
+                  "result": "2026-03-10 08:36:13 EDT",
+                  "error": null,
+                  "latency_ms": 0.034,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "completion_tokens": 27,
+                "prompt_tokens": 2564,
+                "total_tokens": 2591,
+                "x_prompt_eval_ms": 138.7,
+                "x_gen_ms": 256.7
+              },
+              "history_messages": 5,
+              "history_chars": 255
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 2,
+          "expected_tool_calls": 2,
+          "matched_tool_names": 2,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 2
+        }
+      ],
+      "tool_traces": [
+        {
+          "scenario_id": "calculator_basic",
+          "turn_index": 0,
+          "name": "calculator",
+          "args": {
+            "formula": "0.15 * 47"
+          },
+          "result": "7.05",
+          "error": null,
+          "latency_ms": 0.487,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "calculator_basic",
+          "turn_index": 1,
+          "name": "calculator",
+          "args": {
+            "formula": "7.05 / 3"
+          },
+          "result": "2.35",
+          "error": null,
+          "latency_ms": 0.061,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "cross_tool_mix",
+          "turn_index": 0,
+          "name": "get_current_time",
+          "args": {},
+          "result": "2026-03-10 08:35:44 EDT",
+          "error": null,
+          "latency_ms": 0.037,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "cross_tool_mix",
+          "turn_index": 1,
+          "name": "set_timer",
+          "args": {
+            "seconds": 300,
+            "label": "5-minute break"
+          },
+          "result": "Timer #1 set. '5-minute break' will fire in 300 seconds.",
+          "error": null,
+          "latency_ms": 0.166,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "cross_tool_mix",
+          "turn_index": 2,
+          "name": "create_list",
+          "args": {
+            "list_name": "reminders"
+          },
+          "result": "Created 'reminders' list.",
+          "error": null,
+          "latency_ms": 0.428,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "cross_tool_mix",
+          "turn_index": 2,
+          "name": "add_to_list",
+          "args": {
+            "items": [
+              "check the timer"
+            ],
+            "list_name": "reminders"
+          },
+          "result": "Added 'check the timer' to the reminders list.",
+          "error": null,
+          "latency_ms": 0.412,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "list_basics",
+          "turn_index": 0,
+          "name": "create_list",
+          "args": {
+            "list_name": "grocery"
+          },
+          "result": "Created 'grocery' list.",
+          "error": null,
+          "latency_ms": 0.318,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "list_basics",
+          "turn_index": 1,
+          "name": "add_to_list",
+          "args": {
+            "items": [
+              "milk"
+            ],
+            "list_name": "shopping"
+          },
+          "result": "Added 'milk' to the shopping list.",
+          "error": null,
+          "latency_ms": 0.381,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "list_basics",
+          "turn_index": 1,
+          "name": "get_list",
+          "args": {
+            "list_name": "shopping"
+          },
+          "result": "Shopping list:\n- milk",
+          "error": null,
+          "latency_ms": 0.159,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "list_basics",
+          "turn_index": 2,
+          "name": "list_all_lists",
+          "args": {},
+          "result": "grocery: (empty)\nshopping: [\"milk\"]",
+          "error": null,
+          "latency_ms": 0.17,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "list_multistep_packing",
+          "turn_index": 0,
+          "name": "create_list",
+          "args": {
+            "list_name": "packing"
+          },
+          "result": "Created 'packing' list.",
+          "error": null,
+          "latency_ms": 0.376,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "list_multistep_packing",
+          "turn_index": 0,
+          "name": "get_list",
+          "args": {
+            "list_name": "packing"
+          },
+          "result": "The packing list is empty.",
+          "error": null,
+          "latency_ms": 0.153,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "list_multistep_packing",
+          "turn_index": 0,
+          "name": "add_to_list",
+          "args": {
+            "items": [
+              "Essentials",
+              "Food",
+              "Clothing",
+              "Travel",
+              "Documents"
+            ],
+            "list_name": "packing"
+          },
+          "result": "Added Essentials, Food, Clothing, Travel, Documents to the packing list.",
+          "error": null,
+          "latency_ms": 0.34,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "list_multistep_packing",
+          "turn_index": 1,
+          "name": "add_to_list",
+          "args": {
+            "items": [
+              "socks",
+              "charger"
+            ],
+            "list_name": "packing"
+          },
+          "result": "Added socks, charger to the packing list.",
+          "error": null,
+          "latency_ms": 0.374,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "list_multistep_packing",
+          "turn_index": 2,
+          "name": "get_list",
+          "args": {
+            "list_name": "packing"
+          },
+          "result": "Packing list:\n- Essentials\n- Food\n- Clothing\n- Travel\n- Documents\n- socks\n- charger",
+          "error": null,
+          "latency_ms": 0.179,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "memory_persistent_strict",
+          "turn_index": 0,
+          "name": "remember",
+          "args": {
+            "key": "favorite_color",
+            "value": "blue"
+          },
+          "result": "Remembered: favorite_color = blue",
+          "error": null,
+          "latency_ms": 0.34,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "memory_persistent_strict",
+          "turn_index": 0,
+          "name": "recall",
+          "args": {
+            "key": "favorite_color"
+          },
+          "result": "favorite_color: blue",
+          "error": null,
+          "latency_ms": 0.145,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "memory_persistent_strict",
+          "turn_index": 1,
+          "name": "recall",
+          "args": {
+            "key": "favorite_color"
+          },
+          "result": "favorite_color: blue",
+          "error": null,
+          "latency_ms": 0.153,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "memory_context_flexible",
+          "turn_index": 0,
+          "name": "remember",
+          "args": {
+            "key": "favorite_color",
+            "value": "blue"
+          },
+          "result": "Remembered: favorite_color = blue",
+          "error": null,
+          "latency_ms": 0.362,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "memory_context_flexible",
+          "turn_index": 0,
+          "name": "recall",
+          "args": {
+            "key": "favorite_color"
+          },
+          "result": "favorite_color: blue",
+          "error": null,
+          "latency_ms": 0.137,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "memory_context_flexible",
+          "turn_index": 1,
+          "name": "recall",
+          "args": {
+            "key": "favorite_color"
+          },
+          "result": "favorite_color: blue",
+          "error": null,
+          "latency_ms": 0.167,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "memory_context_pressure",
+          "turn_index": 0,
+          "name": "remember",
+          "args": {
+            "key": "launch_codename",
+            "value": "atlas"
+          },
+          "result": "Remembered: launch_codename = atlas",
+          "error": null,
+          "latency_ms": 0.29,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "memory_context_pressure",
+          "turn_index": 0,
+          "name": "recall",
+          "args": {
+            "key": "launch_codename"
+          },
+          "result": "launch_codename: atlas",
+          "error": null,
+          "latency_ms": 0.14,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "memory_context_pressure",
+          "turn_index": 1,
+          "name": "recall",
+          "args": {
+            "key": "launch_codename"
+          },
+          "result": "launch_codename: atlas",
+          "error": null,
+          "latency_ms": 0.148,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "recovery_timer_retry",
+          "turn_index": 0,
+          "name": "cancel_timer",
+          "args": {
+            "timer_id": "99"
+          },
+          "result": "No active timer with ID '99'. Use list_timers to see active timers.",
+          "error": null,
+          "latency_ms": 0.008,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "recovery_timer_retry",
+          "turn_index": 0,
+          "name": "list_timers",
+          "args": {},
+          "result": "No active timers.",
+          "error": null,
+          "latency_ms": 0.004,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "recovery_timer_retry",
+          "turn_index": 1,
+          "name": "list_timers",
+          "args": {},
+          "result": "No active timers.",
+          "error": null,
+          "latency_ms": 0.004,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "timer_basics",
+          "turn_index": 0,
+          "name": "set_timer",
+          "args": {
+            "seconds": 10
+          },
+          "result": "Timer #1 set. '10-second timer' will fire in 10 seconds.",
+          "error": null,
+          "latency_ms": 0.105,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "timer_basics",
+          "turn_index": 1,
+          "name": "list_timers",
+          "args": {},
+          "result": "#1: '10-second timer' \u2014 9s remaining",
+          "error": null,
+          "latency_ms": 0.036,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "timer_basics",
+          "turn_index": 2,
+          "name": "cancel_timer",
+          "args": {
+            "timer_id": "1"
+          },
+          "result": "Timer #1 ('10-second timer') cancelled.",
+          "error": null,
+          "latency_ms": 0.013,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "utility_time_date",
+          "turn_index": 0,
+          "name": "get_current_date",
+          "args": {},
+          "result": "2026-03-10",
+          "error": null,
+          "latency_ms": 0.013,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "utility_time_date",
+          "turn_index": 1,
+          "name": "get_current_time",
+          "args": {},
+          "result": "2026-03-10 08:36:13 EDT",
+          "error": null,
+          "latency_ms": 0.034,
+          "failure_reason": null
+        }
+      ]
+    }
+  ],
+  "meta": {
+    "main_output_root": "benchmark_results",
+    "latest_run": "/Users/rianders/Documents/GitHub/talkbot/benchmark_results/latest",
+    "run_name": "metal-mac-m3max-qwen35-0.8b-q8_0",
+    "runner_label": "mac-m3max-metal",
+    "update_main": true
+  }
+}
