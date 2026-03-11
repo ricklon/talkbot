@@ -147,6 +147,82 @@ def _latest_user_text(messages: list[dict[str, Any]]) -> str:
     return ""
 
 
+def _detect_intent_tool_name(messages: list[dict[str, Any]]) -> str | None:
+    """Identify the single most-likely tool from the latest user message.
+
+    Used by LocalServerClient intent routing to narrow the tool schema to one
+    function and set tool_choice='required', mechanically preventing the model
+    from skipping the tool call. Returns None when no clear tool is matched or
+    when the message implies multiple tools (let the LLM handle multi-step).
+    """
+    text = _latest_user_text(messages).lower()
+    if not text:
+        return None
+
+    # Time / date — match "what time is it", "what's the time", "current time", etc.
+    if re.search(r"\bwhat time\b|\bcurrent time\b|\bwhat(?:'s| is)(?: the)? (?:current )?time\b", text):
+        return "get_current_time"
+    if re.search(r"\bwhat(?:'s| is)(?: the)? (?:current )?date\b|\bcurrent date\b|\btoday(?:'s)? date\b|\bwhat day\b", text):
+        return "get_current_date"
+
+    # Coin / dice / random
+    if re.search(r"\bflip\b.*\bcoin\b|\bcoin\b.*\bflip\b", text):
+        return "flip_coin"
+    if re.search(r"\broll\b.*\bdic[e]\b|\broll\b.*\bdie\b|\b\d+d\d+\b|\bd\d+\b", text):
+        return "roll_dice"
+    if re.search(r"\brandom number\b", text):
+        return "random_number"
+
+    # Timers — order: cancel > list > set (most specific first)
+    if re.search(r"\bcancel\b.*\btimers?\b|\bstop\b.*\btimers?\b", text):
+        return "cancel_timer"
+    if re.search(r"\blist\b.*\btimers?\b|\bactive timers?\b|\bshow.*timers?\b|\btimers?\s*(?:running|left|remaining)\b", text):
+        return "list_timers"
+    if re.search(r"\bset\b.*\btimer\b|\btimer\b.*\bfor\b|\b\d+\s*(?:second|minute|hour)s?\b.*\btimer\b|\btimer\b.*\b\d+\s*(?:second|minute|hour)s?\b", text):
+        return "set_timer"
+
+    # Memory — recall_all > recall > remember (most specific first)
+    # recall_all: "all things you remember", "everything remembered", "recall all"
+    if re.search(r"\brecall all\b|\ball.*memor\b|\beverything.*remember\b|\bshow.*memories\b|\ball.*things.*remember\b|\bthings.*remember\b", text):
+        return "recall_all"
+    # recall: explicit recall keyword, "when is my X", "what did I ask you to remember", keyword queries
+    if re.search(
+        r"\brecall\b"
+        r"|\bwhat\b.*\bremembered\b"
+        r"|\bwhat\b.*\bmy\b.*\b(?:name|key|budget|contact|project|deadline|codename|flight|password)\b"
+        r"|\bwhen\b.*\b(?:flight|deadline|meeting|appointment|event)\b"
+        r"|\bwhat did.*remember\b"
+        r"|\bask.*remember\b",
+        text,
+    ):
+        return "recall"
+    # remember: store new fact — but NOT if it's a compound create+add or if it's a recall phrasing
+    # Avoid triggering on "remember" in "what do you remember" (recall context)
+    if re.search(r"\bremember\b(?!.*\blist\b)", text) and not re.search(r"\bwhat\b.*\bremember\b|\bdo you remember\b|\byou remember\b", text):
+        return "remember"
+
+    # Calculator — require spaces around operator to avoid matching phone numbers like 555-0100
+    if re.search(r"\bcalculat\w+\b|\bcompute\b|\bwhat is \d|\bpercent of\b|\bdivide\b|\bmultiply\b|\bsquare root\b|\b\d+\s+[+\-*/]\s+\d+\b", text):
+        return "calculator"
+
+    # Lists — only force WRITE operations. Read operations (get_list, list_all_lists)
+    # are intentionally excluded: the model calls them naturally and forcing risks
+    # list_name mismatches (e.g., 'packing' vs 'packing_list').
+    if re.search(r"\bclear\b.*\blist\b|\bempty\b.*\blist\b|\breset\b.*\blist\b", text):
+        return "clear_list"
+    if re.search(r"\bremove\b.*\bfrom\b.*\blist\b|\bdelete\b.*\bfrom\b.*\blist\b", text):
+        return "remove_from_list"
+    has_create = bool(re.search(r"\bcreate\b.*\blist\b|\bnew\b.*\blist\b|\bstart\b.*\blist\b|\bmake\b.*\blist\b", text))
+    if has_create:
+        # Force create_list first; after it completes the free-form second iteration
+        # should call add_to_list naturally from the user message context.
+        return "create_list"
+    if re.search(r"\badd\b.*\blist\b|\bput\b.*\blist\b|\bappend\b.*\blist\b|\badd\b.*\bto\b.*\blist\b|\balso add\b", text):
+        return "add_to_list"
+
+    return None
+
+
 def _latest_assistant_text(messages: list[dict[str, Any]]) -> str:
     for message in reversed(messages):
         if str(message.get("role", "")).strip().lower() == "assistant":
@@ -914,6 +990,7 @@ class LocalServerClient:
         api_key: Optional[str] = None,
         enable_thinking: bool = False,
         timeout: float = 60.0,
+        direct_tool_routing: Optional[bool] = None,
     ) -> None:
         import datetime as _dt
         _now = _dt.datetime.now().astimezone()
@@ -926,6 +1003,10 @@ class LocalServerClient:
         self.api_key = api_key or os.getenv("TALKBOT_LOCAL_SERVER_API_KEY")
         self.enable_thinking = enable_thinking
         self.client = httpx.Client(timeout=timeout)
+        if direct_tool_routing is None:
+            self.direct_tool_routing = os.getenv("TALKBOT_LOCAL_DIRECT_TOOL_ROUTING", "0").strip().lower() in {"1", "true", "yes", "on"}
+        else:
+            self.direct_tool_routing = direct_tool_routing
 
         self.tools: dict[str, Callable] = {}
         self.tool_definitions: list[dict] = []
@@ -997,6 +1078,8 @@ class LocalServerClient:
         max_tokens: Optional[int] = None,
         stream: bool = False,
         include_tools: bool = True,
+        tool_override: Optional[list[dict]] = None,
+        tool_choice_override: Optional[str] = None,
     ) -> dict:
         payload: dict = {
             "model": self.model,
@@ -1008,9 +1091,11 @@ class LocalServerClient:
             payload["chat_template_kwargs"] = {"enable_thinking": False}
         if max_tokens:
             payload["max_tokens"] = int(max_tokens)
-        if include_tools and self.tool_definitions:
-            payload["tools"] = self.tool_definitions
-            payload["tool_choice"] = "auto"
+        if include_tools:
+            tools_to_send = tool_override if tool_override is not None else self.tool_definitions
+            if tools_to_send:
+                payload["tools"] = tools_to_send
+                payload["tool_choice"] = tool_choice_override or "auto"
 
         try:
             response = self.client.post(
@@ -1042,13 +1127,37 @@ class LocalServerClient:
             response = self.chat_completion(messages, temperature, max_tokens)
             return _response_content(response)
 
+        # Intent routing: detect which single tool the user most likely wants.
+        # When found, send only that tool's schema + tool_choice='required' so the
+        # model cannot skip the call by emitting a verbal confirmation instead.
+        forced_tool_def: Optional[list[dict]] = None
+        if self.direct_tool_routing and self.tool_definitions:
+            intended = _detect_intent_tool_name(messages)
+            if intended and intended in self.tools:
+                single = next(
+                    (d for d in self.tool_definitions if d["function"]["name"] == intended),
+                    None,
+                )
+                if single:
+                    forced_tool_def = [single]
+
         current_messages = messages.copy()
         tool_call_count = 0
         executed_tool_summaries: list[str] = []
         executed_call_results: dict[str, str] = {}  # call_key -> result (dedup)
         while tool_call_count < max_tool_calls:
             try:
-                response = self.chat_completion(current_messages, temperature, max_tokens)
+                # Pop the forced tool on first use only — subsequent iterations are free-form
+                current_forced = forced_tool_def
+                forced_tool_def = None
+                if current_forced:
+                    response = self.chat_completion(
+                        current_messages, temperature, max_tokens,
+                        tool_override=current_forced,
+                        tool_choice_override="required",
+                    )
+                else:
+                    response = self.chat_completion(current_messages, temperature, max_tokens)
             except LLMProviderError:
                 if executed_tool_summaries:
                     fallback_messages = [

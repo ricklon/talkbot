@@ -727,7 +727,7 @@ TOOL_DEFINITIONS = {
         },
     },
     "set_timer": {
-        "description": "Set a countdown timer with an optional label. Use this for cooking, workouts, or simple countdowns. When done it says '{label} is done!'. For a custom spoken message use set_reminder instead.",
+        "description": "Set a countdown timer with an optional label. Use this for cooking, workouts, or simple countdowns. When done it says '{label} is done!'. Always call this tool for every timer request — call it even if you have set timers earlier in this conversation.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -788,7 +788,7 @@ TOOL_DEFINITIONS = {
         },
     },
     "add_to_list": {
-        "description": "Add one or more items to a named list. Always call this tool — do not track list contents in conversation context.",
+        "description": "Add one or more items to a named list. Always call this tool for every add request — call it even if you have already added items to this list earlier in this conversation.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -856,7 +856,7 @@ TOOL_DEFINITIONS = {
         "parameters": {"type": "object", "properties": {}, "required": []},
     },
     "remember": {
-        "description": "Store a user preference or piece of information for later recall. Always call this tool — do not rely on conversation context across sessions.",
+        "description": "Store a user preference or piece of information for later recall. Always call this tool for every remember request — call it even if you have already stored other facts earlier in this conversation.",
         "parameters": {
             "type": "object",
             "properties": {

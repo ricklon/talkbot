@@ -5,6 +5,146 @@ observed, what we changed, and what the data confirmed. Ordered newest-first.
 
 ---
 
+## 2026-03-10 — Endurance scenarios: repeated store bypass (Cluster B on write operations)
+
+### All endurance scenarios score 0% — not context overflow
+
+**Observation:** Running 5 endurance scenarios (10–30 turns) against all four
+qwen3.5 M3 Max profiles produced 0% success across the board. Initial hypothesis
+was context overflow (ctx=4096), but token counts at failure points were
+2600–2700 tokens — well within the 4096 window.
+
+**Actual cause:** The model calls `remember` / `add_to_list` / `set_timer`
+correctly on the first 1–2 invocations, then bypasses subsequent calls to the
+same tool. On turn 3 of `deep_endurance_session`:
+
+- prompt_tokens: 2632, completion_tokens: **12**
+- tool_calls: **[]**
+- assertion: `"Missing expected tool call: ['remember']"`
+- response: *"I've saved your project name as 'Falcon'."*
+
+The model generates 12 tokens, no tool call, and confidently moves on. It
+learned from the conversation context that calling `remember` works, so it
+shortcuts the mechanism and pretends to store without actually calling.
+
+This is **Cluster B ("answers from context") on write operations**, not just
+recall. The pattern triggers earlier than expected (turn 3, not turn 20+)
+when the same tool is called repeatedly in sequence.
+
+**Affected scenarios:** All five endurance scenarios, all four qwen3.5 profiles
+(0.8b Q8_0 LLM/Intent, 0.8b Q4_K_M, 2b Q4_K_M). Failure is at the write
+operations, not the recall assertions.
+
+**Note on context-bypass at late recall turns:** This is distinct from the
+late-turn context-bypass documented in `deep_endurance_session.json` (turns
+25–27), where the model correctly answers from context without calling recall
+tools. That pattern is expected and acceptable — the information is already
+in context. The *store* bypass is not acceptable: the tool must be called
+to persist data across sessions.
+
+**Fix options (not yet tested):**
+1. Add compliance language to `remember`, `add_to_list`, and `set_timer`
+   descriptions: `"Always call this tool — even if you have already called it
+   recently. Every call stores new data. Do not acknowledge without calling."`
+2. Redesign endurance scenarios to interleave different tools between repeated
+   calls of the same tool (reduces the "I've already done this" pattern).
+3. Both: compliance language is the primary lever; interleaving reduces surface area.
+
+**Evidence that compliance language works:** In `validated-20260227-v3-schemas`,
+adding `"Always call this tool — never answer from context"` to `get_current_time`
+and `remember` drove gemini-2.5-flash-lite from 60% → 100% success. The same
+mechanism should suppress write-operation bypass.
+
+**Research findings (2026-03-10):** This pattern is documented in the academic
+literature and practitioner writing, though it has no single canonical name.
+Key sources:
+
+- **BFCL V4 (ICML 2025)**: confirms multi-turn tool count consistency is a
+  distinct failure mode from single-turn accuracy; small models systematically
+  under-call after initial success
+- **BUTTON (ICLR 2025, arXiv:2410.12952)**: identifies the root cause as sparse
+  multi-turn tool training data; most function-calling fine-tune datasets are
+  single-turn, so models never learn that the same tool may be needed N times
+- **MemTool (arXiv:2507.21428)**: frames it as "implicit few-shot learning from
+  conversation history" — prior `[user → tool call → result → confirmation]`
+  quads teach the model to shortcut by emitting confirmation without the call
+- **Qwen model card**: explicitly states "it is not guaranteed that the model
+  generation will always follow the protocol even with proper prompting" and
+  acknowledges qwen3.5-0.8B is more prone to anomalous generation; recommends
+  Qwen-Agent (deterministic dispatch wrapper) for production tool use
+- **Sohaib Ahmed (practitioner blog)**: documented the identical pattern in
+  Qwen 2.5 Coder 1.5B — correct on first call, manual shortcut on subsequent
+
+**Ranked fixes for sub-2B local models:**
+1. **Dynamic tool set reduction + `tool_choice: "required"`**: Detect intent,
+   send only the relevant tool, force a call. Mechanical guarantee — no
+   persuasion. llama-server supports `tool_choice: "required"`.
+   TalkBot's intent routing (TALKBOT_LOCAL_DIRECT_TOOL_ROUTING=1) is the
+   current equivalent and is already the recommended architecture for these models.
+2. **Strip natural-language confirmations from history**: Store raw tool-role
+   messages, not the model's "I've remembered X" summaries. Removes the
+   implicit few-shot bypass examples from context.
+3. **Compliance language in tool descriptions**: Works marginally for capable
+   remote models; negligible for sub-2B local models (confirmed by experiment).
+
+**Conclusion for TalkBot:** Intent routing (deterministic dispatch) is the
+correct and documented solution for this model class. The endurance scenarios
+expose this architectural split — LLM mode fails at repeated store operations;
+Intent mode is the production recommendation for sub-2B models.
+
+**Intent routing endurance results (2026-03-10):** Re-ran all 5 endurance
+scenarios with LLM vs Intent routing side-by-side. **Both scored 0% success.**
+Tool selection accuracy: LLM 60.2%, Intent 59.1%. No meaningful difference.
+
+**Why intent routing doesn't help here:** Intent routing intercepts tool calls
+that the model *requests*. When the model makes **zero tool calls** (verbally
+hallucinating "I've remembered X" while `tool_calls=[]`), there is nothing to
+intercept. The failure is upstream of routing — the model never emits a tool
+call request in the first place.
+
+Observed directly: turns like `t3 tools=[] | "I've remembered that the project
+is called Falcon."` produce 12-token completions with no tool call. The model
+shortcuts the call-execute-confirm loop to just the confirm step.
+
+**Cascade effect confirmed:** Skipped writes propagate downstream. When
+`add_to_list` is bypassed at turn 20, the list stays empty. A subsequent
+`get_list` at turn 23 returns nothing, and the assertion `"tasks list contains
+test|code|deploy"` fails — even though `get_list` was called correctly.
+
+**What actually needs to happen:**
+- `tool_choice: "required"` forces a tool call JSON to be emitted. llama-server
+  supports this. Without it, the model can return plain text with no call.
+- Dynamic tool set: send only the one tool the intent router already identified.
+  Eliminates ambiguity about which tool to call.
+- Together: intent detection → single-tool schema + `tool_choice: "required"` →
+  model *must* emit a tool call → arguments are extracted and executed.
+
+This is a benchmark/infrastructure gap, not a model capability gap. The
+endurance scenarios expose it most clearly because repeated same-tool calls
+amplify the bypass pattern.
+
+**Status (2026-03-11 — RESOLVED):** Implemented `tool_choice: "required"` +
+single-tool schema in `LocalServerClient` (commit 3b83c3d, issue #44 closed).
+
+Results after fix (M3 Max, qwen3.5-0.8b Q8_0):
+- Endurance overall: **0% → 60%** (3/5 scenarios pass_k met)
+- Timer Sequence: **100%** (15/15, pass_k satisfied)
+- Memory Recall: **100%** (10/10)
+- Long Mixed 30 turns: **30/30 turns passing** (pass_k accumulating)
+- Core canonical suite: **90% maintained** — intent leads leaderboard
+
+**Key implementation insight:** Only WRITE tools are forced (`remember`,
+`add_to_list`, `set_timer`, `create_list`, `clear_list`, `remove_from_list`).
+Keyed read tools (`get_list`, `recall`) are excluded from forcing because the
+model generates consistent `list_name` / `key` args from context in LLM mode,
+but may produce mismatched names when isolated to a single forced schema.
+Stateless reads (`get_current_time`, `get_current_date`, `flip_coin`, etc.)
+are safely forced because they require no keyed arguments.
+
+**Architecture split is now official guidance** — see `decision_strategy.md`.
+
+---
+
 ## 2026-02-27 — Pipeline benchmark: Mistral [TOOL_CALLS] in OpenRouter prompt-tool path
 
 ### Mistral models ignore XML tool tag instruction and emit [TOOL_CALLS] regardless

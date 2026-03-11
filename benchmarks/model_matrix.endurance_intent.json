@@ -1,0 +1,59 @@
+{
+  "_comment": "Endurance scenarios with Intent routing. Tests whether deterministic tool dispatch (TALKBOT_LOCAL_DIRECT_TOOL_ROUTING=1) solves the repeated-store-bypass failure documented in LESSONS_LEARNED.md. LLM mode scores 0% on all endurance scenarios due to implicit few-shot shortcutting. Run: uv run python scripts/benchmark_conversations.py --matrix benchmarks/model_matrix.endurance_intent.json --scenarios tests/conversations/endurance --local-server-url http://127.0.0.1:8000/v1 --name endurance-intent-$(date +%Y%m%d) --no-publish",
+  "benchmark": {
+    "schema_version": "2026.1",
+    "values_file": "benchmarks/evaluation_values.json",
+    "rubric": {
+      "version": "2026.endurance.v1",
+      "weights": {
+        "task_success_rate": 0.35,
+        "tool_selection_accuracy": 0.2,
+        "argument_accuracy": 0.15,
+        "recovery_success_rate": 0.1,
+        "multistep_success_rate": 0.1,
+        "robustness_success_rate": 0.05,
+        "context_success_rate": 0.05
+      },
+      "penalties": {
+        "latency_ms_multiplier": 0.002,
+        "memory_mb_multiplier": 0.002,
+        "tool_error_rate_multiplier": 20.0,
+        "model_error_rate_multiplier": 30.0
+      }
+    }
+  },
+  "profiles": [
+    {
+      "_comment": "LLM mode control — expected 0% on endurance (repeated-store-bypass baseline). Documents the floor.",
+      "name": "qwen3.5-0.8b-q8-llm",
+      "provider": "local_server",
+      "model": "qwen/qwen3.5-0.8b",
+      "local_model_path": "models/qwen3.5-0.8b-q8_0.gguf",
+      "local_server_url": "http://127.0.0.1:8000/v1",
+      "enable_thinking": false,
+      "use_tools": true,
+      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+      "max_tokens": 512,
+      "temperature": 0.0,
+      "env": {
+        "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "0"
+      }
+    },
+    {
+      "_comment": "Intent routing ceiling — hypothesis: deterministic dispatch eliminates repeated-store-bypass. Should score >=60% where LLM mode scores 0%.",
+      "name": "qwen3.5-0.8b-q8-intent",
+      "provider": "local_server",
+      "model": "qwen/qwen3.5-0.8b",
+      "local_model_path": "models/qwen3.5-0.8b-q8_0.gguf",
+      "local_server_url": "http://127.0.0.1:8000/v1",
+      "enable_thinking": false,
+      "use_tools": true,
+      "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
+      "max_tokens": 512,
+      "temperature": 0.0,
+      "env": {
+        "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "1"
+      }
+    }
+  ]
+}
