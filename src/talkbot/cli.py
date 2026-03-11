@@ -26,6 +26,8 @@ from talkbot.voice import (
     transcribe_audio_file,
 )
 
+DEFAULT_LOCAL_SERVER_MODEL = "qwen3.5-0.8b-q8_0"
+
 
 def _default_tts_backend() -> str:
     return os.getenv("TALKBOT_DEFAULT_TTS_BACKEND", "kittentts")
@@ -43,7 +45,8 @@ def _default_provider() -> str:
 def _default_model() -> str:
     provider = _default_provider()
     if provider == "local_server":
-        return (os.getenv("TALKBOT_LOCAL_SERVER_MODEL") or "").strip()
+        configured = (os.getenv("TALKBOT_LOCAL_SERVER_MODEL") or "").strip()
+        return configured or DEFAULT_LOCAL_SERVER_MODEL
     configured = os.getenv("TALKBOT_DEFAULT_MODEL", "").strip()
     if configured:
         return configured
