@@ -1,0 +1,194 @@
+{
+  "id": "deep_endurance_planning",
+  "name": "Deep Endurance: Trip Planning Session (28 turns)",
+  "description": "28-turn trip planning session. Trip details (destination, dates, budget, companion) stored in turns 1-4. 20 turns of planning activity follow before deep recall tests at turns 23-28. Realistic voice-assistant session that generates verbose responses (summaries, lists) to accumulate tokens faster. Late recall turns 23-26 assert content only (no tool_call requirement) to capture the context-bypass pattern: at late turns the model answers correctly from conversation context without calling recall tools.",
+  "tags": ["endurance", "memory", "list", "tools"],
+  "type": "endurance",
+  "reset_state": true,
+  "turns": [
+    {
+      "user": "Remember that I'm planning a trip to Lisbon.",
+      "expect": {
+        "tool_calls": [{ "name": "remember" }]
+      }
+    },
+    {
+      "user": "Remember that the trip is from June 10th to June 20th.",
+      "expect": {
+        "tool_calls": [{ "name": "remember" }]
+      }
+    },
+    {
+      "user": "Remember that my travel budget is 3000 dollars.",
+      "expect": {
+        "tool_calls": [{ "name": "remember" }]
+      }
+    },
+    {
+      "user": "Remember that I'm traveling with my friend Marco.",
+      "expect": {
+        "tool_calls": [{ "name": "remember" }]
+      }
+    },
+    {
+      "user": "Create a packing list and add my passport and travel adapter.",
+      "expect": {
+        "tool_calls": [{ "name_any": ["create_list", "add_to_list"] }],
+        "min_tool_calls": 1
+      }
+    },
+    {
+      "user": "Add sunscreen, light jacket, and walking shoes to the packing list.",
+      "expect": {
+        "tool_calls": [{ "name": "add_to_list" }]
+      }
+    },
+    {
+      "user": "What time is it?",
+      "expect": {
+        "tool_calls": [{ "name": "get_current_time" }]
+      }
+    },
+    {
+      "user": "Create a restaurants list and add Taberna da Rua das Flores.",
+      "expect": {
+        "tool_calls": [{ "name_any": ["create_list", "add_to_list"] }],
+        "min_tool_calls": 1
+      }
+    },
+    {
+      "user": "How much is 3000 divided by 10 days?",
+      "expect": {
+        "tool_calls": [{ "name": "calculator" }]
+      }
+    },
+    {
+      "user": "Set a 10-minute timer — I need to book the flight.",
+      "expect": {
+        "tool_calls": [{ "name": "set_timer" }]
+      }
+    },
+    {
+      "user": "Add Pasteis de Belem and Time Out Market to the restaurants list.",
+      "expect": {
+        "tool_calls": [{ "name": "add_to_list" }]
+      }
+    },
+    {
+      "user": "Add camera and extra memory cards to the packing list.",
+      "expect": {
+        "tool_calls": [{ "name": "add_to_list" }]
+      }
+    },
+    {
+      "user": "What's today's date?",
+      "expect": {
+        "tool_calls": [{ "name": "get_current_date" }]
+      }
+    },
+    {
+      "user": "Create a todo list and add book flights and reserve hotel.",
+      "expect": {
+        "tool_calls": [{ "name_any": ["create_list", "add_to_list"] }],
+        "min_tool_calls": 1
+      }
+    },
+    {
+      "user": "What's on my packing list so far?",
+      "recall_turn": true,
+      "expect": {
+        "tool_calls": [{ "name": "get_list" }],
+        "response_spoken_regex": "(?i)(passport|adapter|sunscreen|jacket|camera)"
+      }
+    },
+    {
+      "user": "What is 15 percent of 300 — that's the tip estimate for restaurants.",
+      "expect": {
+        "tool_calls": [{ "name": "calculator" }]
+      }
+    },
+    {
+      "user": "Add book airport transfers to the todo list.",
+      "expect": {
+        "tool_calls": [{ "name": "add_to_list" }]
+      }
+    },
+    {
+      "user": "List my running timers.",
+      "expect": {
+        "tool_calls": [{ "name": "list_timers" }]
+      }
+    },
+    {
+      "user": "Add travel insurance and currency exchange to my todo list.",
+      "expect": {
+        "tool_calls": [{ "name": "add_to_list" }]
+      }
+    },
+    {
+      "user": "How many days until June 10th? Today's date should help.",
+      "expect": {
+        "tool_calls": [{ "name_any": ["get_current_date", "calculator"] }],
+        "min_tool_calls": 1
+      }
+    },
+    {
+      "user": "Show me my restaurants list.",
+      "recall_turn": true,
+      "expect": {
+        "tool_calls": [{ "name": "get_list" }],
+        "response_spoken_regex": "(?i)(belem|market|taberna)"
+      }
+    },
+    {
+      "user": "Add voltage converter to the packing list.",
+      "expect": {
+        "tool_calls": [{ "name": "add_to_list" }]
+      }
+    },
+    {
+      "user": "Where am I going on my trip?",
+      "recall_turn": true,
+      "expect": {
+        "response_spoken_contains": ["lisbon"]
+      }
+    },
+    {
+      "user": "When does the trip start and end?",
+      "recall_turn": true,
+      "expect": {
+        "response_spoken_regex": "(?i)(june|10|20)"
+      }
+    },
+    {
+      "user": "Who am I traveling with?",
+      "recall_turn": true,
+      "expect": {
+        "response_spoken_contains": ["marco"]
+      }
+    },
+    {
+      "user": "What is my travel budget?",
+      "recall_turn": true,
+      "expect": {
+        "response_spoken_contains": ["3000"]
+      }
+    },
+    {
+      "user": "Give me a complete summary — everything you remember about my trip.",
+      "recall_turn": true,
+      "expect": {
+        "tool_calls": [{ "name": "recall_all" }],
+        "response_spoken_regex": "(?i)(lisbon|marco|3000|june)"
+      }
+    },
+    {
+      "user": "Show me my complete todo list.",
+      "recall_turn": true,
+      "expect": {
+        "tool_calls": [{ "name": "get_list" }],
+        "response_spoken_regex": "(?i)(flight|hotel|transfer|insurance)"
+      }
+    }
+  ]
+}

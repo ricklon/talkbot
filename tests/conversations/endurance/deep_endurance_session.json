@@ -1,0 +1,204 @@
+{
+  "id": "deep_endurance_session",
+  "name": "Deep Endurance: Long Mixed Session (30 turns)",
+  "description": "30-turn conversation that stores key facts in turns 1-3, buries them under 20+ turns of mixed tool use, then tests recall at turns 25-30. Captures 'context-bypass' pattern: at late turns the model answers correctly from context without calling recall tools. Late recall_turns assert content only (no tool_call requirement) to measure pure long-range retention accuracy.",
+  "tags": ["endurance", "memory", "timer", "list", "tools", "high_variability"],
+  "type": "endurance",
+  "reset_state": true,
+  "turns": [
+    {
+      "user": "Remember that my emergency contact is Sarah and her number is 555-0100.",
+      "expect": {
+        "tool_calls": [{ "name": "remember" }]
+      }
+    },
+    {
+      "user": "Remember that my budget for this project is 5000 dollars.",
+      "expect": {
+        "tool_calls": [{ "name": "remember" }]
+      }
+    },
+    {
+      "user": "Remember that the project is called Falcon.",
+      "expect": {
+        "tool_calls": [{ "name": "remember" }]
+      }
+    },
+    {
+      "user": "Create a shopping list and add milk, eggs, and coffee.",
+      "expect": {
+        "tool_calls": [{ "name_any": ["create_list", "add_to_list"] }],
+        "min_tool_calls": 1
+      }
+    },
+    {
+      "user": "Set a 5-minute timer for my coffee.",
+      "expect": {
+        "tool_calls": [{ "name": "set_timer" }]
+      }
+    },
+    {
+      "user": "What time is it right now?",
+      "expect": {
+        "tool_calls": [{ "name": "get_current_time" }]
+      }
+    },
+    {
+      "user": "What is 15 percent of 340?",
+      "expect": {
+        "tool_calls": [{ "name": "calculator" }]
+      }
+    },
+    {
+      "user": "Add bread and butter to the shopping list.",
+      "expect": {
+        "tool_calls": [{ "name": "add_to_list" }]
+      }
+    },
+    {
+      "user": "Roll a 6-sided die.",
+      "expect": {
+        "tool_calls": [{ "name": "roll_dice" }]
+      }
+    },
+    {
+      "user": "What's today's date?",
+      "expect": {
+        "tool_calls": [{ "name": "get_current_date" }]
+      }
+    },
+    {
+      "user": "Set a 2-minute timer for a quick stretch break.",
+      "expect": {
+        "tool_calls": [{ "name": "set_timer" }]
+      }
+    },
+    {
+      "user": "What is 480 divided by 16?",
+      "expect": {
+        "tool_calls": [{ "name": "calculator" }]
+      }
+    },
+    {
+      "user": "Create a tasks list and add review code and write tests.",
+      "expect": {
+        "tool_calls": [{ "name_any": ["create_list", "add_to_list"] }],
+        "min_tool_calls": 1
+      }
+    },
+    {
+      "user": "Flip a coin.",
+      "expect": {
+        "tool_calls": [{ "name": "flip_coin" }]
+      }
+    },
+    {
+      "user": "What is on my shopping list?",
+      "recall_turn": true,
+      "expect": {
+        "tool_calls": [{ "name": "get_list" }],
+        "response_spoken_regex": "(?i)(milk|eggs|coffee|bread|butter)"
+      }
+    },
+    {
+      "user": "Give me a random number between 1 and 100.",
+      "expect": {
+        "tool_calls": [{ "name": "random_number" }]
+      }
+    },
+    {
+      "user": "Add cheese and yogurt to the shopping list.",
+      "expect": {
+        "tool_calls": [{ "name": "add_to_list" }]
+      }
+    },
+    {
+      "user": "List my running timers.",
+      "expect": {
+        "tool_calls": [{ "name": "list_timers" }]
+      }
+    },
+    {
+      "user": "What is 12 squared?",
+      "expect": {
+        "tool_calls": [{ "name": "calculator" }]
+      }
+    },
+    {
+      "user": "Add deploy to production to my tasks list.",
+      "expect": {
+        "tool_calls": [{ "name": "add_to_list" }]
+      }
+    },
+    {
+      "user": "What time is it now?",
+      "expect": {
+        "tool_calls": [{ "name": "get_current_time" }]
+      }
+    },
+    {
+      "user": "Roll two 10-sided dice.",
+      "expect": {
+        "tool_calls": [{ "name": "roll_dice" }]
+      }
+    },
+    {
+      "user": "Show me everything on my tasks list.",
+      "recall_turn": true,
+      "expect": {
+        "tool_calls": [{ "name": "get_list" }],
+        "response_spoken_regex": "(?i)(test|code|deploy)"
+      }
+    },
+    {
+      "user": "What is 7 percent of 850?",
+      "expect": {
+        "tool_calls": [{ "name": "calculator" }]
+      }
+    },
+    {
+      "user": "What is the name of my project?",
+      "recall_turn": true,
+      "expect": {
+        "response_spoken_contains": ["falcon"]
+      }
+    },
+    {
+      "user": "What is the budget for that project?",
+      "recall_turn": true,
+      "expect": {
+        "response_spoken_contains": ["5000"]
+      }
+    },
+    {
+      "user": "Who is my emergency contact and what is their number?",
+      "recall_turn": true,
+      "expect": {
+        "response_spoken_contains": ["sarah"]
+      }
+    },
+    {
+      "user": "Tell me everything you remember for me.",
+      "recall_turn": true,
+      "expect": {
+        "tool_calls": [{ "name": "recall_all" }],
+        "response_spoken_regex": "(?i)(falcon|sarah|5000)"
+      }
+    },
+    {
+      "user": "What's on my complete shopping list now?",
+      "recall_turn": true,
+      "expect": {
+        "tool_calls": [{ "name": "get_list" }],
+        "response_spoken_regex": "(?i)(milk|eggs|cheese|yogurt)"
+      }
+    },
+    {
+      "user": "Cancel all timers and clear the shopping list.",
+      "expect": {
+        "tool_calls": [{ "name_any": ["cancel_timer", "clear_list", "list_timers"] }],
+        "min_tool_calls": 1
+      }
+    }
+  ]
+}
