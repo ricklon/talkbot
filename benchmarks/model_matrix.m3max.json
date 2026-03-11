@@ -1,10 +1,10 @@
 {
-  "_comment": "Context window sweep for M3 Max (Metal, llama-server). Tests whether larger KV cache improves tool-calling accuracy or latency on Apple Silicon. IMPORTANT: uses local_server provider (OpenAI-compatible API via llama-server) — NOT llama-cli. qwen3.5 requires local_server; llama-cli direct mode does not apply the chat template correctly and produces 0% LLM success. Run with: llama-server -m models/qwen3.5-0.8b-q8_0.gguf --port 8000 --gpu-layers -1 --reasoning-budget 0, then: uv run python scripts/benchmark_conversations.py --matrix benchmarks/model_matrix.ctx_sweep_m3max.json --scenarios tests/conversations --local-server-url http://127.0.0.1:8000/v1 --name ctx-sweep-m3max-$(date +%Y%m%d)",
+  "_comment": "M3 Max canonical benchmark matrix. Uses local_server provider (llama-server with Metal GPU acceleration). Start server: llama-server -m models/qwen3.5-0.8b-q8_0.gguf --port 8000 --ctx-size 4096 --n-predict 512 --gpu-layers -1 --reasoning-budget 0. Run: uv run python scripts/benchmark_conversations.py --matrix benchmarks/model_matrix.m3max.json --scenarios tests/conversations --local-server-url http://127.0.0.1:8000/v1 --name m3max-$(date +%Y%m%d). Expected: >=90% success, 100% recovery, ~1.3s avg latency, ~107 gen tok/s, ~774 MB.",
   "benchmark": {
     "schema_version": "2026.1",
     "values_file": "benchmarks/evaluation_values.json",
     "rubric": {
-      "version": "2026.ctx-sweep.v2",
+      "version": "2026.m3max.v1",
       "weights": {
         "task_success_rate": 0.35,
         "tool_selection_accuracy": 0.2,
@@ -20,15 +20,11 @@
         "tool_error_rate_multiplier": 20.0,
         "model_error_rate_multiplier": 30.0
       }
-    },
-    "context_analysis": {
-      "near_peak_ratio": 0.95,
-      "dropoff_ratio": 0.9
     }
   },
   "profiles": [
     {
-      "_comment": "qwen3.5-0.8b-q8_0 LLM routing via llama-server — wide context sweep. Model supports 262K; test up to 65536 to find memory/latency knee. llama-server must be started with --ctx-size matching the context_window under test (restart between sweeps or use the largest ctx throughout).",
+      "_comment": "Canonical default — highest accuracy + lowest memory on M3 Max. Benchmark target: >=90% success, 100% recovery, ~774 MB, ~107 gen/s. Must run with llama-server started using --gpu-layers -1.",
       "name": "qwen3.5-0.8b-q8-llm",
       "provider": "local_server",
       "model": "qwen/qwen3.5-0.8b",
@@ -39,13 +35,12 @@
       "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
       "max_tokens": 512,
       "temperature": 0.0,
-      "context_windows": [512, 1024, 2048, 4096, 8192, 16384, 32768, 65536],
       "env": {
         "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "0"
       }
     },
     {
-      "_comment": "qwen3.5-0.8b-q8_0 Intent routing — same context range for clean A/B vs LLM routing.",
+      "_comment": "Intent routing control ceiling — confirms what is achievable with deterministic routing. Compare with LLM run to measure the gap.",
       "name": "qwen3.5-0.8b-q8-intent",
       "provider": "local_server",
       "model": "qwen/qwen3.5-0.8b",
@@ -56,13 +51,12 @@
       "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
       "max_tokens": 512,
       "temperature": 0.0,
-      "context_windows": [512, 1024, 2048, 4096, 8192, 16384, 32768, 65536],
       "env": {
         "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "1"
       }
     },
     {
-      "_comment": "qwen3.5-0.8b-q4km LLM routing — Q4_K_M quant for memory/speed comparison at scale. Expect lower memory at large contexts.",
+      "_comment": "Q4_K_M speed/memory variant — ~508 MB, ~130 gen/s on M3 Max. Trades ~10pp accuracy for 1.5x lower memory.",
       "name": "qwen3.5-0.8b-q4km-llm",
       "provider": "local_server",
       "model": "qwen/qwen3.5-0.8b",
@@ -73,13 +67,12 @@
       "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
       "max_tokens": 512,
       "temperature": 0.0,
-      "context_windows": [2048, 4096, 8192, 16384, 32768, 65536],
       "env": {
         "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "0"
       }
     },
     {
-      "_comment": "qwen3.5-2b-q4km LLM routing — size scaling reference. Does larger model benefit from bigger context?",
+      "_comment": "Size scaling reference — 2b Q4_K_M. Ties 0.8b Q8_0 at 90% success on Intel but is 2x slower. On M3 Max still expected to be slower (more weight to move through bandwidth). Run once to confirm M3 Max scaling.",
       "name": "qwen3.5-2b-q4km-llm",
       "provider": "local_server",
       "model": "qwen/qwen3.5-2b",
@@ -90,7 +83,6 @@
       "system_prompt": "You are being evaluated for tool-use reliability. Always call tools when a request can be solved via tools. For memory/list/timer requests, call tools first and do not answer from chat memory alone. Use exact tool parameter names only.",
       "max_tokens": 512,
       "temperature": 0.0,
-      "context_windows": [2048, 4096, 8192, 16384, 32768],
       "env": {
         "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "0"
       }

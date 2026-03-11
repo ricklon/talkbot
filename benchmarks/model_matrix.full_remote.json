@@ -27,33 +27,9 @@
     },
     "profiles": [
         {
-            "name": "openrouter-granite-4.0-h-micro",
-            "provider": "openrouter",
-            "model": "ibm-granite/granite-4.0-h-micro",
-            "use_tools": true,
-            "max_tokens": 512,
-            "temperature": 0.0
-        },
-        {
             "name": "openrouter-ministral-3b-2512",
             "provider": "openrouter",
             "model": "mistralai/ministral-3b-2512",
-            "use_tools": true,
-            "max_tokens": 512,
-            "temperature": 0.0
-        },
-        {
-            "name": "openrouter-qwen-2.5-7b-instruct",
-            "provider": "openrouter",
-            "model": "qwen/qwen-2.5-7b-instruct",
-            "use_tools": true,
-            "max_tokens": 512,
-            "temperature": 0.0
-        },
-        {
-            "name": "openrouter-llama-3.1-8b-instruct",
-            "provider": "openrouter",
-            "model": "meta-llama/llama-3.1-8b-instruct",
             "use_tools": true,
             "max_tokens": 512,
             "temperature": 0.0
