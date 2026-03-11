@@ -184,6 +184,26 @@ def test_chat_command_tools_mode(monkeypatch):
     assert "AI: tool-reply:Hi:sys" in result.output
 
 
+def test_chat_command_defaults_local_server_model_when_env_unset(monkeypatch):
+    captured = {}
+
+    def fake_create_client_capture(**kwargs):
+        captured.update(kwargs)
+        return FakeClient(api_key=kwargs.get("api_key"), model=kwargs.get("model"))
+
+    monkeypatch.delenv("TALKBOT_LLM_PROVIDER", raising=False)
+    monkeypatch.delenv("TALKBOT_LOCAL_SERVER_MODEL", raising=False)
+    monkeypatch.delenv("TALKBOT_LOCAL_MODEL_PATH", raising=False)
+    monkeypatch.setattr(cli_module, "create_llm_client", fake_create_client_capture)
+
+    runner = CliRunner()
+    result = runner.invoke(cli_module.cli, ["chat", "Hello", "--no-speak"])
+
+    assert result.exit_code == 0
+    assert captured["provider"] == "local_server"
+    assert captured["model"] == cli_module.DEFAULT_LOCAL_SERVER_MODEL
+
+
 def test_voices_command_passes_backend(monkeypatch):
     tts_instances = []
 
