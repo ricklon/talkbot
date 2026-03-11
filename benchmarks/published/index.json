@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-03-10T22:02:31-0400",
-  "latest_run": "m3max-20260310-215011",
+  "updated_at": "2026-03-11T08:52:14-0400",
+  "latest_run": "m3max-20260311-085045",
   "runs": [
     "validated-20260227-v3-schemas",
     "validated-20260227-v3-fixed",
@@ -25,6 +25,8 @@
     "next_run-20260228-234132",
     "ministral-cross-provider",
     "metal-mac-m3max-qwen35-0.8b-q8_0",
+    "m3max-20260311-085045",
+    "m3max-20260311-083852",
     "m3max-20260310-215011",
     "m3max-20260310-213126",
     "m3max-20260310-211631",
