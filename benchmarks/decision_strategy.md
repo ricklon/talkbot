@@ -8,7 +8,72 @@ Use this guide with `benchmark_results/leaderboard.md` to choose between local a
 
 - Keep evaluations apples-to-apples for tool use.
 - Prefer native OpenAI-style tool calling (`tools` + `tool_choice`) for comparison runs.
-- Use intent routing only as a control ceiling, not as primary capability scoring.
+- **Intent routing is production architecture for sub-2B models**, not just a ceiling.
+  For LLM vs Intent A-B benchmarking, both are scored; Intent mode is recommended for deployment.
+
+## LLM vs Intent Routing — Official Guidance (2026-03-11)
+
+### The split
+
+| Mode | Env | Mechanism | Use case |
+|---|---|---|---|
+| LLM | `TALKBOT_LOCAL_DIRECT_TOOL_ROUTING=0` | Model decides which tools to call | Benchmarking raw model capability; ≥7B models |
+| Intent | `TALKBOT_LOCAL_DIRECT_TOOL_ROUTING=1` | Heuristic detects tool + forces call | Production deployment of sub-2B local models |
+
+### Why intent routing matters for sub-2B models
+
+Small models (≤2B) exhibit a pattern documented in BFCL V4 (ICML 2025) and
+BUTTON (ICLR 2025, arXiv:2410.12952): they call tools correctly on the first
+1–2 invocations of a given tool type, then bypass subsequent calls by emitting
+verbal confirmations without actual tool calls. Example:
+
+```
+t3 tools=[] | "I've remembered that the project is called Falcon."  ← no tool call
+```
+
+This causes cascading failures: skipped writes leave state empty; downstream
+reads fail. All 5 endurance scenarios score 0% in LLM mode as a result.
+
+### How intent routing fixes this
+
+`LocalServerClient` with `TALKBOT_LOCAL_DIRECT_TOOL_ROUTING=1`:
+1. Detects the intended tool from the user message (`_detect_intent_tool_name`)
+2. Sends **only that tool's schema** in the API payload
+3. Sets `tool_choice: "required"` — model **must** emit a tool call JSON
+4. Only forces the first call; subsequent loop iterations use `tool_choice: auto`
+   so multi-step operations (create_list → add_to_list) complete naturally
+
+Write tools are forced (remember, add_to_list, set_timer, create_list, etc.).
+Keyed read tools (get_list, recall) are excluded from forcing to avoid
+`list_name` / `key` argument mismatches when the model generates in isolation.
+
+### Measured results (M3 Max, qwen3.5-0.8b Q8_0)
+
+| Scenario | LLM success | Intent success |
+|---|---|---|
+| Core canonical suite (10 scenarios) | 90% | **90%** (no regression; leads leaderboard) |
+| Endurance: Timer Sequence | 0% | **100%** (15/15, pass_k met) |
+| Endurance: Memory Recall | 0% | **100%** (10/10) |
+| Endurance: Long Mixed (30 turns) | 0% | **30/30 turns** (pass_k accumulating) |
+| Endurance: Trip Planning | 0% | **92.9%** (26/28) |
+| Endurance: List Management | 0% | **83.3%** (10/12) |
+| Overall endurance | **0%** | **60%** (3/5 pass_k met) |
+
+### Deployment recommendation
+
+For voice assistant production use with `local_server` + sub-2B models:
+
+```bash
+TALKBOT_LOCAL_DIRECT_TOOL_ROUTING=1
+```
+
+For benchmarking model capability (without routing assist):
+
+```bash
+TALKBOT_LOCAL_DIRECT_TOOL_ROUTING=0
+```
+
+---
 
 ## Key Metrics
 

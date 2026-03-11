@@ -123,9 +123,25 @@ This is a benchmark/infrastructure gap, not a model capability gap. The
 endurance scenarios expose it most clearly because repeated same-tool calls
 amplify the bypass pattern.
 
-**Status:** Endurance scenarios remain at 0% for all profiles. Documented as
-known-architectural-limitation. The fix requires changes to how
-`LocalServerClient` constructs the API payload for intent-routed turns.
+**Status (2026-03-11 — RESOLVED):** Implemented `tool_choice: "required"` +
+single-tool schema in `LocalServerClient` (commit 3b83c3d, issue #44 closed).
+
+Results after fix (M3 Max, qwen3.5-0.8b Q8_0):
+- Endurance overall: **0% → 60%** (3/5 scenarios pass_k met)
+- Timer Sequence: **100%** (15/15, pass_k satisfied)
+- Memory Recall: **100%** (10/10)
+- Long Mixed 30 turns: **30/30 turns passing** (pass_k accumulating)
+- Core canonical suite: **90% maintained** — intent leads leaderboard
+
+**Key implementation insight:** Only WRITE tools are forced (`remember`,
+`add_to_list`, `set_timer`, `create_list`, `clear_list`, `remove_from_list`).
+Keyed read tools (`get_list`, `recall`) are excluded from forcing because the
+model generates consistent `list_name` / `key` args from context in LLM mode,
+but may produce mismatched names when isolated to a single forced schema.
+Stateless reads (`get_current_time`, `get_current_date`, `flip_coin`, etc.)
+are safely forced because they require no keyed arguments.
+
+**Architecture split is now official guidance** — see `decision_strategy.md`.
 
 ---
 
