@@ -188,3 +188,105 @@ def test_friction_score_before_normalization():
     assert score_raw >= 1
     assert score_after == 0
 
+
+# --- Phase 2 normalization tests ---
+
+
+def test_normalize_percent():
+    assert normalize_for_tts("15% off today.") == "15 percent off today."
+
+
+def test_normalize_percent_with_space():
+    assert normalize_for_tts("Score: 98 %.") == "Score: 98 percent."
+
+
+def test_normalize_percent_decimal():
+    assert normalize_for_tts("Rate is 3.5%.") == "Rate is 3.5 percent."
+
+
+def test_normalize_currency_whole():
+    assert normalize_for_tts("It costs $42.") == "It costs 42 dollars."
+
+
+def test_normalize_currency_cents():
+    assert normalize_for_tts("Price: $3.99.") == "Price: 3 dollars and 99 cents."
+
+
+def test_normalize_currency_cents_only():
+    assert normalize_for_tts("Just $0.50 more.") == "Just 50 cents more."
+
+
+def test_normalize_currency_thousands():
+    assert normalize_for_tts("Costs $1,200.") == "Costs 1 200 dollars."
+
+
+def test_normalize_ordinal_1st():
+    assert normalize_for_tts("You finished 1st!") == "You finished first!"
+
+
+def test_normalize_ordinal_2nd():
+    assert normalize_for_tts("The 2nd item.") == "The second item."
+
+
+def test_normalize_ordinal_3rd():
+    assert normalize_for_tts("3rd place.") == "third place."
+
+
+def test_normalize_ordinal_12th():
+    assert normalize_for_tts("December 12th.") == "December twelfth."
+
+
+def test_normalize_ordinal_above_20_unchanged():
+    # 21st and above fall through unchanged
+    assert normalize_for_tts("The 21st century.") == "The 21st century."
+
+
+def test_normalize_time_afternoon():
+    assert normalize_for_tts("Meeting at 14:30.") == "Meeting at 2 30 PM."
+
+
+def test_normalize_time_morning():
+    assert normalize_for_tts("Alarm set for 09:05.") == "Alarm set for 9 05 AM."
+
+
+def test_normalize_time_midnight():
+    assert normalize_for_tts("Starts at 00:00.") == "Starts at 12 00 AM."
+
+
+def test_normalize_time_noon():
+    assert normalize_for_tts("Lunch at 12:00.") == "Lunch at 12 00 PM."
+
+
+def test_normalize_time_not_affected_by_date():
+    # "2026/03/10" should not be matched (followed by /)
+    result = normalize_for_tts("Date: 2026/03/10.")
+    assert "2026/03/10" in result
+
+
+def test_friction_counts_percent():
+    score, detail = tts_friction_score("Save 20% today!")
+    assert "symbols" in detail
+    assert detail["symbols"] >= 1
+
+
+def test_friction_counts_currency():
+    score, detail = tts_friction_score("It costs $9.99.")
+    assert "symbols" in detail
+    assert detail["symbols"] >= 1
+
+
+def test_friction_counts_ordinal():
+    score, detail = tts_friction_score("You are 3rd in line.")
+    assert "symbols" in detail
+
+
+def test_friction_counts_time():
+    score, detail = tts_friction_score("Call at 15:00.")
+    assert "symbols" in detail
+
+
+def test_normalize_phase2_idempotent():
+    text = "Pay $10 by 14:00 on the 3rd."
+    once = normalize_for_tts(text)
+    twice = normalize_for_tts(once)
+    assert once == twice
