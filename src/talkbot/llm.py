@@ -954,9 +954,12 @@ class LocalServerClient:
                 has_system = True
                 # Prepend current date/time so model doesn't guess from training data
                 content = f"{self._launch_time_context}\n\n{content}"
-            elif role == "user" and not self.enable_thinking:
-                if not content.startswith("/no_think"):
-                    content = f"/no_think\n{content}\n/no_think"
+            # LocalServerClient uses chat_template_kwargs to control thinking at
+            # the API level (payload["chat_template_kwargs"] = {"enable_thinking": False}).
+            # Do NOT wrap user content with /no_think tokens — for small Qwen3.5 models
+            # (0.8b, 2b, 4b) thinking is off by default, and injecting /no_think into
+            # message content causes the model to interpret it as a tool name and refuse
+            # to call actual tools. The chat_template_kwargs approach is the correct lever.
             prepared.append({"role": role, "content": content})
         if not self.enable_thinking and not has_system:
             prepared.insert(0, {"role": "system", "content": f"{self._launch_time_context}\n\n{NO_THINK_INSTRUCTION}"})
