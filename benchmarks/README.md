@@ -227,4 +227,5 @@ See `benchmarks/LESSONS_LEARNED.md` for accumulated observations from all runs:
 | `decision_strategy.md` | Hardware-specific model retirement decisions |
 | `LESSONS_LEARNED.md` | Accumulated debugging and tuning findings |
 | `model_matrix.example.json` | Active model set for benchmark runs |
+| `model_matrix.prompts.example.json` | Prompt A/B matrix for prompt impact runs |
 | `evaluation_values.json` | Rubric weights and scoring parameters |

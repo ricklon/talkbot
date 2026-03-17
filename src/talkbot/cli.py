@@ -14,6 +14,7 @@ if env_path.exists():
     load_dotenv(env_path)
 
 from talkbot.llm import LLMProviderError, create_llm_client, supports_tools
+from talkbot.prompting import load_agent_prompt
 from talkbot.thinking import apply_thinking_system_prompt, env_thinking_default
 from talkbot.text_utils import strip_thinking
 from talkbot.tools import register_all_tools, set_alert_callback
@@ -35,7 +36,7 @@ def _default_tts_backend() -> str:
 
 def _default_agent_prompt() -> str | None:
     """Return the agent system prompt from env, or None if unset."""
-    return os.getenv("TALKBOT_AGENT_PROMPT") or None
+    return load_agent_prompt()
 
 
 def _default_provider() -> str:
@@ -165,7 +166,7 @@ def cli(
     "--system",
     "-s",
     default=lambda: _default_agent_prompt(),
-    help="System prompt (defaults to env:TALKBOT_AGENT_PROMPT)",
+    help="System prompt (defaults to env:TALKBOT_AGENT_PROMPT_FILE or TALKBOT_AGENT_PROMPT)",
 )
 @click.option("--tools/--no-tools", default=False, help="Enable built-in tools")
 @click.pass_context
@@ -224,7 +225,7 @@ def chat(
     "--system",
     "-s",
     default=lambda: _default_agent_prompt(),
-    help="System prompt (defaults to env:TALKBOT_AGENT_PROMPT)",
+    help="System prompt (defaults to env:TALKBOT_AGENT_PROMPT_FILE or TALKBOT_AGENT_PROMPT)",
 )
 @click.pass_context
 def say(
@@ -398,7 +399,7 @@ def doctor_tts(backends: tuple[str, ...], synthesize: bool) -> None:
     "--system",
     "-s",
     default=lambda: _default_agent_prompt(),
-    help="System prompt (defaults to env:TALKBOT_AGENT_PROMPT)",
+    help="System prompt (defaults to env:TALKBOT_AGENT_PROMPT_FILE or TALKBOT_AGENT_PROMPT)",
 )
 @click.pass_context
 def tool(
@@ -453,7 +454,7 @@ def tool(
     "--system",
     "-s",
     default=lambda: _default_agent_prompt(),
-    help="System prompt (defaults to env:TALKBOT_AGENT_PROMPT)",
+    help="System prompt (defaults to env:TALKBOT_AGENT_PROMPT_FILE or TALKBOT_AGENT_PROMPT)",
 )
 @click.option("--stt-model", default="small.en", help="faster-whisper model")
 @click.option("--language", default="en", help="STT language")

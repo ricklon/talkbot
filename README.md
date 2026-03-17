@@ -5,7 +5,7 @@ A talking AI assistant with local-first LLM + TTS defaults, plus optional OpenRo
 ## Features
 
 - **AI Chat**: Local llama-server provider by default, with OpenRouter optional
-- **Agent Personality**: Set a system prompt once via `TALKBOT_AGENT_PROMPT` env var or the GUI Prompt tab — all commands pick it up automatically
+- **Agent Personality**: Set a system prompt once via `TALKBOT_AGENT_PROMPT_FILE` or `TALKBOT_AGENT_PROMPT`; prompt presets are cataloged under `prompts/`
 - **21 Built-in Tools**: Calculator, timers, reminders, web search, shopping lists, memory/preferences, dice, and more
 - **Timers & Reminders**: `set_timer` for simple countdowns; `set_reminder` for custom spoken messages — cancellable, with live GUI display
 - **Persistent Lists & Memory**: Named lists and user preferences survive across sessions (`~/.talkbot/`)
@@ -265,10 +265,9 @@ TALKBOT_ENABLE_THINKING=0
 TALKBOT_DEFAULT_TTS_BACKEND=kittentts
 
 # Agent personality (optional) — applied to all CLI commands and GUI Prompt tab
-# TALKBOT_AGENT_PROMPT="You are a voice-first assistant with access to tools. Be extremely brief."
-# Keep TALKBOT_AGENT_PROMPT single-line in .env.
-# For multiline markdown prompts, store them in a file (for example: prompts/agent.md)
-# and pass with --system "$(cat prompts/agent.md)".
+# TALKBOT_AGENT_PROMPT_FILE=./prompts/tool_reliability.md
+# Backward-compatible alternative:
+# TALKBOT_AGENT_PROMPT="You are a brief voice assistant."
 ```
 
 Optional remote provider:
@@ -280,6 +279,45 @@ OPENROUTER_API_KEY=your_api_key_here
 Get OpenRouter keys at [OpenRouter](https://openrouter.ai/keys).
 
 The application automatically loads environment variables from `.env` using python-dotenv.
+Prompt presets can live in `prompts/`; switch between them by changing `TALKBOT_AGENT_PROMPT_FILE`.
+
+### Prompt Review Workflow
+
+Prompt files are tracked in [`prompts/catalog.json`](prompts/catalog.json) with:
+- a stable preset name
+- a short summary and review notes
+- declared goals for linting
+- the benchmark/UAT scenarios that should be used to review the prompt
+
+Review the presets and lint them:
+
+```bash
+uv run python scripts/review_prompts.py
+```
+
+Run the prompt review scenarios as a benchmark for each preset:
+
+```bash
+UV_CACHE_DIR=.uv-cache uv run python scripts/review_prompts.py \
+  --run-benchmark \
+  --provider local_server \
+  --model qwen3.5-0.8b-q8_0 \
+  --local-server-url http://127.0.0.1:8000/v1
+```
+
+If the review script reports prompt errors, fix those before trusting benchmark results. The current lint checks catch things like missing review scenarios, missing tool/voice guidance, and references to tools that do not exist.
+
+For ad hoc benchmark A/B runs on a single prompt preset, `scripts/benchmark_conversations.py` also supports:
+
+```bash
+uv run python scripts/benchmark_conversations.py \
+  --prompt-preset tool_reliability \
+  --provider local_server \
+  --model qwen3.5-0.8b-q8_0 \
+  --local-server-url http://127.0.0.1:8000/v1
+```
+
+The generated leaderboard now includes a `Prompt` column on run tables plus a `Prompt Impact` section that compares prompt variants on the same model/runtime slice.
 
 ### Default Runtime Behavior
 
@@ -352,9 +390,15 @@ talkbot say --backend kittentts
 talkbot say --tools
 talkbot say --tools --system "You are a brief voice assistant."
 
-# Or set TALKBOT_AGENT_PROMPT in .env / env and omit --system
-export TALKBOT_AGENT_PROMPT="You are a brief voice assistant."
+# Or set TALKBOT_AGENT_PROMPT_FILE / TALKBOT_AGENT_PROMPT in .env / env and omit --system
+export TALKBOT_AGENT_PROMPT_FILE=./prompts/tool_reliability.md
 talkbot say --tools
+```
+
+List and review prompt presets before changing the default:
+
+```bash
+uv run python scripts/review_prompts.py --preset tool_reliability
 ```
 
 #### Local Voice Chat (Half-Duplex, VAD-Gated)
@@ -530,7 +574,7 @@ The GUI features a modern dark theme with:
 - **Use Tools toggle** — Enable all 21 built-in tools for chat and voice
 - **Timers tab** — Live countdown display, updates every second
 - **Lists tab** — Live view of all named lists, updates every 2 seconds
-- **Prompt tab** — Edit the agent system prompt live; pre-populated from `TALKBOT_AGENT_PROMPT` on launch
+- **Prompt tab** — Edit the agent system prompt live; pre-populated from `TALKBOT_AGENT_PROMPT_FILE` or `TALKBOT_AGENT_PROMPT` on launch
 
 ```bash
 uv run talkbot-gui
@@ -581,7 +625,19 @@ uv run python scripts/benchmark_conversations.py \
   --runner-label my-machine
 ```
 
+Matrix profiles can also set `prompt_preset`, `prompt_catalog`, or `prompt_file` so the same model can be benchmarked across multiple prompt variants as a first-class comparison.
+
 See `benchmarks/model_matrix.example.json` for the current active model set and `benchmarks/decision_strategy.md` for hardware-specific decisions.
+
+### Run a prompt matrix
+
+```bash
+uv run python scripts/benchmark_conversations.py \
+  --matrix benchmarks/model_matrix.prompts.example.json \
+  --runner-label my-machine
+```
+
+Use `benchmarks/model_matrix.prompts.example.json` when you want prompt A/B comparisons on the same model/runtime slice. The resulting leaderboard will populate the `Prompt Impact` section directly.
 
 ### Benchmark outputs
 
@@ -639,6 +695,7 @@ talkbot/
 │   └── download_model.py           # GGUF downloader
 ├── benchmarks/
 │   ├── model_matrix.example.json   # Active benchmark model set
+│   ├── model_matrix.prompts.example.json # Prompt A/B matrix example
 │   ├── decision_strategy.md        # Hardware-specific model decisions
 │   └── published/                  # Published benchmark results
 │       ├── latest/                 # Current best result
