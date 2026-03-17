@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from talkbot import llm as llm_module
+from talkbot.tools import register_all_tools, reset_runtime_state
 
 
 def test_local_provider_uses_repo_default_model_path(monkeypatch, tmp_path):
@@ -91,3 +92,134 @@ def test_normalize_add_to_list_item_alias():
         "add_to_list", {"item": "eggs", "list_name": "grocery"}
     )
     assert result == {"items": "eggs", "list_name": "grocery"}
+
+
+def test_direct_tool_calls_parse_memory_phrasing():
+    remember_calls = llm_module._direct_tool_calls_from_user(
+        [{"role": "user", "content": "Remember that my project codename is Falcon."}]
+    )
+    recall_calls = llm_module._direct_tool_calls_from_user(
+        [{"role": "user", "content": "What did you remember about my project codename?"}]
+    )
+
+    assert remember_calls == [
+        {
+            "id": "direct-remember-0",
+            "function": {
+                "name": "remember",
+                "arguments": '{"key": "project_codename", "value": "falcon"}',
+            },
+        }
+    ]
+    assert recall_calls == [
+        {
+            "id": "direct-recall-0",
+            "function": {
+                "name": "recall",
+                "arguments": '{"key": "project_codename"}',
+            },
+        }
+    ]
+
+
+def test_direct_tool_calls_do_not_misroute_math_question_to_recall():
+    calc_calls = llm_module._direct_tool_calls_from_user(
+        [{"role": "user", "content": "What is 15 percent of 47 dollars?"}]
+    )
+
+    assert calc_calls == [
+        {
+            "id": "direct-calc-percent-0",
+            "function": {
+                "name": "calculator",
+                "arguments": '{"formula": "(15/100)*47"}',
+            },
+        }
+    ]
+
+
+def test_direct_tool_calls_parse_list_create_add_and_read():
+    create_calls = llm_module._direct_tool_calls_from_user(
+        [{"role": "user", "content": "Create a grocery list and add milk."}]
+    )
+    read_calls = llm_module._direct_tool_calls_from_user(
+        [{"role": "user", "content": "What is on my grocery list?"}]
+    )
+
+    assert create_calls == [
+        {
+            "id": "direct-create-list-0",
+            "function": {
+                "name": "create_list",
+                "arguments": '{"list_name": "grocery"}',
+            },
+        },
+        {
+            "id": "direct-add-list-0",
+            "function": {
+                "name": "add_to_list",
+                "arguments": '{"list_name": "grocery", "items": "milk"}',
+            },
+        },
+    ]
+    assert read_calls == [
+        {
+            "id": "direct-get-list-0",
+            "function": {
+                "name": "get_list",
+                "arguments": '{"list_name": "grocery"}',
+            },
+        }
+    ]
+
+
+def test_local_server_direct_routing_persists_memory_without_model(monkeypatch, tmp_path):
+    monkeypatch.setenv("TALKBOT_DATA_DIR", str(tmp_path / "talkbot-data"))
+    reset_runtime_state(clear_persistent=True)
+    client = llm_module.LocalServerClient(
+        model="qwen3.5-0.8b-q8_0.gguf",
+        base_url="http://127.0.0.1:8000/v1",
+        direct_tool_routing=True,
+    )
+    register_all_tools(client)
+    monkeypatch.setattr(
+        client,
+        "chat_completion",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("model should not be called")),
+    )
+
+    stored = client.chat_with_tools(
+        [{"role": "user", "content": "Remember that my project codename is Falcon."}]
+    )
+    recalled = client.chat_with_tools(
+        [{"role": "user", "content": "What did you remember about my project codename?"}]
+    )
+
+    assert "Remembered: project_codename = falcon" == stored
+    assert "project_codename: falcon" == recalled
+
+
+def test_local_server_direct_routing_persists_list_without_model(monkeypatch, tmp_path):
+    monkeypatch.setenv("TALKBOT_DATA_DIR", str(tmp_path / "talkbot-data"))
+    reset_runtime_state(clear_persistent=True)
+    client = llm_module.LocalServerClient(
+        model="qwen3.5-0.8b-q8_0.gguf",
+        base_url="http://127.0.0.1:8000/v1",
+        direct_tool_routing=True,
+    )
+    register_all_tools(client)
+    monkeypatch.setattr(
+        client,
+        "chat_completion",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("model should not be called")),
+    )
+
+    created = client.chat_with_tools(
+        [{"role": "user", "content": "Create a grocery list and add milk."}]
+    )
+    listed = client.chat_with_tools(
+        [{"role": "user", "content": "What is on my grocery list?"}]
+    )
+
+    assert created == "Created 'grocery' list.\nAdded 'milk' to the grocery list."
+    assert listed == "Grocery list:\n- milk"
