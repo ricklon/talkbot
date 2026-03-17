@@ -1,6 +1,7 @@
 from click.testing import CliRunner
 
 from talkbot import cli as cli_module
+from talkbot.prompting import get_agent_prompt_details
 
 
 class FakeClient:
@@ -202,6 +203,25 @@ def test_chat_command_defaults_local_server_model_when_env_unset(monkeypatch):
     assert result.exit_code == 0
     assert captured["provider"] == "local_server"
     assert captured["model"] == cli_module.DEFAULT_LOCAL_SERVER_MODEL
+
+
+def test_default_agent_prompt_reads_prompt_file(tmp_path, monkeypatch):
+    prompt_file = tmp_path / "agent.md"
+    prompt_file.write_text("Use tools first.", encoding="utf-8")
+
+    monkeypatch.delenv("TALKBOT_AGENT_PROMPT", raising=False)
+    monkeypatch.setenv("TALKBOT_AGENT_PROMPT_FILE", str(prompt_file))
+
+    assert cli_module._default_agent_prompt() == "Use tools first."
+    assert get_agent_prompt_details() == ("Use tools first.", f"file: {prompt_file}")
+
+
+def test_default_agent_prompt_falls_back_to_env_text(monkeypatch):
+    monkeypatch.delenv("TALKBOT_AGENT_PROMPT_FILE", raising=False)
+    monkeypatch.setenv("TALKBOT_AGENT_PROMPT", "Inline prompt")
+
+    assert cli_module._default_agent_prompt() == "Inline prompt"
+    assert get_agent_prompt_details() == ("Inline prompt", "env: TALKBOT_AGENT_PROMPT")
 
 
 def test_voices_command_passes_backend(monkeypatch):

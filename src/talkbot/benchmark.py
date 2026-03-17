@@ -23,6 +23,7 @@ from typing import Any, Callable
 
 from talkbot.judge import JudgeResult, LLMJudge
 from talkbot.llm import create_llm_client, supports_tools
+from talkbot.prompting import resolve_prompt_reference
 from talkbot.text_utils import normalize_for_tts, tts_friction_score
 from talkbot.tools import TOOL_DEFINITIONS, TOOLS, get_tool_definitions_for_variant, reset_runtime_state
 
@@ -71,6 +72,8 @@ class BenchmarkProfile:
     enable_thinking: bool = False
     use_tools: bool = True
     system_prompt: str | None = None
+    prompt_preset: str | None = None
+    prompt_source: str | None = None
     max_tokens: int = 512
     temperature: float = 0.0
     env: dict[str, str] = field(default_factory=dict)
@@ -562,6 +565,21 @@ def _expand_profile_entry(entry: dict[str, Any]) -> list[BenchmarkProfile]:
     base = {k: v for k, v in entry.items() if not k.startswith("_")}
     context_windows = base.pop("context_windows", None)
     n_ctx = base.pop("n_ctx", None)
+    prompt_catalog = base.pop("prompt_catalog", None)
+    prompt_preset = base.pop("prompt_preset", None)
+    prompt_file = base.pop("prompt_file", None)
+    system_prompt_file = base.pop("system_prompt_file", None)
+
+    resolved_prompt, resolved_preset, resolved_source = resolve_prompt_reference(
+        prompt_preset=prompt_preset,
+        prompt_file=prompt_file or system_prompt_file,
+        prompt_text=base.get("system_prompt"),
+        catalog_path=prompt_catalog,
+    )
+    if resolved_prompt is not None:
+        base["system_prompt"] = resolved_prompt
+    base["prompt_preset"] = resolved_preset
+    base["prompt_source"] = resolved_source
 
     env = dict(base.get("env") or {})
     base["env"] = env
@@ -1924,6 +1942,20 @@ def _routing_mode(profile: dict[str, Any]) -> str:
     return "llm"
 
 
+def _prompt_label(profile: dict[str, Any]) -> str:
+    preset = str(profile.get("prompt_preset") or "").strip()
+    if preset:
+        return preset
+    source = str(profile.get("prompt_source") or "").strip()
+    if source.startswith("preset:"):
+        return source.split(":", 1)[1]
+    if source.startswith("file:"):
+        return source.split(":", 1)[1]
+    if source == "inline":
+        return "inline"
+    return "default"
+
+
 def _tts_directive_mode(profile: dict[str, Any]) -> str:
     """Return 'tts' if profile has tts_directive enabled, else 'baseline'."""
     val = profile.get("tts_directive")
@@ -2009,6 +2041,77 @@ def _ab_compare_key(profile: dict[str, Any]) -> tuple[str, str, str, int]:
     variant = Path(local_path).name if local_path else ""
     ctx = _extract_context_window(profile) or 0
     return (provider, model, variant, ctx)
+
+
+def _prompt_compare_key(profile: dict[str, Any]) -> tuple[str, str, str, int, str, str]:
+    provider = str(profile.get("provider") or "")
+    model = str(profile.get("model") or "")
+    local_path = str(profile.get("local_model_path") or "")
+    variant = Path(local_path).name if local_path else ""
+    ctx = _extract_context_window(profile) or 0
+    routing = _routing_mode(profile)
+    temp = f"{float(profile.get('temperature', 0.0) or 0.0):.3f}"
+    return (provider, model, variant, ctx, routing, temp)
+
+
+def _prompt_compare_label(key: tuple[str, str, str, int, str, str]) -> str:
+    provider, model, variant, ctx, routing, temp = key
+    base = f"{provider}/{model}"
+    if variant:
+        base = f"{base} ({variant})"
+    return f"{base} @ctx{ctx} {routing.upper()} temp={temp}"
+
+
+def _prompt_comparison_rows(
+    runs: list[dict[str, Any]],
+    rubric: dict[str, Any],
+) -> list[dict[str, Any]]:
+    grouped: dict[tuple[str, str, str, int, str, str], list[dict[str, Any]]] = {}
+    for run in runs:
+        profile = run.get("profile") or {}
+        aggregate = run.get("aggregate") or {}
+        grouped.setdefault(_prompt_compare_key(profile), []).append(
+            {
+                "prompt": _prompt_label(profile),
+                "score": _rubric_score(aggregate, rubric),
+                "success": _coerce_float(aggregate.get("task_success_rate"), 0.0),
+                "tool": _coerce_float(aggregate.get("tool_selection_accuracy"), 0.0),
+                "latency_ms": _coerce_float(aggregate.get("avg_turn_latency_ms"), 0.0),
+                "run": run,
+            }
+        )
+
+    rows: list[dict[str, Any]] = []
+    for key, samples in grouped.items():
+        prompt_names = {sample["prompt"] for sample in samples}
+        if len(prompt_names) < 2:
+            continue
+        ranked = sorted(
+            samples,
+            key=lambda sample: (sample["score"], sample["success"], sample["tool"]),
+            reverse=True,
+        )
+        best = ranked[0]
+        worst = ranked[-1]
+        rows.append(
+            {
+                "label": _prompt_compare_label(key),
+                "best_prompt": best["prompt"],
+                "best_score": best["score"],
+                "best_success": best["success"],
+                "best_tool": best["tool"],
+                "worst_prompt": worst["prompt"],
+                "worst_score": worst["score"],
+                "worst_success": worst["success"],
+                "worst_tool": worst["tool"],
+                "score_delta": best["score"] - worst["score"],
+                "success_delta": best["success"] - worst["success"],
+                "tool_delta": best["tool"] - worst["tool"],
+                "prompt_count": len(prompt_names),
+            }
+        )
+    rows.sort(key=lambda row: (row["score_delta"], row["success_delta"]), reverse=True)
+    return rows
 
 
 def _ab_compare_label(key: tuple[str, str, str, int]) -> str:
@@ -2219,6 +2322,7 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
     context_rows = _context_sweep_summary(runs, rubric, context_analysis)
     ab_rows = _ab_comparison_rows(runs, rubric)
     tts_ab_rows = _tts_directive_ab_rows(runs)
+    prompt_rows = _prompt_comparison_rows(runs, rubric)
 
     quality_rank = sorted(
         runs,
@@ -2304,7 +2408,7 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
         routing = _routing_mode(profile).upper()
         base = (
             f"| {profile.get('name', '')} | {profile.get('provider', '')} | "
-            f"{profile.get('model', '')} | {routing} | "
+            f"{profile.get('model', '')} | {_prompt_label(profile)} | {routing} | "
             f"{profile.get('temperature', 0.0):.1f} | "
             f"{_coerce_float(agg.get('task_success_rate'), 0.0):.2%} | "
             f"{_coerce_float(agg.get('tool_selection_accuracy'), 0.0):.2%} | "
@@ -2398,8 +2502,8 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             "",
             "## Quality Rank",
             "",
-            "| Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Pfill/s | Gen/s | Tokens |",
-            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            "| Run | Provider | Model | Prompt | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Pfill/s | Gen/s | Tokens |",
+            "|---|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     lines.extend(row(run) for run in quality_rank)
@@ -2409,8 +2513,8 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             "",
             "## Low-Memory Rank",
             "",
-            "| Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Pfill/s | Gen/s | Tokens |",
-            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            "| Run | Provider | Model | Prompt | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Pfill/s | Gen/s | Tokens |",
+            "|---|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     lines.extend(row(run) for run in low_mem_rank)
@@ -2420,8 +2524,8 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             "",
             "## Balanced Rank",
             "",
-            "| Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Pfill/s | Gen/s | Tokens | Score |",
-            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            "| Run | Provider | Model | Prompt | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Pfill/s | Gen/s | Tokens | Score |",
+            "|---|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     lines.extend(row(run, include_score=True) for run in balanced_rank)
@@ -2439,8 +2543,8 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
     if remote_rank:
         lines.extend(
             [
-                "| Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Pfill/s | Gen/s | Tokens | Score (Remote) |",
-                "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+                "| Run | Provider | Model | Prompt | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Pfill/s | Gen/s | Tokens | Score (Remote) |",
+                "|---|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
             ]
         )
         lines.extend(
@@ -2459,8 +2563,8 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             "",
             "## Efficiency Rank",
             "",
-            "| Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Pfill/s | Gen/s | Tokens |",
-            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            "| Run | Provider | Model | Prompt | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Pfill/s | Gen/s | Tokens |",
+            "|---|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     lines.extend(row(run) for run in efficiency_rank)
@@ -2510,11 +2614,42 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             "",
             "## Pareto Frontier (Quality/Latency/Memory)",
             "",
-            "| Run | Provider | Model | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Pfill/s | Gen/s | Tokens | Score |",
-            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            "| Run | Provider | Model | Prompt | Routing | Temp | Success | Tool Sel | Arg Acc | Recovery | Avg ms | Mem MB | Tool Err | Pfill/s | Gen/s | Tokens | Score |",
+            "|---|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     lines.extend(row(run, include_score=True) for run in pareto)
+
+    lines.extend(
+        [
+            "",
+            "## Prompt Impact",
+            "",
+            "- Compares runs that share provider, model, context, routing mode, and temperature.",
+            "- Use this to isolate prompt effects from model/runtime effects.",
+            "",
+        ]
+    )
+    if prompt_rows:
+        lines.extend(
+            [
+                "| Model Slice | Prompts | Best Prompt | Best Score | Worst Prompt | Worst Score | Score Δ | Success Δ | Tool Sel Δ |",
+                "|---|---:|---|---:|---|---:|---:|---:|---:|",
+            ]
+        )
+        lines.extend(
+            (
+                f"| {row['label']} | {row['prompt_count']} | "
+                f"{row['best_prompt']} | {row['best_score']:.3f} | "
+                f"{row['worst_prompt']} | {row['worst_score']:.3f} | "
+                f"{row['score_delta']:+.3f} | {row['success_delta']:+.2%} | {row['tool_delta']:+.2%} |"
+            )
+            for row in prompt_rows
+        )
+    else:
+        lines.append(
+            "No matched prompt comparison groups found. Run the same model/runtime slice with two or more prompt presets."
+        )
 
     lines.extend(
         [
@@ -2640,6 +2775,15 @@ def build_leaderboard_markdown(report: dict[str, Any]) -> str:
             [
                 f"- Routing gap summary: intent minus llm avg success delta = {avg_success_gap:+.2%}",
                 f"- Routing gap summary: intent minus llm avg score delta = {avg_score_gap:+.3f}",
+            ]
+        )
+    if prompt_rows:
+        avg_prompt_score_gap = statistics.fmean(row["score_delta"] for row in prompt_rows)
+        avg_prompt_success_gap = statistics.fmean(row["success_delta"] for row in prompt_rows)
+        lines.extend(
+            [
+                f"- Prompt gap summary: best minus worst avg score delta = {avg_prompt_score_gap:+.3f}",
+                f"- Prompt gap summary: best minus worst avg success delta = {avg_prompt_success_gap:+.2%}",
             ]
         )
 
