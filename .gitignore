@@ -18,8 +18,9 @@ models/*.gguf
 models/*.GGUF
 models/*.part
 
-# System/installation-specific tools (e.g. llama.cpp binaries)
+# System/installation-specific tools and built binaries (e.g. llama.cpp)
 tools/
+bin/
 
 # IDE
 .vscode/
