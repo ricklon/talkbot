@@ -728,6 +728,48 @@ def test_stt(
         sys.exit(1)
 
 
+@cli.command()
+@click.option("--host", default="0.0.0.0", show_default=True, help="Bind host")
+@click.option("--port", default=7860, show_default=True, help="Bind port")
+@click.option("--share", is_flag=True, default=False, help="Create a public Gradio tunnel")
+@click.option(
+    "--system",
+    "-s",
+    default=lambda: _default_agent_prompt(),
+    help="System prompt (defaults to env:TALKBOT_AGENT_PROMPT)",
+)
+@click.option("--no-tts", is_flag=True, default=False, help="Disable TTS audio output")
+@click.pass_context
+def serve(
+    ctx: click.Context,
+    host: str,
+    port: int,
+    share: bool,
+    system: str,
+    no_tts: bool,
+) -> None:
+    """Launch the Gradio web interface."""
+    try:
+        from talkbot.ui.gradio_app import create_app
+    except ImportError:
+        click.echo(
+            "Error: Gradio is not installed. Add it with: uv sync --extra gradio",
+            err=True,
+        )
+        sys.exit(1)
+
+    app = create_app(
+        provider=ctx.obj["provider"],
+        model=ctx.obj["model"],
+        local_server_url=ctx.obj["local_server_url"],
+        local_server_api_key=ctx.obj["local_server_api_key"] or "",
+        system_prompt=system,
+        enable_tts=not no_tts,
+    )
+    click.echo(f"Launching TalkBot UI on http://{host}:{port}")
+    app.launch(server_name=host, server_port=port, share=share)
+
+
 def main() -> None:
     """Entry point for the CLI."""
     cli()
