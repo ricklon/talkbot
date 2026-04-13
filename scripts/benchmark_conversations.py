@@ -28,6 +28,7 @@ from talkbot.benchmark import (
 )
 from talkbot.benchmark_publish import publish_benchmark_results
 from talkbot.judge import DEFAULT_JUDGE_MODEL, JudgeConfig, LLMJudge, estimate_judge_cost
+from talkbot.prompting import DEFAULT_PROMPT_CATALOG, resolve_prompt_reference
 
 
 # ---------------------------------------------------------------------------
@@ -171,11 +172,12 @@ def _default_profile_from_args(args: argparse.Namespace) -> BenchmarkProfile:
     if args.n_ctx is not None:
         env["TALKBOT_LOCAL_N_CTX"] = str(args.n_ctx)
 
-    system_prompt: str | None = None
-    if args.system_prompt_file:
-        system_prompt = Path(args.system_prompt_file).read_text(encoding="utf-8").strip()
-    elif args.system_prompt:
-        system_prompt = args.system_prompt.strip()
+    system_prompt, prompt_preset, prompt_source = resolve_prompt_reference(
+        prompt_preset=args.prompt_preset,
+        prompt_file=args.system_prompt_file,
+        prompt_text=args.system_prompt,
+        catalog_path=args.prompt_catalog,
+    )
 
     return BenchmarkProfile(
         name=profile_name,
@@ -189,6 +191,8 @@ def _default_profile_from_args(args: argparse.Namespace) -> BenchmarkProfile:
         enable_thinking=args.thinking,
         use_tools=not args.no_tools,
         system_prompt=system_prompt or None,
+        prompt_preset=prompt_preset,
+        prompt_source=prompt_source,
         max_tokens=args.max_tokens,
         temperature=args.temperature,
         env=env,
@@ -221,6 +225,16 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--matrix",
         default=None,
         help="JSON matrix file with 'profiles' list. If omitted, single profile args are used.",
+    )
+    parser.add_argument(
+        "--prompt-preset",
+        default=None,
+        help="Prompt preset name from prompts/catalog.json for single-profile mode",
+    )
+    parser.add_argument(
+        "--prompt-catalog",
+        default=str(DEFAULT_PROMPT_CATALOG),
+        help="Prompt catalog JSON path used with --prompt-preset",
     )
     parser.add_argument(
         "--output",

@@ -1,0 +1,45 @@
+{
+  "prompts": [
+    {
+      "name": "agent",
+      "file": "agent.md",
+      "summary": "General voice-first preset for interactive CLI and GUI use.",
+      "goals": ["voice", "tool_first"],
+      "scenarios": [
+        "utility_time_date",
+        "list_basics",
+        "memory_persistent_strict",
+        "timer_basics"
+      ],
+      "review_notes": "Use for day-to-day assistant behavior, not benchmark-only runs."
+    },
+    {
+      "name": "tool_benchmark",
+      "file": "tool_benchmark.md",
+      "summary": "Benchmark preset focused on reliable tool selection and retry behavior.",
+      "goals": ["tool_first", "stateful_tools", "exact_args"],
+      "scenarios": [
+        "utility_time_date",
+        "list_basics",
+        "memory_persistent_strict",
+        "recovery_timer_retry",
+        "timer_basics"
+      ],
+      "review_notes": "Intended for benchmark and regression runs that stress tool routing."
+    },
+    {
+      "name": "tool_reliability",
+      "file": "tool_reliability.md",
+      "summary": "Minimal preset for local tool-routing smoke tests and UAT.",
+      "goals": ["tool_first", "stateful_tools", "exact_args"],
+      "scenarios": [
+        "utility_time_date",
+        "list_basics",
+        "memory_persistent_strict",
+        "recovery_timer_retry",
+        "timer_basics"
+      ],
+      "review_notes": "Short on purpose; compare against richer prompts during review."
+    }
+  ]
+}

@@ -13,7 +13,7 @@ Rules:
    - stop/cancel -> `cancel_timer`
 6. For list tasks:
    - create -> `create_list`
-   - add -> `add_to_list` or `add_items_to_list`
+   - add -> `add_to_list`
    - show all -> `list_all_lists`
 7. Use exact parameter names expected by tools. Do not invent extra parameters.
 8. If a tool returns an error, adjust the next tool call arguments and retry once.

@@ -142,6 +142,8 @@ def test_write_outputs_and_leaderboard(tmp_path):
                     "name": "demo-ctx2048",
                     "provider": "local",
                     "model": "fake/model",
+                    "prompt_preset": "tool_reliability",
+                    "prompt_source": "preset:tool_reliability",
                     "env": {"TALKBOT_LOCAL_N_CTX": "2048"},
                 },
                 "status": "ok",
@@ -162,6 +164,8 @@ def test_write_outputs_and_leaderboard(tmp_path):
                     "name": "demo-ctx4096",
                     "provider": "local",
                     "model": "fake/model",
+                    "prompt_preset": "agent",
+                    "prompt_source": "preset:agent",
                     "env": {"TALKBOT_LOCAL_N_CTX": "4096"},
                 },
                 "status": "ok",
@@ -185,7 +189,8 @@ def test_write_outputs_and_leaderboard(tmp_path):
     assert "Runner: `linux-main`" in md
     assert "Runner notes: cpu-only" in md
     assert "Quality Rank" in md
-    assert "| Run | Provider | Model | Routing |" in md
+    assert "| Run | Provider | Model | Prompt | Routing |" in md
+    assert "## Prompt Impact" in md
     assert "Low-Memory Rank" in md
     assert "Balanced Rank" in md
     assert "Pareto Frontier" in md
@@ -238,6 +243,52 @@ def test_load_matrix_config_expands_context_windows(tmp_path):
     assert matrix["rubric"]["weights"]["task_success_rate"] == 0.7
     assert matrix["context_analysis"]["near_peak_ratio"] == 0.96
     assert matrix["context_analysis"]["dropoff_ratio"] == 0.88
+
+
+def test_load_matrix_config_resolves_prompt_preset(tmp_path):
+    prompt_dir = tmp_path / "prompts"
+    prompt_dir.mkdir()
+    (prompt_dir / "sample.md").write_text("Use tools first.", encoding="utf-8")
+    catalog_path = prompt_dir / "catalog.json"
+    catalog_path.write_text(
+        json.dumps(
+            {
+                "prompts": [
+                    {
+                        "name": "sample",
+                        "file": "sample.md",
+                        "summary": "Sample",
+                        "goals": ["tool_first"],
+                        "scenarios": ["utility_time_date"],
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    matrix_path = tmp_path / "matrix.json"
+    matrix_path.write_text(
+        json.dumps(
+            {
+                "profiles": [
+                    {
+                        "name": "demo",
+                        "provider": "local",
+                        "model": "fake/model",
+                        "prompt_catalog": str(catalog_path),
+                        "prompt_preset": "sample",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    matrix = load_matrix_config(matrix_path)
+
+    assert matrix["profiles"][0].prompt_preset == "sample"
+    assert matrix["profiles"][0].prompt_source == "preset:sample"
+    assert matrix["profiles"][0].system_prompt == "Use tools first."
 
 
 def test_leaderboard_includes_ab_routing_section():
@@ -998,3 +1049,70 @@ def test_tts_directive_ab_leaderboard_section_rendered(tmp_path):
     assert "## TTS Directive A/B" in md
     assert "Friction" in md
     assert "-3.00" in md  # friction_delta
+
+
+def test_prompt_impact_leaderboard_section_rendered():
+    runs = [
+        {
+            "profile": {
+                "name": "slice-a",
+                "provider": "local_server",
+                "model": "qwen3.5",
+                "prompt_preset": "agent",
+                "temperature": 0.0,
+                "env": {"TALKBOT_LOCAL_N_CTX": "4096", "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "1"},
+            },
+            "status": "ok",
+            "aggregate": {
+                "task_success_rate": 0.80,
+                "tool_selection_accuracy": 0.80,
+                "argument_accuracy": 0.80,
+                "avg_turn_latency_ms": 20.0,
+                "memory_peak_mb": 10.0,
+                "tool_call_error_rate": 0.0,
+                "model_execution_error_rate": 0.0,
+                "tokens_per_second": 1.0,
+                "avg_prefill_tok_s": 1.0,
+                "avg_gen_tok_s": 1.0,
+                "total_tokens": 10,
+                "tag_success": {},
+            },
+        },
+        {
+            "profile": {
+                "name": "slice-b",
+                "provider": "local_server",
+                "model": "qwen3.5",
+                "prompt_preset": "tool_reliability",
+                "temperature": 0.0,
+                "env": {"TALKBOT_LOCAL_N_CTX": "4096", "TALKBOT_LOCAL_DIRECT_TOOL_ROUTING": "1"},
+            },
+            "status": "ok",
+            "aggregate": {
+                "task_success_rate": 0.95,
+                "tool_selection_accuracy": 0.95,
+                "argument_accuracy": 0.95,
+                "avg_turn_latency_ms": 18.0,
+                "memory_peak_mb": 10.0,
+                "tool_call_error_rate": 0.0,
+                "model_execution_error_rate": 0.0,
+                "tokens_per_second": 1.0,
+                "avg_prefill_tok_s": 1.0,
+                "avg_gen_tok_s": 1.0,
+                "total_tokens": 10,
+                "tag_success": {},
+            },
+        },
+    ]
+    report = {
+        "finished_at": "2026-01-01T00:00:00Z",
+        "run_count": 2,
+        "scenario_count": 3,
+        "runs": runs,
+        "meta": {},
+        "runner": {},
+    }
+    md = build_leaderboard_markdown(report)
+    assert "## Prompt Impact" in md
+    assert "tool_reliability" in md
+    assert "agent" in md
