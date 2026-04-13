@@ -30,6 +30,9 @@ voice = [
 benchmark = [
     "huggingface_hub>=1.0",
 ]
+gradio = [
+    "gradio>=6.12.0",
+]
 
 [dependency-groups]
 dev = [
@@ -39,6 +42,7 @@ dev = [
 [project.scripts]
 talkbot = "talkbot.cli:main"
 talkbot-gui = "talkbot.ui.app:main"
+talkbot-serve = "talkbot.ui.gradio_app:main"
 
 [build-system]
 requires = ["hatchling"]
