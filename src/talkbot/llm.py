@@ -127,6 +127,204 @@ def _extract_remember_intent(text: str) -> tuple[str, str] | None:
     return key, value
 
 
+def _normalize_memory_key(text: str) -> str:
+    cleaned = re.sub(r"[^a-z0-9_ ]+", " ", str(text or "").strip().lower())
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned.replace(" ", "_")
+
+
+def _normalize_list_name_hint(text: str) -> str:
+    cleaned = re.sub(r"[^a-z0-9_ ]+", " ", str(text or "").strip().lower())
+    cleaned = re.sub(r"\b(?:my|the|a|an)\b", " ", cleaned)
+    cleaned = re.sub(r"\blist\b", " ", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned.replace(" ", "_")
+
+
+def _direct_tool_calls_from_user(messages: list[dict[str, Any]]) -> list[dict]:
+    """Deterministic tool-call extraction for common user intents."""
+    user_text = _latest_user_text(messages).lower()
+    if not user_text:
+        return []
+    assistant_text = _latest_assistant_text(messages).lower()
+
+    if "what time" in user_text or "current time" in user_text:
+        return [{"id": "direct-time-0", "function": {"name": "get_current_time", "arguments": "{}"}}]
+    if "what date" in user_text or "current date" in user_text:
+        return [{"id": "direct-date-0", "function": {"name": "get_current_date", "arguments": "{}"}}]
+    if "flip a coin" in user_text or "coin flip" in user_text:
+        return [{"id": "direct-coin-0", "function": {"name": "flip_coin", "arguments": "{}"}}]
+    if "what lists do you have" in user_text or "list all lists" in user_text:
+        return [{"id": "direct-lists-0", "function": {"name": "list_all_lists", "arguments": "{}"}}]
+    if "list timers" in user_text or "active timers" in user_text:
+        return [{"id": "direct-timers-0", "function": {"name": "list_timers", "arguments": "{}"}}]
+
+    remember = _extract_remember_intent(user_text)
+    if remember:
+        key, value = remember
+        return [
+            {
+                "id": "direct-remember-0",
+                "function": {
+                    "name": "remember",
+                    "arguments": json.dumps({"key": key, "value": value}),
+                },
+            }
+        ]
+
+    create_add_match = re.search(
+        r"\b(?:create|make|start)\s+(?:a\s+|an\s+|my\s+)?([a-z0-9_ ]+?)\s+list\s+and\s+add\s+(.+)$",
+        user_text,
+    )
+    if create_add_match:
+        list_name = _normalize_list_name_hint(create_add_match.group(1))
+        items_text = create_add_match.group(2).strip().strip(".!?")
+        if list_name and items_text:
+            return [
+                {
+                    "id": "direct-create-list-0",
+                    "function": {
+                        "name": "create_list",
+                        "arguments": json.dumps({"list_name": list_name}),
+                    },
+                },
+                {
+                    "id": "direct-add-list-0",
+                    "function": {
+                        "name": "add_to_list",
+                        "arguments": json.dumps({"list_name": list_name, "items": items_text}),
+                    },
+                },
+            ]
+
+    get_list_match = re.search(
+        r"\b(?:what(?:'s|\s+is)?\s+on|show|read)\s+(?:my\s+|the\s+)?([a-z0-9_ ]+?)\s+list\??$",
+        user_text,
+    )
+    if get_list_match:
+        list_name = _normalize_list_name_hint(get_list_match.group(1))
+        if list_name:
+            return [
+                {
+                    "id": "direct-get-list-0",
+                    "function": {
+                        "name": "get_list",
+                        "arguments": json.dumps({"list_name": list_name}),
+                    },
+                }
+            ]
+
+    percent_match = re.search(
+        r"(\d+(?:\.\d+)?)\s*percent\s+of\s+(\d+(?:\.\d+)?)",
+        user_text,
+    )
+    if percent_match:
+        pct = percent_match.group(1)
+        val = percent_match.group(2)
+        expr = f"({pct}/100)*{val}"
+        return [
+            {
+                "id": "direct-calc-percent-0",
+                "function": {
+                    "name": "calculator",
+                    "arguments": json.dumps({"formula": expr}),
+                },
+            }
+        ]
+
+    calc_match = re.search(
+        r"\b(?:what\s+is|calculate|compute)\s+([-+/*().\d\s]+)\??$",
+        user_text,
+    )
+    if calc_match and re.search(r"\d", calc_match.group(1)):
+        formula = calc_match.group(1).strip()
+        if formula:
+            return [
+                {
+                    "id": "direct-calc-0",
+                    "function": {
+                        "name": "calculator",
+                        "arguments": json.dumps({"formula": formula}),
+                    },
+                }
+            ]
+
+    divide_match = re.search(r"\bdivide\s+that\s+by\s+(\d+(?:\.\d+)?)\b", user_text)
+    if divide_match:
+        denom = float(divide_match.group(1))
+        prior = _extract_last_number(assistant_text)
+        if prior is not None and denom != 0:
+            expr = f"({prior})/{denom}"
+            return [
+                {
+                    "id": "direct-calc-divide-0",
+                    "function": {
+                        "name": "calculator",
+                        "arguments": json.dumps({"formula": expr}),
+                    },
+            }
+        ]
+
+    recall_match = re.search(
+        r"\b(?:what\s+did\s+you\s+remember\s+about|what\s+do\s+you\s+remember\s+about|recall|what\s+is)\s+(?:my\s+)?([a-z0-9_ ]{2,40})\??$",
+        user_text,
+    )
+    if recall_match:
+        key = _normalize_memory_key(recall_match.group(1))
+        if key:
+            return [
+                {
+                    "id": "direct-recall-0",
+                    "function": {
+                        "name": "recall",
+                        "arguments": json.dumps({"key": key}),
+                    },
+                }
+            ]
+
+    cancel_match = re.search(r"cancel\s+timer\s+#?(\d+)", user_text)
+    if cancel_match:
+        return [
+            {
+                "id": "direct-cancel-timer-0",
+                "function": {
+                    "name": "cancel_timer",
+                    "arguments": json.dumps({"timer_id": cancel_match.group(1)}),
+                },
+            }
+        ]
+
+    timer_match = re.search(
+        r"(?:set\s+)?(?:a\s+)?timer(?:\s+for)?\s+(\d+)\s*(?:s|sec|secs|second|seconds)\b",
+        user_text,
+    )
+    if timer_match:
+        return [
+            {
+                "id": "direct-set-timer-0",
+                "function": {
+                    "name": "set_timer",
+                    "arguments": json.dumps({"seconds": int(timer_match.group(1))}),
+                },
+            }
+        ]
+
+    dm = re.search(r"\b(\d+)\s*d\s*(\d+)(?:s)?\b", user_text)
+    if dm:
+        count = int(dm.group(1))
+        sides = int(dm.group(2))
+        return [
+            {
+                "id": "direct-dice-0",
+                "function": {
+                    "name": "roll_dice",
+                    "arguments": json.dumps({"sides": sides, "count": count}),
+                },
+            }
+        ]
+    return []
+
+
 def _rewrite_tool_call_for_user_intent(
     function_name: str,
     function_args: dict[str, Any],
@@ -536,7 +734,7 @@ class LocalLlamaCppClient:
         executed_call_results: dict[str, str] = {}
 
         # Fast-path common spoken intents before asking model to format a tool call.
-        direct_calls = self._direct_tool_calls_from_user(messages) if self.direct_tool_routing else []
+        direct_calls = _direct_tool_calls_from_user(messages) if self.direct_tool_routing else []
         if direct_calls:
             for tool_call in direct_calls:
                 function_name = tool_call["function"]["name"]
@@ -836,135 +1034,6 @@ class LocalLlamaCppClient:
                 ]
         return []
 
-    def _direct_tool_calls_from_user(self, messages: list[dict]) -> list[dict]:
-        """Deterministic intent routing for common voice utterances."""
-        if not messages:
-            return []
-        user_text = ""
-        for m in reversed(messages):
-            if str(m.get("role", "")).strip().lower() == "user":
-                user_text = str(m.get("content", "")).strip().lower()
-                break
-        if not user_text:
-            return []
-        assistant_text = _latest_assistant_text(messages)
-
-        if "what time" in user_text or "current time" in user_text:
-            return [{"id": "direct-time-0", "function": {"name": "get_current_time", "arguments": "{}"}}]
-        if "what date" in user_text or "current date" in user_text:
-            return [{"id": "direct-date-0", "function": {"name": "get_current_date", "arguments": "{}"}}]
-        if "flip a coin" in user_text or "coin flip" in user_text:
-            return [{"id": "direct-coin-0", "function": {"name": "flip_coin", "arguments": "{}"}}]
-        if "what lists do you have" in user_text or "list all lists" in user_text:
-            return [{"id": "direct-lists-0", "function": {"name": "list_all_lists", "arguments": "{}"}}]
-        if "list timers" in user_text or "active timers" in user_text:
-            return [{"id": "direct-timers-0", "function": {"name": "list_timers", "arguments": "{}"}}]
-        remember_match = re.search(
-            r"\bremember(?:\s+that)?\s+(?:my\s+)?([a-z0-9_ ]{2,40}?)\s+is\s+(.+)$",
-            user_text,
-        )
-        if remember_match:
-            key = remember_match.group(1).strip().replace(" ", "_")
-            value = remember_match.group(2).strip().strip(".!?")
-            if key and value:
-                return [
-                    {
-                        "id": "direct-remember-0",
-                        "function": {
-                            "name": "remember",
-                            "arguments": json.dumps({"key": key, "value": value}),
-                        },
-                    }
-                ]
-        recall_match = re.search(
-            r"\b(?:what\s+is|recall)\s+(?:my\s+)?([a-z_ ]{2,40})\??$",
-            user_text,
-        )
-        if recall_match:
-            key = recall_match.group(1).strip().replace(" ", "_")
-            if key:
-                return [
-                    {
-                        "id": "direct-recall-0",
-                        "function": {
-                            "name": "recall",
-                            "arguments": json.dumps({"key": key}),
-                        },
-                    }
-                ]
-        cancel_match = re.search(r"cancel\s+timer\s+#?(\d+)", user_text)
-        if cancel_match:
-            return [
-                {
-                    "id": "direct-cancel-timer-0",
-                    "function": {
-                        "name": "cancel_timer",
-                        "arguments": json.dumps({"timer_id": cancel_match.group(1)}),
-                    },
-                }
-            ]
-        timer_match = re.search(
-            r"(?:set\s+)?(?:a\s+)?timer(?:\s+for)?\s+(\d+)\s*(?:s|sec|secs|second|seconds)\b",
-            user_text,
-        )
-        if timer_match:
-            return [
-                {
-                    "id": "direct-set-timer-0",
-                    "function": {
-                        "name": "set_timer",
-                        "arguments": json.dumps({"seconds": int(timer_match.group(1))}),
-                    },
-                }
-            ]
-        percent_match = re.search(
-            r"(\d+(?:\.\d+)?)\s*percent\s+of\s+(\d+(?:\.\d+)?)",
-            user_text,
-        )
-        if percent_match:
-            pct = percent_match.group(1)
-            val = percent_match.group(2)
-            expr = f"({pct}/100)*{val}"
-            return [
-                {
-                    "id": "direct-calc-percent-0",
-                    "function": {
-                        "name": "calculator",
-                        "arguments": json.dumps({"formula": expr}),
-                    },
-                }
-            ]
-        divide_match = re.search(r"\bdivide\s+that\s+by\s+(\d+(?:\.\d+)?)\b", user_text)
-        if divide_match:
-            denom = float(divide_match.group(1))
-            prior = _extract_last_number(assistant_text)
-            if prior is not None and denom != 0:
-                expr = f"({prior})/{denom}"
-                return [
-                    {
-                        "id": "direct-calc-divide-0",
-                        "function": {
-                            "name": "calculator",
-                            "arguments": json.dumps({"formula": expr}),
-                        },
-                    }
-                ]
-
-        dm = re.search(r"\b(\d+)\s*d\s*(\d+)(?:s)?\b", user_text)
-        if dm:
-            count = int(dm.group(1))
-            sides = int(dm.group(2))
-            return [
-                {
-                    "id": "direct-dice-0",
-                    "function": {
-                        "name": "roll_dice",
-                        "arguments": json.dumps({"sides": sides, "count": count}),
-                    },
-                }
-            ]
-        return []
-
     def close(self) -> None:
         return None
 
@@ -1126,6 +1195,34 @@ class LocalServerClient:
         if not self.tools:
             response = self.chat_completion(messages, temperature, max_tokens)
             return _response_content(response)
+
+        latest_user_text = _latest_user_text(messages)
+        direct_calls = _direct_tool_calls_from_user(messages) if self.direct_tool_routing else []
+        if direct_calls:
+            executed_tool_summaries: list[str] = []
+            for tool_call in direct_calls:
+                function_name = tool_call["function"]["name"]
+                try:
+                    function_args = json.loads(tool_call["function"]["arguments"])
+                except Exception:
+                    function_args = {}
+                function_name, function_args = _rewrite_tool_call_for_user_intent(
+                    function_name,
+                    function_args,
+                    latest_user_text,
+                )
+                function_args = _normalize_tool_args_for_call(function_name, function_args)
+                if function_name in self.tools:
+                    tool_func = self.tools[function_name]
+                    function_args = _filter_tool_args_for_callable(tool_func, function_args)
+                    try:
+                        result = tool_func(**function_args)
+                    except Exception as e:
+                        result = f"Error executing {function_name}: {e}"
+                else:
+                    result = f"Error: Tool {function_name} not found"
+                executed_tool_summaries.append(f"{function_name}({function_args}) -> {result}")
+            return "\n".join(s.split(" -> ", 1)[-1] for s in executed_tool_summaries)
 
         # Intent routing: detect which single tool the user most likely wants.
         # When found, send only that tool's schema + tool_choice='required' so the
