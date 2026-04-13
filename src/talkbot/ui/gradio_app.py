@@ -96,7 +96,7 @@ def create_app(
 
     def respond(
         user_message: str,
-        history: list[dict],
+        history: list,
         system: str,
         speak: bool,
     ):
@@ -124,16 +124,15 @@ def create_app(
         yield history, audio_path
 
     # ── UI layout ────────────────────────────────────────────────────────────
-    with gr.Blocks(title="TalkBot", theme=gr.themes.Soft()) as demo:
+    with gr.Blocks(title="TalkBot") as demo:
         gr.Markdown("## TalkBot — Robot Coaching Assistant")
 
         with gr.Row():
             with gr.Column(scale=3):
                 chatbot = gr.Chatbot(
                     label="Conversation",
-                    type="messages",
                     height=480,
-                    show_copy_button=True,
+                    buttons=["copy_all"],
                 )
                 with gr.Row():
                     msg_box = gr.Textbox(
@@ -157,7 +156,6 @@ def create_app(
                 audio_out = gr.Audio(
                     label="Last reply audio",
                     autoplay=True,
-                    show_download_button=False,
                 )
                 gr.Markdown(
                     f"**Model:** `{model}`  \n**Provider:** `{provider}`  \n"
