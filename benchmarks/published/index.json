@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-03-11T08:52:14-0400",
-  "latest_run": "m3max-20260311-085045",
+  "updated_at": "2026-04-14T21:55:41+0000",
+  "latest_run": "full_remote-20260414-214818",
   "runs": [
     "validated-20260227-v3-schemas",
     "validated-20260227-v3-fixed",
@@ -36,6 +36,10 @@
     "llama-server-qwen35-4b-q4km",
     "llama-server-qwen35-2b-q4km",
     "latest",
+    "gemma4-26b-20260414-181308",
+    "full_remote-20260414-214818",
+    "full_remote-20260414-214135",
+    "full_remote-20260414-151713",
     "full_remote-20260226-175045",
     "full_all-with-smalltoolcall-20260226-184414",
     "full_all-20260226-180616",

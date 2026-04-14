@@ -75,9 +75,9 @@
             "temperature": 0.0
         },
         {
-            "name": "openrouter-claude-3.5-sonnet",
+            "name": "openrouter-claude-sonnet-4-5",
             "provider": "openrouter",
-            "model": "anthropic/claude-3.5-sonnet",
+            "model": "anthropic/claude-sonnet-4.5",
             "use_tools": true,
             "max_tokens": 512,
             "temperature": 0.0
