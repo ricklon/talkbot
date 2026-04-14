@@ -1,0 +1,2088 @@
+{
+  "started_at": "2026-04-14T18:13:08+0000",
+  "finished_at": "2026-04-14T18:14:18+0000",
+  "runner": {
+    "label": "arm-01",
+    "hostname": "zun-7eb42190-4e1c-4632-9b08-cf10180158b0-6d6847dd5d-vs8bc",
+    "os": "Linux",
+    "os_release": "6.12.61-v8",
+    "machine": "aarch64",
+    "processor": null,
+    "python_version": "3.12.13",
+    "cpu_count_logical": 4,
+    "cpu_count_physical": null,
+    "is_raspberry_pi": false,
+    "raspberry_pi_model": null,
+    "network_type": "unknown",
+    "inference_env": "linux-native",
+    "endpoint_probes": [],
+    "notes": "CHI@Edge Pi CM4, OpenRouter, gemma-4-26b-a4b-it test"
+  },
+  "scenario_count": 10,
+  "run_count": 1,
+  "normalization": "v1",
+  "pass_k": 1,
+  "pass_k_temperature": null,
+  "judge_model": null,
+  "judge_dry_run": null,
+  "judge_calls_total": null,
+  "rubric": {
+    "version": "2026.full-suite.v1",
+    "weights": {
+      "task_success_rate": 0.35,
+      "tool_selection_accuracy": 0.2,
+      "argument_accuracy": 0.15,
+      "recovery_success_rate": 0.1,
+      "multistep_success_rate": 0.1,
+      "robustness_success_rate": 0.05,
+      "context_success_rate": 0.05
+    },
+    "penalties": {
+      "latency_ms_multiplier": 0.002,
+      "memory_mb_multiplier": 0.002,
+      "tool_error_rate_multiplier": 20.0,
+      "model_error_rate_multiplier": 30.0
+    }
+  },
+  "context_analysis": {
+    "near_peak_ratio": 0.95,
+    "dropoff_ratio": 0.9
+  },
+  "runs": [
+    {
+      "profile": {
+        "name": "openrouter-gemma-4-26b-it",
+        "provider": "openrouter",
+        "model": "google/gemma-4-26b-a4b-it",
+        "local_model_path": null,
+        "llamacpp_bin": null,
+        "local_server_url": null,
+        "enable_thinking": false,
+        "use_tools": true,
+        "system_prompt": null,
+        "prompt_preset": null,
+        "prompt_source": null,
+        "max_tokens": 512,
+        "temperature": 0.0,
+        "env": {},
+        "tool_filter": null,
+        "tool_schema_variant": "standard",
+        "tool_use_directive": null,
+        "tts_directive": false
+      },
+      "status": "ok",
+      "error": null,
+      "started_at": "2026-04-14T18:14:18+0000",
+      "duration_s": 69.574,
+      "aggregate": {
+        "scenario_count": 10,
+        "scenario_passed": 10,
+        "task_success_rate": 1.0,
+        "total_turns": 25,
+        "avg_turn_latency_ms": 2743.199,
+        "p95_turn_latency_ms": 13460.086,
+        "avg_turns_to_success": 2.5,
+        "expected_tool_calls": 22,
+        "matched_tool_names": 22,
+        "tool_selection_accuracy": 1.0,
+        "expected_arg_checks": 3,
+        "matched_arg_checks": 3,
+        "argument_accuracy": 1.0,
+        "actual_tool_calls": 24,
+        "prompt_tokens": 49568,
+        "completion_tokens": 491,
+        "total_tokens": 50059,
+        "max_history_messages": 7,
+        "max_history_chars": 763,
+        "cpu_time_s": 2.444,
+        "python_peak_mb": 4.468,
+        "process_rss_delta_mb": 9.922,
+        "memory_peak_mb": 9.922,
+        "avg_tool_latency_ms": 4.462,
+        "p95_tool_latency_ms": 43.333,
+        "tool_call_error_count": 0,
+        "tool_call_error_rate": 0.0,
+        "tool_failure_summary": [],
+        "model_execution_error_count": 0,
+        "model_execution_error_rate": 0.0,
+        "first_turn_latency_ms": 1257.101,
+        "tokens_per_second": 729.936,
+        "avg_prefill_tok_s": 0.0,
+        "avg_gen_tok_s": 0.0,
+        "scenario_success_per_second": 0.1458,
+        "tag_success": {
+          "calculator": 1.0,
+          "context": 1.0,
+          "core": 1.0,
+          "lists": 1.0,
+          "memory": 1.0,
+          "multistep": 1.0,
+          "practical": 1.0,
+          "recovery": 1.0,
+          "robustness": 1.0,
+          "timers": 1.0,
+          "tools": 1.0,
+          "utility": 1.0
+        },
+        "endurance_scenario_count": 0,
+        "avg_latency_growth_rate": null,
+        "failure_mode_counts": {},
+        "avg_tts_friction_score": 0.48,
+        "tts_friction_zero_rate": 0.68,
+        "avg_judge_correctness": null,
+        "avg_judge_spoken_quality": null,
+        "judge_calls": 0
+      },
+      "scenarios": [
+        {
+          "id": "calculator_basic",
+          "name": "Calculator: Basic Arithmetic",
+          "tags": [
+            "utility",
+            "tools",
+            "calculator"
+          ],
+          "passed": true,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What is 15 percent of 47 dollars?",
+              "response": "15 percent of 47 dollars is $7.05.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 1883.358,
+              "tool_calls": [
+                {
+                  "scenario_id": "calculator_basic",
+                  "turn_index": 0,
+                  "name": "calculator",
+                  "args": {
+                    "formula": "0.15 * 47"
+                  },
+                  "result": "7.05",
+                  "error": null,
+                  "latency_ms": 8.713,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 1952,
+                "completion_tokens": 20,
+                "total_tokens": 1972,
+                "cost": 0.00024224,
+                "is_byok": false,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0,
+                  "cache_write_tokens": 0,
+                  "audio_tokens": 0,
+                  "video_tokens": 0
+                },
+                "cost_details": {
+                  "upstream_inference_cost": 0.00024224,
+                  "upstream_inference_prompt_cost": 0.00023424,
+                  "upstream_inference_completions_cost": 8e-06
+                },
+                "completion_tokens_details": {
+                  "reasoning_tokens": 0,
+                  "image_tokens": 0,
+                  "audio_tokens": 0
+                }
+              },
+              "history_messages": 3,
+              "history_chars": 189,
+              "failure_mode": "none",
+              "recall_turn": false,
+              "tts_friction_score": 1,
+              "tts_friction_detail": {
+                "symbols": 1
+              },
+              "judge_correctness": null,
+              "judge_spoken_quality": null,
+              "judge_reasoning": null,
+              "judge_checklist": null,
+              "judge_error": null
+            },
+            {
+              "index": 1,
+              "user": "Now divide that by 3.",
+              "response": "$7.05 divided by 3 is $2.35.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 1437.142,
+              "tool_calls": [
+                {
+                  "scenario_id": "calculator_basic",
+                  "turn_index": 1,
+                  "name": "calculator",
+                  "args": {
+                    "formula": "7.05 / 3"
+                  },
+                  "result": "2.35",
+                  "error": null,
+                  "latency_ms": 0.882,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 1983,
+                "completion_tokens": 21,
+                "total_tokens": 2004,
+                "cost": 0.00024636,
+                "is_byok": false,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0,
+                  "cache_write_tokens": 0,
+                  "audio_tokens": 0,
+                  "video_tokens": 0
+                },
+                "cost_details": {
+                  "upstream_inference_cost": 0.00024636,
+                  "upstream_inference_prompt_cost": 0.00023796,
+                  "upstream_inference_completions_cost": 8.4e-06
+                },
+                "completion_tokens_details": {
+                  "reasoning_tokens": 0,
+                  "image_tokens": 0,
+                  "audio_tokens": 0
+                }
+              },
+              "history_messages": 5,
+              "history_chars": 238,
+              "failure_mode": "none",
+              "recall_turn": false,
+              "tts_friction_score": 2,
+              "tts_friction_detail": {
+                "symbols": 2
+              },
+              "judge_correctness": null,
+              "judge_spoken_quality": null,
+              "judge_reasoning": null,
+              "judge_checklist": null,
+              "judge_error": null
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 2,
+          "expected_tool_calls": 2,
+          "matched_tool_names": 2,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 2,
+          "pass_k": 1,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reliability_band": "high",
+          "latency_growth_rate": null,
+          "quality_degradation_rate": null
+        },
+        {
+          "id": "cross_tool_mix",
+          "name": "Cross-Tool Mix: Time, Timer, List",
+          "tags": [
+            "utility",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": true,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What time is it?",
+              "response": "It is 6:13 PM UTC.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 938.578,
+              "tool_calls": [
+                {
+                  "scenario_id": "cross_tool_mix",
+                  "turn_index": 0,
+                  "name": "get_current_time",
+                  "args": {},
+                  "result": "2026-04-14 18:13:13 UTC",
+                  "error": null,
+                  "latency_ms": 0.441,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 1956,
+                "completion_tokens": 15,
+                "total_tokens": 1971,
+                "cost": 0.00024072,
+                "is_byok": false,
+                "prompt_tokens_details": {
+                  "cached_tokens": 1888,
+                  "cache_write_tokens": 0,
+                  "audio_tokens": 0,
+                  "video_tokens": 0
+                },
+                "cost_details": {
+                  "upstream_inference_cost": 0.00024072,
+                  "upstream_inference_prompt_cost": 0.00023472,
+                  "upstream_inference_completions_cost": 6e-06
+                },
+                "completion_tokens_details": {
+                  "reasoning_tokens": 0,
+                  "image_tokens": 0,
+                  "audio_tokens": 0
+                }
+              },
+              "history_messages": 3,
+              "history_chars": 156,
+              "failure_mode": "none",
+              "recall_turn": false,
+              "tts_friction_score": 1,
+              "tts_friction_detail": {
+                "symbols": 1
+              },
+              "judge_correctness": null,
+              "judge_spoken_quality": null,
+              "judge_reasoning": null,
+              "judge_checklist": null,
+              "judge_error": null
+            },
+            {
+              "index": 1,
+              "user": "Set a timer for 5 minutes.",
+              "response": "OK. I've set a timer for 5 minutes.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 898.922,
+              "tool_calls": [
+                {
+                  "scenario_id": "cross_tool_mix",
+                  "turn_index": 1,
+                  "name": "set_timer",
+                  "args": {
+                    "seconds": 300
+                  },
+                  "result": "Timer #1 set. '300-second timer' will fire in 300 seconds.",
+                  "error": null,
+                  "latency_ms": 1.618,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 1988,
+                "completion_tokens": 18,
+                "total_tokens": 2006,
+                "cost": 0.00024576,
+                "is_byok": false,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0,
+                  "cache_write_tokens": 0,
+                  "audio_tokens": 0,
+                  "video_tokens": 0
+                },
+                "cost_details": {
+                  "upstream_inference_cost": 0.00024576,
+                  "upstream_inference_prompt_cost": 0.00023856,
+                  "upstream_inference_completions_cost": 7.2e-06
+                },
+                "completion_tokens_details": {
+                  "reasoning_tokens": 0,
+                  "image_tokens": 0,
+                  "audio_tokens": 0
+                }
+              },
+              "history_messages": 5,
+              "history_chars": 217,
+              "failure_mode": "none",
+              "recall_turn": false,
+              "tts_friction_score": 0,
+              "tts_friction_detail": {},
+              "judge_correctness": null,
+              "judge_spoken_quality": null,
+              "judge_reasoning": null,
+              "judge_checklist": null,
+              "judge_error": null
+            },
+            {
+              "index": 2,
+              "user": "Add 'check the timer' to my reminders list.",
+              "response": "OK. I've added 'check the timer' to your reminders list.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 11119.012,
+              "tool_calls": [
+                {
+                  "scenario_id": "cross_tool_mix",
+                  "turn_index": 2,
+                  "name": "add_to_list",
+                  "args": {
+                    "items": "check the timer",
+                    "list_name": "reminders"
+                  },
+                  "result": "Added 'check the timer' to the reminders list.",
+                  "error": null,
+                  "latency_ms": 54.873,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 2026,
+                "completion_tokens": 21,
+                "total_tokens": 2047,
+                "cost": 0.00025152,
+                "is_byok": false,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0,
+                  "cache_write_tokens": 0,
+                  "audio_tokens": 0,
+                  "video_tokens": 0
+                },
+                "cost_details": {
+                  "upstream_inference_cost": 0.00025152,
+                  "upstream_inference_prompt_cost": 0.00024312,
+                  "upstream_inference_completions_cost": 8.4e-06
+                },
+                "completion_tokens_details": {
+                  "reasoning_tokens": 0,
+                  "image_tokens": 0,
+                  "audio_tokens": 0
+                }
+              },
+              "history_messages": 7,
+              "history_chars": 316,
+              "failure_mode": "none",
+              "recall_turn": false,
+              "tts_friction_score": 0,
+              "tts_friction_detail": {},
+              "judge_correctness": null,
+              "judge_spoken_quality": null,
+              "judge_reasoning": null,
+              "judge_checklist": null,
+              "judge_error": null
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 3,
+          "expected_tool_calls": 3,
+          "matched_tool_names": 3,
+          "expected_arg_checks": 1,
+          "matched_arg_checks": 1,
+          "actual_tool_calls": 3,
+          "pass_k": 1,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reliability_band": "high",
+          "latency_growth_rate": 5090.217,
+          "quality_degradation_rate": null
+        },
+        {
+          "id": "list_basics",
+          "name": "List Basics",
+          "tags": [
+            "lists",
+            "tools",
+            "core"
+          ],
+          "passed": true,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a grocery list.",
+              "response": "OK. I've created a grocery list for you. What would you like to add to it?",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 1224.845,
+              "tool_calls": [
+                {
+                  "scenario_id": "list_basics",
+                  "turn_index": 0,
+                  "name": "create_list",
+                  "args": {
+                    "list_name": "grocery"
+                  },
+                  "result": "Created 'grocery' list.",
+                  "error": null,
+                  "latency_ms": 3.737,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 1946,
+                "completion_tokens": 26,
+                "total_tokens": 1972,
+                "cost": 0.00024392,
+                "is_byok": false,
+                "prompt_tokens_details": {
+                  "cached_tokens": 1888,
+                  "cache_write_tokens": 0,
+                  "audio_tokens": 0,
+                  "video_tokens": 0
+                },
+                "cost_details": {
+                  "upstream_inference_cost": 0.00024392,
+                  "upstream_inference_prompt_cost": 0.00023352,
+                  "upstream_inference_completions_cost": 1.04e-05
+                },
+                "completion_tokens_details": {
+                  "reasoning_tokens": 0,
+                  "image_tokens": 0,
+                  "audio_tokens": 0
+                }
+              },
+              "history_messages": 3,
+              "history_chars": 218,
+              "failure_mode": "none",
+              "recall_turn": false,
+              "tts_friction_score": 0,
+              "tts_friction_detail": {},
+              "judge_correctness": null,
+              "judge_spoken_quality": null,
+              "judge_reasoning": null,
+              "judge_checklist": null,
+              "judge_error": null
+            },
+            {
+              "index": 1,
+              "user": "Add milk to the grocery list.",
+              "response": "OK. I've added milk to your grocery list. What else would you like to add?",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 13797.136,
+              "tool_calls": [
+                {
+                  "scenario_id": "list_basics",
+                  "turn_index": 1,
+                  "name": "add_to_list",
+                  "args": {
+                    "items": "milk",
+                    "list_name": "grocery"
+                  },
+                  "result": "Added 'milk' to the grocery list.",
+                  "error": null,
+                  "latency_ms": 4.609,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 1996,
+                "completion_tokens": 21,
+                "total_tokens": 2017,
+                "cost": 0.00026788,
+                "is_byok": false,
+                "prompt_tokens_details": {
+                  "cached_tokens": 0,
+                  "cache_write_tokens": 0,
+                  "audio_tokens": 0,
+                  "video_tokens": 0
+                },
+                "cost_details": {
+                  "upstream_inference_cost": 0.00026788,
+                  "upstream_inference_prompt_cost": 0.00025948,
+                  "upstream_inference_completions_cost": 8.4e-06
+                },
+                "completion_tokens_details": {
+                  "reasoning_tokens": 0,
+                  "image_tokens": 0,
+                  "audio_tokens": 0
+                }
+              },
+              "history_messages": 5,
+              "history_chars": 321,
+              "failure_mode": "none",
+              "recall_turn": false,
+              "tts_friction_score": 0,
+              "tts_friction_detail": {},
+              "judge_correctness": null,
+              "judge_spoken_quality": null,
+              "judge_reasoning": null,
+              "judge_checklist": null,
+              "judge_error": null
+            },
+            {
+              "index": 2,
+              "user": "What lists do you have?",
+              "response": "You have one list:\n- **grocery**: milk",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 962.518,
+              "tool_calls": [
+                {
+                  "scenario_id": "list_basics",
+                  "turn_index": 2,
+                  "name": "list_all_lists",
+                  "args": {},
+                  "result": "grocery: [\"milk\"]",
+                  "error": null,
+                  "latency_ms": 1.999,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 2015,
+                "completion_tokens": 16,
+                "total_tokens": 2031,
+                "cost": 0.0002482,
+                "is_byok": false,
+                "prompt_tokens_details": {
+                  "cached_tokens": 1888,
+                  "cache_write_tokens": 0,
+                  "audio_tokens": 0,
+                  "video_tokens": 0
+                },
+                "cost_details": {
+                  "upstream_inference_cost": 0.0002482,
+                  "upstream_inference_prompt_cost": 0.0002418,
+                  "upstream_inference_completions_cost": 6.4e-06
+                },
+                "completion_tokens_details": {
+                  "reasoning_tokens": 0,
+                  "image_tokens": 0,
+                  "audio_tokens": 0
+                }
+              },
+              "history_messages": 7,
+              "history_chars": 382,
+              "failure_mode": "none",
+              "recall_turn": false,
+              "tts_friction_score": 2,
+              "tts_friction_detail": {
+                "markdown": 2
+              },
+              "judge_correctness": null,
+              "judge_spoken_quality": null,
+              "judge_reasoning": null,
+              "judge_checklist": null,
+              "judge_error": null
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 3,
+          "expected_tool_calls": 3,
+          "matched_tool_names": 3,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 3,
+          "pass_k": 1,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reliability_band": "high",
+          "latency_growth_rate": -131.1635,
+          "quality_degradation_rate": null
+        },
+        {
+          "id": "list_multistep_packing",
+          "name": "Multistep: Packing List Workflow",
+          "tags": [
+            "lists",
+            "tools",
+            "multistep",
+            "core"
+          ],
+          "passed": true,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Create a packing list.",
+              "response": "OK. I've created a \"packing\" list for you. What would you like to add to it?",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 1200.183,
+              "tool_calls": [
+                {
+                  "scenario_id": "list_multistep_packing",
+                  "turn_index": 0,
+                  "name": "create_list",
+                  "args": {
+                    "list_name": "packing"
+                  },
+                  "result": "Created 'packing' list.",
+                  "error": null,
+                  "latency_ms": 4.493,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 1946,
+                "completion_tokens": 28,
+                "total_tokens": 1974,
+                "cost": 0.00024472,
+                "is_byok": false,
+                "prompt_tokens_details": {
+                  "cached_tokens": 1888,
+                  "cache_write_tokens": 0,
+                  "audio_tokens": 0,
+                  "video_tokens": 0
+                },
+                "cost_details": {
+                  "upstream_inference_cost": 0.00024472,
+                  "upstream_inference_prompt_cost": 0.00023352,
+                  "upstream_inference_completions_cost": 1.12e-05
+                },
+                "completion_tokens_details": {
+                  "reasoning_tokens": 0,
+                  "image_tokens": 0,
+                  "audio_tokens": 0
+                }
+              },
+              "history_messages": 3,
+              "history_chars": 220,
+              "failure_mode": "none",
+              "recall_turn": false,
+              "tts_friction_score": 0,
+              "tts_friction_detail": {},
+              "judge_correctness": null,
+              "judge_spoken_quality": null,
+              "judge_reasoning": null,
+              "judge_checklist": null,
+              "judge_error": null
+            },
+            {
+              "index": 1,
+              "user": "Add socks and charger to the packing list.",
+              "response": "I've added socks and charger to your packing list.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 5458.112,
+              "tool_calls": [
+                {
+                  "scenario_id": "list_multistep_packing",
+                  "turn_index": 1,
+                  "name": "add_to_list",
+                  "args": {
+                    "items": [
+                      "<|\"|socks<|\"|",
+                      "<|\"|charger<|\"|"
+                    ],
+                    "list_name": "packing"
+                  },
+                  "result": "Added <|\"|socks<|\"|, <|\"|charger<|\"| to the packing list.",
+                  "error": null,
+                  "latency_ms": 4.905,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 2028,
+                "completion_tokens": 17,
+                "total_tokens": 2045,
+                "cost": 0.00025016,
+                "is_byok": false,
+                "prompt_tokens_details": {
+                  "cached_tokens": 1888,
+                  "cache_write_tokens": 0,
+                  "audio_tokens": 0,
+                  "video_tokens": 0
+                },
+                "cost_details": {
+                  "upstream_inference_cost": 0.00025016,
+                  "upstream_inference_prompt_cost": 0.00024336,
+                  "upstream_inference_completions_cost": 6.8e-06
+                },
+                "completion_tokens_details": {
+                  "reasoning_tokens": 0,
+                  "image_tokens": 0,
+                  "audio_tokens": 0
+                }
+              },
+              "history_messages": 5,
+              "history_chars": 312,
+              "failure_mode": "none",
+              "recall_turn": false,
+              "tts_friction_score": 0,
+              "tts_friction_detail": {},
+              "judge_correctness": null,
+              "judge_spoken_quality": null,
+              "judge_reasoning": null,
+              "judge_checklist": null,
+              "judge_error": null
+            },
+            {
+              "index": 2,
+              "user": "Show me the packing list.",
+              "response": "Your packing list contains:\n- socks\n- charger",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 1631.36,
+              "tool_calls": [
+                {
+                  "scenario_id": "list_multistep_packing",
+                  "turn_index": 2,
+                  "name": "get_list",
+                  "args": {
+                    "list_name": "packing"
+                  },
+                  "result": "Packing list:\n- <|\"|socks<|\"|\n- <|\"|charger<|\"|",
+                  "error": null,
+                  "latency_ms": 2.393,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 2031,
+                "completion_tokens": 16,
+                "total_tokens": 2047,
+                "cost": 0.00025012,
+                "is_byok": false,
+                "prompt_tokens_details": {
+                  "cached_tokens": 1952,
+                  "cache_write_tokens": 0,
+                  "audio_tokens": 0,
+                  "video_tokens": 0
+                },
+                "cost_details": {
+                  "upstream_inference_cost": 0.00025012,
+                  "upstream_inference_prompt_cost": 0.00024372,
+                  "upstream_inference_completions_cost": 6.4e-06
+                },
+                "completion_tokens_details": {
+                  "reasoning_tokens": 0,
+                  "image_tokens": 0,
+                  "audio_tokens": 0
+                }
+              },
+              "history_messages": 7,
+              "history_chars": 382,
+              "failure_mode": "none",
+              "recall_turn": false,
+              "tts_friction_score": 2,
+              "tts_friction_detail": {
+                "markdown": 2
+              },
+              "judge_correctness": null,
+              "judge_spoken_quality": null,
+              "judge_reasoning": null,
+              "judge_checklist": null,
+              "judge_error": null
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 3,
+          "expected_tool_calls": 3,
+          "matched_tool_names": 3,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 3,
+          "pass_k": 1,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reliability_band": "high",
+          "latency_growth_rate": 215.5885,
+          "quality_degradation_rate": null
+        },
+        {
+          "id": "memory_persistent_strict",
+          "name": "Memory Persistent (Strict)",
+          "tags": [
+            "memory",
+            "tools",
+            "core"
+          ],
+          "passed": true,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "OK. I've remembered that your favorite color is blue.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 1129.609,
+              "tool_calls": [
+                {
+                  "scenario_id": "memory_persistent_strict",
+                  "turn_index": 0,
+                  "name": "remember",
+                  "args": {
+                    "key": "favorite_color",
+                    "value": "blue"
+                  },
+                  "result": "Remembered: favorite_color = blue",
+                  "error": null,
+                  "latency_ms": 2.948,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 1953,
+                "completion_tokens": 18,
+                "total_tokens": 1971,
+                "cost": 0.00024156,
+                "is_byok": false,
+                "prompt_tokens_details": {
+                  "cached_tokens": 1888,
+                  "cache_write_tokens": 0,
+                  "audio_tokens": 0,
+                  "video_tokens": 0
+                },
+                "cost_details": {
+                  "upstream_inference_cost": 0.00024156,
+                  "upstream_inference_prompt_cost": 0.00023436,
+                  "upstream_inference_completions_cost": 7.2e-06
+                },
+                "completion_tokens_details": {
+                  "reasoning_tokens": 0,
+                  "image_tokens": 0,
+                  "audio_tokens": 0
+                }
+              },
+              "history_messages": 3,
+              "history_chars": 215,
+              "failure_mode": "none",
+              "recall_turn": false,
+              "tts_friction_score": 0,
+              "tts_friction_detail": {},
+              "judge_correctness": null,
+              "judge_spoken_quality": null,
+              "judge_reasoning": null,
+              "judge_checklist": null,
+              "judge_error": null
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "Your favorite color is blue.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 847.462,
+              "tool_calls": [
+                {
+                  "scenario_id": "memory_persistent_strict",
+                  "turn_index": 1,
+                  "name": "recall",
+                  "args": {
+                    "key": "favorite_color"
+                  },
+                  "result": "favorite_color: blue",
+                  "error": null,
+                  "latency_ms": 2.089,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 1973,
+                "completion_tokens": 11,
+                "total_tokens": 1984,
+                "cost": 0.00024116,
+                "is_byok": false,
+                "prompt_tokens_details": {
+                  "cached_tokens": 1888,
+                  "cache_write_tokens": 0,
+                  "audio_tokens": 0,
+                  "video_tokens": 0
+                },
+                "cost_details": {
+                  "upstream_inference_cost": 0.00024116,
+                  "upstream_inference_prompt_cost": 0.00023676,
+                  "upstream_inference_completions_cost": 4.4e-06
+                },
+                "completion_tokens_details": {
+                  "reasoning_tokens": 0,
+                  "image_tokens": 0,
+                  "audio_tokens": 0
+                }
+              },
+              "history_messages": 5,
+              "history_chars": 269,
+              "failure_mode": "none",
+              "recall_turn": false,
+              "tts_friction_score": 0,
+              "tts_friction_detail": {},
+              "judge_correctness": null,
+              "judge_spoken_quality": null,
+              "judge_reasoning": null,
+              "judge_checklist": null,
+              "judge_error": null
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 2,
+          "expected_tool_calls": 2,
+          "matched_tool_names": 2,
+          "expected_arg_checks": 1,
+          "matched_arg_checks": 1,
+          "actual_tool_calls": 2,
+          "pass_k": 1,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reliability_band": "high",
+          "latency_growth_rate": null,
+          "quality_degradation_rate": null
+        },
+        {
+          "id": "memory_context_flexible",
+          "name": "Memory Context (Flexible)",
+          "tags": [
+            "memory",
+            "tools",
+            "practical"
+          ],
+          "passed": true,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that my favorite color is blue.",
+              "response": "OK. I've remembered that your favorite color is blue.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 1116.869,
+              "tool_calls": [
+                {
+                  "scenario_id": "memory_context_flexible",
+                  "turn_index": 0,
+                  "name": "remember",
+                  "args": {
+                    "key": "favorite_color",
+                    "value": "blue"
+                  },
+                  "result": "Remembered: favorite_color = blue",
+                  "error": null,
+                  "latency_ms": 3.477,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 1953,
+                "completion_tokens": 18,
+                "total_tokens": 1971,
+                "cost": 0.00024156,
+                "is_byok": false,
+                "prompt_tokens_details": {
+                  "cached_tokens": 1888,
+                  "cache_write_tokens": 0,
+                  "audio_tokens": 0,
+                  "video_tokens": 0
+                },
+                "cost_details": {
+                  "upstream_inference_cost": 0.00024156,
+                  "upstream_inference_prompt_cost": 0.00023436,
+                  "upstream_inference_completions_cost": 7.2e-06
+                },
+                "completion_tokens_details": {
+                  "reasoning_tokens": 0,
+                  "image_tokens": 0,
+                  "audio_tokens": 0
+                }
+              },
+              "history_messages": 3,
+              "history_chars": 215,
+              "failure_mode": "none",
+              "recall_turn": false,
+              "tts_friction_score": 0,
+              "tts_friction_detail": {},
+              "judge_correctness": null,
+              "judge_spoken_quality": null,
+              "judge_reasoning": null,
+              "judge_checklist": null,
+              "judge_error": null
+            },
+            {
+              "index": 1,
+              "user": "What is my favorite color?",
+              "response": "Your favorite color is blue.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 841.028,
+              "tool_calls": [
+                {
+                  "scenario_id": "memory_context_flexible",
+                  "turn_index": 1,
+                  "name": "recall",
+                  "args": {
+                    "key": "favorite_color"
+                  },
+                  "result": "favorite_color: blue",
+                  "error": null,
+                  "latency_ms": 1.835,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 1973,
+                "completion_tokens": 11,
+                "total_tokens": 1984,
+                "cost": 0.00024116,
+                "is_byok": false,
+                "prompt_tokens_details": {
+                  "cached_tokens": 1888,
+                  "cache_write_tokens": 0,
+                  "audio_tokens": 0,
+                  "video_tokens": 0
+                },
+                "cost_details": {
+                  "upstream_inference_cost": 0.00024116,
+                  "upstream_inference_prompt_cost": 0.00023676,
+                  "upstream_inference_completions_cost": 4.4e-06
+                },
+                "completion_tokens_details": {
+                  "reasoning_tokens": 0,
+                  "image_tokens": 0,
+                  "audio_tokens": 0
+                }
+              },
+              "history_messages": 5,
+              "history_chars": 269,
+              "failure_mode": "none",
+              "recall_turn": false,
+              "tts_friction_score": 0,
+              "tts_friction_detail": {},
+              "judge_correctness": null,
+              "judge_spoken_quality": null,
+              "judge_reasoning": null,
+              "judge_checklist": null,
+              "judge_error": null
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 2,
+          "expected_tool_calls": 1,
+          "matched_tool_names": 1,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 2,
+          "pass_k": 1,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reliability_band": "high",
+          "latency_growth_rate": null,
+          "quality_degradation_rate": null
+        },
+        {
+          "id": "memory_context_pressure",
+          "name": "Context: Long-Context Memory Retrieval",
+          "tags": [
+            "memory",
+            "tools",
+            "context",
+            "multistep"
+          ],
+          "passed": true,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Remember that the launch codename is atlas.",
+              "response": "OK. I've remembered that the launch codename is atlas.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 1403.029,
+              "tool_calls": [
+                {
+                  "scenario_id": "memory_context_pressure",
+                  "turn_index": 0,
+                  "name": "remember",
+                  "args": {
+                    "key": "launch_codename",
+                    "value": "atlas"
+                  },
+                  "result": "Remembered: launch_codename = atlas",
+                  "error": null,
+                  "latency_ms": 3.332,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 1954,
+                "completion_tokens": 19,
+                "total_tokens": 1973,
+                "cost": 0.00024208,
+                "is_byok": false,
+                "prompt_tokens_details": {
+                  "cached_tokens": 1888,
+                  "cache_write_tokens": 0,
+                  "audio_tokens": 0,
+                  "video_tokens": 0
+                },
+                "cost_details": {
+                  "upstream_inference_cost": 0.00024208,
+                  "upstream_inference_prompt_cost": 0.00023448,
+                  "upstream_inference_completions_cost": 7.6e-06
+                },
+                "completion_tokens_details": {
+                  "reasoning_tokens": 0,
+                  "image_tokens": 0,
+                  "audio_tokens": 0
+                }
+              },
+              "history_messages": 3,
+              "history_chars": 219,
+              "failure_mode": "none",
+              "recall_turn": false,
+              "tts_friction_score": 0,
+              "tts_friction_detail": {},
+              "judge_correctness": null,
+              "judge_spoken_quality": null,
+              "judge_reasoning": null,
+              "judge_checklist": null,
+              "judge_error": null
+            },
+            {
+              "index": 1,
+              "user": "Read this long note: project timeline, ownership, and milestone details repeated for context pressure. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated. Project timeline ownership milestones repeated.",
+              "response": "I've read the note. It contains repeated information regarding the project timeline, ownership, and milestone details.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 476.304,
+              "tool_calls": [],
+              "usage": {
+                "prompt_tokens": 1985,
+                "completion_tokens": 23,
+                "total_tokens": 2008,
+                "cost": 0.0002474,
+                "is_byok": false,
+                "prompt_tokens_details": {
+                  "cached_tokens": 1888,
+                  "cache_write_tokens": 0,
+                  "audio_tokens": 0,
+                  "video_tokens": 0
+                },
+                "cost_details": {
+                  "upstream_inference_cost": 0.0002474,
+                  "upstream_inference_prompt_cost": 0.0002382,
+                  "upstream_inference_completions_cost": 9.2e-06
+                },
+                "completion_tokens_details": {
+                  "reasoning_tokens": 0,
+                  "image_tokens": 0,
+                  "audio_tokens": 0
+                }
+              },
+              "history_messages": 5,
+              "history_chars": 631,
+              "failure_mode": "none",
+              "recall_turn": false,
+              "tts_friction_score": 0,
+              "tts_friction_detail": {},
+              "judge_correctness": null,
+              "judge_spoken_quality": null,
+              "judge_reasoning": null,
+              "judge_checklist": null,
+              "judge_error": null
+            },
+            {
+              "index": 2,
+              "user": "After that long note, what launch codename did I ask you to remember?",
+              "response": "You asked me to remember that the launch codename is **atlas**.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 1240.779,
+              "tool_calls": [
+                {
+                  "scenario_id": "memory_context_pressure",
+                  "turn_index": 2,
+                  "name": "recall",
+                  "args": {
+                    "key": "launch_codename"
+                  },
+                  "result": "launch_codename: atlas",
+                  "error": null,
+                  "latency_ms": 2.124,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 2059,
+                "completion_tokens": 19,
+                "total_tokens": 2078,
+                "cost": 0.00025468,
+                "is_byok": false,
+                "prompt_tokens_details": {
+                  "cached_tokens": 1888,
+                  "cache_write_tokens": 0,
+                  "audio_tokens": 0,
+                  "video_tokens": 0
+                },
+                "cost_details": {
+                  "upstream_inference_cost": 0.00025468,
+                  "upstream_inference_prompt_cost": 0.00024708,
+                  "upstream_inference_completions_cost": 7.6e-06
+                },
+                "completion_tokens_details": {
+                  "reasoning_tokens": 0,
+                  "image_tokens": 0,
+                  "audio_tokens": 0
+                }
+              },
+              "history_messages": 7,
+              "history_chars": 763,
+              "failure_mode": "none",
+              "recall_turn": false,
+              "tts_friction_score": 1,
+              "tts_friction_detail": {
+                "markdown": 1
+              },
+              "judge_correctness": null,
+              "judge_spoken_quality": null,
+              "judge_reasoning": null,
+              "judge_checklist": null,
+              "judge_error": null
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 3,
+          "expected_tool_calls": 1,
+          "matched_tool_names": 1,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 2,
+          "pass_k": 1,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reliability_band": "high",
+          "latency_growth_rate": -81.125,
+          "quality_degradation_rate": null
+        },
+        {
+          "id": "recovery_timer_retry",
+          "name": "Recovery: Cancel Nonexistent Timer",
+          "tags": [
+            "timers",
+            "tools",
+            "recovery",
+            "robustness"
+          ],
+          "passed": true,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Cancel timer #99.",
+              "response": "OK. I couldn't find an active timer with ID #99. Would you like me to list your active timers so you can find the right one?",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 1421.461,
+              "tool_calls": [
+                {
+                  "scenario_id": "recovery_timer_retry",
+                  "turn_index": 0,
+                  "name": "cancel_timer",
+                  "args": {
+                    "timer_id": "99"
+                  },
+                  "result": "No active timer with ID '99'. Use list_timers to see active timers.",
+                  "error": null,
+                  "latency_ms": 0.091,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 1960,
+                "completion_tokens": 38,
+                "total_tokens": 1998,
+                "cost": 0.0002504,
+                "is_byok": false,
+                "prompt_tokens_details": {
+                  "cached_tokens": 1888,
+                  "cache_write_tokens": 0,
+                  "audio_tokens": 0,
+                  "video_tokens": 0
+                },
+                "cost_details": {
+                  "upstream_inference_cost": 0.0002504,
+                  "upstream_inference_prompt_cost": 0.0002352,
+                  "upstream_inference_completions_cost": 1.52e-05
+                },
+                "completion_tokens_details": {
+                  "reasoning_tokens": 0,
+                  "image_tokens": 0,
+                  "audio_tokens": 0
+                }
+              },
+              "history_messages": 3,
+              "history_chars": 263,
+              "failure_mode": "none",
+              "recall_turn": false,
+              "tts_friction_score": 0,
+              "tts_friction_detail": {},
+              "judge_correctness": null,
+              "judge_spoken_quality": null,
+              "judge_reasoning": null,
+              "judge_checklist": null,
+              "judge_error": null
+            },
+            {
+              "index": 1,
+              "user": "List my timers so I can see what's actually running.",
+              "response": "You don't have any active timers running right now.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 852.191,
+              "tool_calls": [
+                {
+                  "scenario_id": "recovery_timer_retry",
+                  "turn_index": 1,
+                  "name": "list_timers",
+                  "args": {},
+                  "result": "No active timers.",
+                  "error": null,
+                  "latency_ms": 0.06,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 1993,
+                "completion_tokens": 17,
+                "total_tokens": 2010,
+                "cost": 0.00024596,
+                "is_byok": false,
+                "prompt_tokens_details": {
+                  "cached_tokens": 1888,
+                  "cache_write_tokens": 0,
+                  "audio_tokens": 0,
+                  "video_tokens": 0
+                },
+                "cost_details": {
+                  "upstream_inference_cost": 0.00024596,
+                  "upstream_inference_prompt_cost": 0.00023916,
+                  "upstream_inference_completions_cost": 6.8e-06
+                },
+                "completion_tokens_details": {
+                  "reasoning_tokens": 0,
+                  "image_tokens": 0,
+                  "audio_tokens": 0
+                }
+              },
+              "history_messages": 5,
+              "history_chars": 366,
+              "failure_mode": "none",
+              "recall_turn": false,
+              "tts_friction_score": 0,
+              "tts_friction_detail": {},
+              "judge_correctness": null,
+              "judge_spoken_quality": null,
+              "judge_reasoning": null,
+              "judge_checklist": null,
+              "judge_error": null
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 2,
+          "expected_tool_calls": 2,
+          "matched_tool_names": 2,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 2,
+          "pass_k": 1,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reliability_band": "high",
+          "latency_growth_rate": null,
+          "quality_degradation_rate": null
+        },
+        {
+          "id": "timer_basics",
+          "name": "Timer Basics",
+          "tags": [
+            "timers",
+            "tools",
+            "core"
+          ],
+          "passed": true,
+          "turns": [
+            {
+              "index": 0,
+              "user": "Set a timer for 10 seconds.",
+              "response": "OK. I've set a timer for 10 seconds.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 913.542,
+              "tool_calls": [
+                {
+                  "scenario_id": "timer_basics",
+                  "turn_index": 0,
+                  "name": "set_timer",
+                  "args": {
+                    "seconds": 10
+                  },
+                  "result": "Timer #1 set. '10-second timer' will fire in 10 seconds.",
+                  "error": null,
+                  "latency_ms": 1.249,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 1961,
+                "completion_tokens": 19,
+                "total_tokens": 1980,
+                "cost": 0.00024292,
+                "is_byok": false,
+                "prompt_tokens_details": {
+                  "cached_tokens": 1888,
+                  "cache_write_tokens": 0,
+                  "audio_tokens": 0,
+                  "video_tokens": 0
+                },
+                "cost_details": {
+                  "upstream_inference_cost": 0.00024292,
+                  "upstream_inference_prompt_cost": 0.00023532,
+                  "upstream_inference_completions_cost": 7.6e-06
+                },
+                "completion_tokens_details": {
+                  "reasoning_tokens": 0,
+                  "image_tokens": 0,
+                  "audio_tokens": 0
+                }
+              },
+              "history_messages": 3,
+              "history_chars": 185,
+              "failure_mode": "none",
+              "recall_turn": false,
+              "tts_friction_score": 0,
+              "tts_friction_detail": {},
+              "judge_correctness": null,
+              "judge_spoken_quality": null,
+              "judge_reasoning": null,
+              "judge_checklist": null,
+              "judge_error": null
+            },
+            {
+              "index": 1,
+              "user": "List timers.",
+              "response": "You have one active timer:\n* **10-second timer**: 9 seconds remaining",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 1005.267,
+              "tool_calls": [
+                {
+                  "scenario_id": "timer_basics",
+                  "turn_index": 1,
+                  "name": "list_timers",
+                  "args": {},
+                  "result": "#1: '10-second timer' \u2014 9s remaining",
+                  "error": null,
+                  "latency_ms": 0.18,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 1978,
+                "completion_tokens": 24,
+                "total_tokens": 2002,
+                "cost": 0.00024696,
+                "is_byok": false,
+                "prompt_tokens_details": {
+                  "cached_tokens": 1888,
+                  "cache_write_tokens": 0,
+                  "audio_tokens": 0,
+                  "video_tokens": 0
+                },
+                "cost_details": {
+                  "upstream_inference_cost": 0.00024696,
+                  "upstream_inference_prompt_cost": 0.00023736,
+                  "upstream_inference_completions_cost": 9.6e-06
+                },
+                "completion_tokens_details": {
+                  "reasoning_tokens": 0,
+                  "image_tokens": 0,
+                  "audio_tokens": 0
+                }
+              },
+              "history_messages": 5,
+              "history_chars": 266,
+              "failure_mode": "none",
+              "recall_turn": false,
+              "tts_friction_score": 2,
+              "tts_friction_detail": {
+                "markdown": 2
+              },
+              "judge_correctness": null,
+              "judge_spoken_quality": null,
+              "judge_reasoning": null,
+              "judge_checklist": null,
+              "judge_error": null
+            },
+            {
+              "index": 2,
+              "user": "Cancel timer 1.",
+              "response": "OK. I've cancelled the 10-second timer.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 2768.098,
+              "tool_calls": [
+                {
+                  "scenario_id": "timer_basics",
+                  "turn_index": 2,
+                  "name": "cancel_timer",
+                  "args": {
+                    "timer_id": "1"
+                  },
+                  "result": "Timer #1 ('10-second timer') cancelled.",
+                  "error": null,
+                  "latency_ms": 0.186,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 2017,
+                "completion_tokens": 19,
+                "total_tokens": 2036,
+                "cost": 0.00024964,
+                "is_byok": false,
+                "prompt_tokens_details": {
+                  "cached_tokens": 1888,
+                  "cache_write_tokens": 0,
+                  "audio_tokens": 0,
+                  "video_tokens": 0
+                },
+                "cost_details": {
+                  "upstream_inference_cost": 0.00024964,
+                  "upstream_inference_prompt_cost": 0.00024204,
+                  "upstream_inference_completions_cost": 7.6e-06
+                },
+                "completion_tokens_details": {
+                  "reasoning_tokens": 0,
+                  "image_tokens": 0,
+                  "audio_tokens": 0
+                }
+              },
+              "history_messages": 7,
+              "history_chars": 320,
+              "failure_mode": "none",
+              "recall_turn": false,
+              "tts_friction_score": 0,
+              "tts_friction_detail": {},
+              "judge_correctness": null,
+              "judge_spoken_quality": null,
+              "judge_reasoning": null,
+              "judge_checklist": null,
+              "judge_error": null
+            }
+          ],
+          "turn_count": 3,
+          "passed_turns": 3,
+          "expected_tool_calls": 3,
+          "matched_tool_names": 3,
+          "expected_arg_checks": 1,
+          "matched_arg_checks": 1,
+          "actual_tool_calls": 3,
+          "pass_k": 1,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reliability_band": "high",
+          "latency_growth_rate": 927.278,
+          "quality_degradation_rate": null
+        },
+        {
+          "id": "utility_time_date",
+          "name": "Utility: Date and Time",
+          "tags": [
+            "utility",
+            "tools",
+            "core"
+          ],
+          "passed": true,
+          "turns": [
+            {
+              "index": 0,
+              "user": "What's today's date?",
+              "response": "Today's date is April 14, 2026.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 1339.535,
+              "tool_calls": [
+                {
+                  "scenario_id": "utility_time_date",
+                  "turn_index": 0,
+                  "name": "get_current_date",
+                  "args": {},
+                  "result": "2026-04-14",
+                  "error": null,
+                  "latency_ms": 0.473,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 1949,
+                "completion_tokens": 21,
+                "total_tokens": 1970,
+                "cost": 0.00024228,
+                "is_byok": false,
+                "prompt_tokens_details": {
+                  "cached_tokens": 1888,
+                  "cache_write_tokens": 0,
+                  "audio_tokens": 0,
+                  "video_tokens": 0
+                },
+                "cost_details": {
+                  "upstream_inference_cost": 0.00024228,
+                  "upstream_inference_prompt_cost": 0.00023388,
+                  "upstream_inference_completions_cost": 8.4e-06
+                },
+                "completion_tokens_details": {
+                  "reasoning_tokens": 0,
+                  "image_tokens": 0,
+                  "audio_tokens": 0
+                }
+              },
+              "history_messages": 3,
+              "history_chars": 173,
+              "failure_mode": "none",
+              "recall_turn": false,
+              "tts_friction_score": 0,
+              "tts_friction_detail": {},
+              "judge_correctness": null,
+              "judge_spoken_quality": null,
+              "judge_reasoning": null,
+              "judge_checklist": null,
+              "judge_error": null
+            },
+            {
+              "index": 1,
+              "user": "And what time is it right now?",
+              "response": "It is currently 6:14 PM.",
+              "passed": true,
+              "assertions": [],
+              "latency_ms": 12673.637,
+              "tool_calls": [
+                {
+                  "scenario_id": "utility_time_date",
+                  "turn_index": 1,
+                  "name": "get_current_time",
+                  "args": {},
+                  "result": "2026-04-14 18:14:06 UTC",
+                  "error": null,
+                  "latency_ms": 0.391,
+                  "failure_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 1993,
+                "completion_tokens": 15,
+                "total_tokens": 2008,
+                "cost": 0.00024516,
+                "is_byok": false,
+                "prompt_tokens_details": {
+                  "cached_tokens": 1888,
+                  "cache_write_tokens": 0,
+                  "audio_tokens": 0,
+                  "video_tokens": 0
+                },
+                "cost_details": {
+                  "upstream_inference_cost": 0.00024516,
+                  "upstream_inference_prompt_cost": 0.00023916,
+                  "upstream_inference_completions_cost": 6e-06
+                },
+                "completion_tokens_details": {
+                  "reasoning_tokens": 0,
+                  "image_tokens": 0,
+                  "audio_tokens": 0
+                }
+              },
+              "history_messages": 5,
+              "history_chars": 227,
+              "failure_mode": "none",
+              "recall_turn": false,
+              "tts_friction_score": 1,
+              "tts_friction_detail": {
+                "symbols": 1
+              },
+              "judge_correctness": null,
+              "judge_spoken_quality": null,
+              "judge_reasoning": null,
+              "judge_checklist": null,
+              "judge_error": null
+            }
+          ],
+          "turn_count": 2,
+          "passed_turns": 2,
+          "expected_tool_calls": 2,
+          "matched_tool_names": 2,
+          "expected_arg_checks": 0,
+          "matched_arg_checks": 0,
+          "actual_tool_calls": 2,
+          "pass_k": 1,
+          "pass_count": 1,
+          "pass_rate": 1.0,
+          "reliability_band": "high",
+          "latency_growth_rate": null,
+          "quality_degradation_rate": null
+        }
+      ],
+      "tool_traces": [
+        {
+          "scenario_id": "calculator_basic",
+          "turn_index": 0,
+          "name": "calculator",
+          "args": {
+            "formula": "0.15 * 47"
+          },
+          "result": "7.05",
+          "error": null,
+          "latency_ms": 8.713,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "calculator_basic",
+          "turn_index": 1,
+          "name": "calculator",
+          "args": {
+            "formula": "7.05 / 3"
+          },
+          "result": "2.35",
+          "error": null,
+          "latency_ms": 0.882,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "cross_tool_mix",
+          "turn_index": 0,
+          "name": "get_current_time",
+          "args": {},
+          "result": "2026-04-14 18:13:13 UTC",
+          "error": null,
+          "latency_ms": 0.441,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "cross_tool_mix",
+          "turn_index": 1,
+          "name": "set_timer",
+          "args": {
+            "seconds": 300
+          },
+          "result": "Timer #1 set. '300-second timer' will fire in 300 seconds.",
+          "error": null,
+          "latency_ms": 1.618,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "cross_tool_mix",
+          "turn_index": 2,
+          "name": "add_to_list",
+          "args": {
+            "items": "check the timer",
+            "list_name": "reminders"
+          },
+          "result": "Added 'check the timer' to the reminders list.",
+          "error": null,
+          "latency_ms": 54.873,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "list_basics",
+          "turn_index": 0,
+          "name": "create_list",
+          "args": {
+            "list_name": "grocery"
+          },
+          "result": "Created 'grocery' list.",
+          "error": null,
+          "latency_ms": 3.737,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "list_basics",
+          "turn_index": 1,
+          "name": "add_to_list",
+          "args": {
+            "items": "milk",
+            "list_name": "grocery"
+          },
+          "result": "Added 'milk' to the grocery list.",
+          "error": null,
+          "latency_ms": 4.609,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "list_basics",
+          "turn_index": 2,
+          "name": "list_all_lists",
+          "args": {},
+          "result": "grocery: [\"milk\"]",
+          "error": null,
+          "latency_ms": 1.999,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "list_multistep_packing",
+          "turn_index": 0,
+          "name": "create_list",
+          "args": {
+            "list_name": "packing"
+          },
+          "result": "Created 'packing' list.",
+          "error": null,
+          "latency_ms": 4.493,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "list_multistep_packing",
+          "turn_index": 1,
+          "name": "add_to_list",
+          "args": {
+            "items": [
+              "<|\"|socks<|\"|",
+              "<|\"|charger<|\"|"
+            ],
+            "list_name": "packing"
+          },
+          "result": "Added <|\"|socks<|\"|, <|\"|charger<|\"| to the packing list.",
+          "error": null,
+          "latency_ms": 4.905,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "list_multistep_packing",
+          "turn_index": 2,
+          "name": "get_list",
+          "args": {
+            "list_name": "packing"
+          },
+          "result": "Packing list:\n- <|\"|socks<|\"|\n- <|\"|charger<|\"|",
+          "error": null,
+          "latency_ms": 2.393,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "memory_persistent_strict",
+          "turn_index": 0,
+          "name": "remember",
+          "args": {
+            "key": "favorite_color",
+            "value": "blue"
+          },
+          "result": "Remembered: favorite_color = blue",
+          "error": null,
+          "latency_ms": 2.948,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "memory_persistent_strict",
+          "turn_index": 1,
+          "name": "recall",
+          "args": {
+            "key": "favorite_color"
+          },
+          "result": "favorite_color: blue",
+          "error": null,
+          "latency_ms": 2.089,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "memory_context_flexible",
+          "turn_index": 0,
+          "name": "remember",
+          "args": {
+            "key": "favorite_color",
+            "value": "blue"
+          },
+          "result": "Remembered: favorite_color = blue",
+          "error": null,
+          "latency_ms": 3.477,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "memory_context_flexible",
+          "turn_index": 1,
+          "name": "recall",
+          "args": {
+            "key": "favorite_color"
+          },
+          "result": "favorite_color: blue",
+          "error": null,
+          "latency_ms": 1.835,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "memory_context_pressure",
+          "turn_index": 0,
+          "name": "remember",
+          "args": {
+            "key": "launch_codename",
+            "value": "atlas"
+          },
+          "result": "Remembered: launch_codename = atlas",
+          "error": null,
+          "latency_ms": 3.332,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "memory_context_pressure",
+          "turn_index": 2,
+          "name": "recall",
+          "args": {
+            "key": "launch_codename"
+          },
+          "result": "launch_codename: atlas",
+          "error": null,
+          "latency_ms": 2.124,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "recovery_timer_retry",
+          "turn_index": 0,
+          "name": "cancel_timer",
+          "args": {
+            "timer_id": "99"
+          },
+          "result": "No active timer with ID '99'. Use list_timers to see active timers.",
+          "error": null,
+          "latency_ms": 0.091,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "recovery_timer_retry",
+          "turn_index": 1,
+          "name": "list_timers",
+          "args": {},
+          "result": "No active timers.",
+          "error": null,
+          "latency_ms": 0.06,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "timer_basics",
+          "turn_index": 0,
+          "name": "set_timer",
+          "args": {
+            "seconds": 10
+          },
+          "result": "Timer #1 set. '10-second timer' will fire in 10 seconds.",
+          "error": null,
+          "latency_ms": 1.249,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "timer_basics",
+          "turn_index": 1,
+          "name": "list_timers",
+          "args": {},
+          "result": "#1: '10-second timer' \u2014 9s remaining",
+          "error": null,
+          "latency_ms": 0.18,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "timer_basics",
+          "turn_index": 2,
+          "name": "cancel_timer",
+          "args": {
+            "timer_id": "1"
+          },
+          "result": "Timer #1 ('10-second timer') cancelled.",
+          "error": null,
+          "latency_ms": 0.186,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "utility_time_date",
+          "turn_index": 0,
+          "name": "get_current_date",
+          "args": {},
+          "result": "2026-04-14",
+          "error": null,
+          "latency_ms": 0.473,
+          "failure_reason": null
+        },
+        {
+          "scenario_id": "utility_time_date",
+          "turn_index": 1,
+          "name": "get_current_time",
+          "args": {},
+          "result": "2026-04-14 18:14:06 UTC",
+          "error": null,
+          "latency_ms": 0.391,
+          "failure_reason": null
+        }
+      ]
+    }
+  ],
+  "meta": {
+    "main_output_root": "benchmark_results",
+    "latest_run": "/app/talkbot/benchmark_results/latest",
+    "run_name": "gemma4-26b-20260414-181308",
+    "runner_label": "arm-01",
+    "update_main": true
+  }
+}
