@@ -97,6 +97,14 @@
             "use_tools": true,
             "max_tokens": 512,
             "temperature": 0.0
+        },
+        {
+            "name": "openrouter-gemma-4-26b",
+            "provider": "openrouter",
+            "model": "google/gemma-4-26b-a4b-it",
+            "use_tools": true,
+            "max_tokens": 512,
+            "temperature": 0.0
         }
     ]
 }
