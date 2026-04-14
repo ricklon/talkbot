@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-04-14T21:55:41+0000",
-  "latest_run": "full_remote-20260414-214818",
+  "updated_at": "2026-04-14T22:20:55+0000",
+  "latest_run": "full_remote-20260414-220916",
   "runs": [
     "validated-20260227-v3-schemas",
     "validated-20260227-v3-fixed",
@@ -37,6 +37,7 @@
     "llama-server-qwen35-2b-q4km",
     "latest",
     "gemma4-26b-20260414-181308",
+    "full_remote-20260414-220916",
     "full_remote-20260414-214818",
     "full_remote-20260414-214135",
     "full_remote-20260414-151713",
