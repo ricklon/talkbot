@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-04-14T22:20:55+0000",
-  "latest_run": "full_remote-20260414-220916",
+  "updated_at": "2026-04-14T22:38:49+0000",
+  "latest_run": "local-vs-remote-20260414-222055",
   "runs": [
     "validated-20260227-v3-schemas",
     "validated-20260227-v3-fixed",
@@ -32,6 +32,7 @@
     "m3max-20260310-211631",
     "m3max-20260310-210617",
     "m3max-20260310-210535",
+    "local-vs-remote-20260414-222055",
     "local-qwen-qwen3-8b-20260301-004137",
     "llama-server-qwen35-4b-q4km",
     "llama-server-qwen35-2b-q4km",
