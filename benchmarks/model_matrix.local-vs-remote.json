@@ -1,4 +1,5 @@
 {
+    "_comment": "Local vs remote comparison matrix. Local = llama-server on control node (x86_64 CPU). Remote = OpenRouter API. Run with: uv run python scripts/benchmark_conversations.py --matrix benchmarks/model_matrix.local-vs-remote.json",
     "benchmark": {
         "schema_version": "2026.1",
         "values_file": "benchmarks/evaluation_values.json",
@@ -27,7 +28,20 @@
     },
     "profiles": [
         {
-            "name": "openrouter-ministral-3b-2512",
+            "_comment": "LOCAL: qwen3.5-0.8b Q8 on control node CPU (x86_64, 4-core KVM@TACC)",
+            "name": "local-qwen35-0.8b-q8",
+            "provider": "local_server",
+            "local_server_url": "http://127.0.0.1:8000/v1",
+            "local_model_path": "models/qwen3.5-0.8b-q8_0.gguf",
+            "model": "qwen3.5-0.8b-q8_0",
+            "enable_thinking": false,
+            "use_tools": true,
+            "max_tokens": 512,
+            "temperature": 0.0
+        },
+        {
+            "_comment": "REMOTE: fastest OpenRouter model (baseline for latency comparison)",
+            "name": "openrouter-ministral-3b",
             "provider": "openrouter",
             "model": "mistralai/ministral-3b-2512",
             "use_tools": true,
@@ -35,14 +49,16 @@
             "temperature": 0.0
         },
         {
-            "name": "openrouter-gemini-3-flash",
+            "_comment": "REMOTE: gemma-4-26b — target model for Jetson local inference",
+            "name": "openrouter-gemma-4-26b",
             "provider": "openrouter",
-            "model": "google/gemini-3-flash-preview",
+            "model": "google/gemma-4-26b-a4b-it",
             "use_tools": true,
             "max_tokens": 512,
             "temperature": 0.0
         },
         {
+            "_comment": "REMOTE: gemini-3.1-flash-lite — new generation lightweight model",
             "name": "openrouter-gemini-3.1-flash-lite",
             "provider": "openrouter",
             "model": "google/gemini-3.1-flash-lite-preview",
@@ -51,41 +67,10 @@
             "temperature": 0.0
         },
         {
-            "name": "openrouter-gemini-3.1-pro",
-            "provider": "openrouter",
-            "model": "google/gemini-3.1-pro-preview",
-            "use_tools": true,
-            "max_tokens": 512,
-            "temperature": 0.0
-        },
-        {
-            "name": "openrouter-gpt-4.1-mini",
-            "provider": "openrouter",
-            "model": "openai/gpt-4.1-mini",
-            "use_tools": true,
-            "max_tokens": 512,
-            "temperature": 0.0
-        },
-        {
+            "_comment": "REMOTE: deepseek-chat — strong remote model for quality anchor",
             "name": "openrouter-deepseek-chat",
             "provider": "openrouter",
             "model": "deepseek/deepseek-chat",
-            "use_tools": true,
-            "max_tokens": 512,
-            "temperature": 0.0
-        },
-        {
-            "name": "openrouter-gemma-4-26b",
-            "provider": "openrouter",
-            "model": "google/gemma-4-26b-a4b-it",
-            "use_tools": true,
-            "max_tokens": 512,
-            "temperature": 0.0
-        },
-        {
-            "name": "openrouter-gemma-4-26b",
-            "provider": "openrouter",
-            "model": "google/gemma-4-26b-a4b-it",
             "use_tools": true,
             "max_tokens": 512,
             "temperature": 0.0
